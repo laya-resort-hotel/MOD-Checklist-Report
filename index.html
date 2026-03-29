@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Laya MOD Checklist Report</title>
+  <meta name="theme-color" content="#24352C" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="loginScreen" class="login-shell">
+    <div class="login-card glass">
+      <img src="assets/logo.png" alt="Laya Resort Phuket" class="login-logo" />
+      <div class="brand-subtitle">MOD Checklist Report</div>
+      <h1>Hotel Inspection & Issue Board</h1>
+      <p class="muted center">เวอร์ชันสำหรับขึ้น GitHub Pages • พร้อมเทส UI/Flow ทันที</p>
+
+      <div class="mode-banner" id="modeBanner">Local Demo Mode</div>
+
+      <label>Employee ID</label>
+      <input id="loginEmployeeId" type="text" placeholder="เช่น 9901" />
+
+      <label>Password</label>
+      <input id="loginPassword" type="password" placeholder="รหัสผ่าน" />
+
+      <button id="loginBtn" class="btn btn-primary btn-block">Sign In</button>
+
+      <div class="demo-box">
+        <div class="demo-title">Demo Accounts</div>
+        <div class="demo-grid">
+          <button class="demo-user" data-id="9000" data-pass="9000">Admin</button>
+          <button class="demo-user" data-id="9901" data-pass="9901">MOD</button>
+          <button class="demo-user" data-id="3001" data-pass="3001">ENG</button>
+          <button class="demo-user" data-id="4001" data-pass="4001">HK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="appShell" class="app-shell hidden">
+    <aside class="sidebar glass desktop-only">
+      <div class="sidebar-brand">
+        <img src="assets/logo.png" alt="Laya Resort Phuket" class="sidebar-logo" />
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-link active" data-view="boardView">Board</button>
+        <button class="nav-link" data-view="newIssueView">New Issue</button>
+        <button class="nav-link" data-view="checklistView">Checklist</button>
+        <button class="nav-link" data-view="activityView">Activity</button>
+        <button class="nav-link" data-view="moreView">More</button>
+      </nav>
+    </aside>
+
+    <main class="main-shell">
+      <header class="topbar glass">
+        <div>
+          <div class="eyebrow">LAYA RESORT PHUKET</div>
+          <h2 class="topbar-title">MOD Checklist Report</h2>
+          <div class="topbar-sub" id="welcomeText">Welcome</div>
+        </div>
+        <div class="topbar-actions">
+          <span class="badge success" id="connectionBadge">Ready</span>
+          <button id="logoutBtn" class="btn btn-ghost">Logout</button>
+        </div>
+      </header>
+
+      <section id="boardView" class="view active">
+        <div class="summary-grid" id="summaryGrid"></div>
+
+        <div class="toolbar glass">
+          <div class="toolbar-left">
+            <input id="boardSearch" class="search-input" type="search" placeholder="ค้นหา issue, location, department" />
+          </div>
+          <div class="chip-row" id="boardFilterChips">
+            <button class="chip active" data-filter="all">All</button>
+            <button class="chip" data-filter="open">Open</button>
+            <button class="chip" data-filter="in_progress">In Progress</button>
+            <button class="chip" data-filter="waiting">Waiting</button>
+            <button class="chip" data-filter="closed">Closed</button>
+            <button class="chip" data-filter="mine">My Dept</button>
+          </div>
+        </div>
+
+        <div id="boardList" class="card-list"></div>
+      </section>
+
+      <section id="newIssueView" class="view">
+        <div class="panel glass form-panel">
+          <div class="panel-header">
+            <h3>New Issue</h3>
+            <p class="muted">แจ้งปัญหาใหม่แบบเร็ว เน้นถ่ายรูปและ assign แผนกให้ชัด</p>
+          </div>
+
+          <div class="photo-uploader" id="issuePhotoDrop">
+            <input id="issuePhotoInput" type="file" accept="image/*" class="hidden" />
+            <button id="issuePhotoPickBtn" class="btn btn-secondary" type="button">เลือกหรือถ่ายรูป</button>
+            <div class="photo-preview-wrap">
+              <img id="issuePhotoPreview" class="photo-preview hidden" alt="Issue Preview" />
+            </div>
+          </div>
+
+          <div class="form-grid two-col">
+            <div>
+              <label>Title</label>
+              <input id="issueTitle" type="text" placeholder="เช่น Water leak at lobby entrance" />
+            </div>
+            <div>
+              <label>Issue Type</label>
+              <select id="issueType">
+                <option value="water_leak">Water Leak</option>
+                <option value="light_issue">Light Issue</option>
+                <option value="dirty_area">Dirty Area</option>
+                <option value="broken_furniture">Broken Furniture</option>
+                <option value="safety_concern">Safety Concern</option>
+                <option value="guest_area_defect">Guest Area Defect</option>
+                <option value="ac_issue">AC Issue</option>
+                <option value="pest_issue">Pest Issue</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="full-span">
+              <label>Description</label>
+              <textarea id="issueDescription" rows="4" placeholder="รายละเอียดเพิ่มเติม"></textarea>
+            </div>
+            <div>
+              <label>Location</label>
+              <input id="issueLocation" type="text" placeholder="เช่น Lobby entrance near main corridor" />
+            </div>
+            <div>
+              <label>Assign Department</label>
+              <select id="issueDepartment"></select>
+            </div>
+          </div>
+
+          <div>
+            <label>Priority</label>
+            <div class="segment-row" id="prioritySegment">
+              <button class="segment active" data-value="medium" type="button">Medium</button>
+              <button class="segment" data-value="low" type="button">Low</button>
+              <button class="segment" data-value="high" type="button">High</button>
+              <button class="segment" data-value="critical" type="button">Critical</button>
+            </div>
+          </div>
+
+          <div class="sticky-actions">
+            <button id="saveIssueBtn" class="btn btn-primary">Save Issue</button>
+            <button id="clearIssueBtn" class="btn btn-ghost">Clear</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="checklistView" class="view">
+        <div class="panel glass">
+          <div class="panel-header">
+            <h3>Checklist Module</h3>
+            <p class="muted">แยกจาก Board เพื่อให้หน้าบอร์ดสะอาด และสร้าง issue เฉพาะข้อที่ fail</p>
+          </div>
+          <div id="templateCards" class="template-grid"></div>
+        </div>
+
+        <div id="checklistRunPanel" class="panel glass hidden"></div>
+      </section>
+
+      <section id="activityView" class="view">
+        <div class="panel glass">
+          <div class="panel-header">
+            <h3>Activity</h3>
+            <p class="muted">ความเคลื่อนไหวล่าสุดของ issue และ checklist</p>
+          </div>
+          <div id="activityList" class="activity-list"></div>
+        </div>
+      </section>
+
+      <section id="moreView" class="view">
+        <div class="more-grid">
+          <div class="panel glass">
+            <div class="panel-header">
+              <h3>Data Tools</h3>
+              <p class="muted">สำหรับเดโมและสำรองข้อมูล</p>
+            </div>
+            <div class="stack">
+              <button id="exportJsonBtn" class="btn btn-secondary">Export Local JSON</button>
+              <label class="btn btn-ghost upload-btn">
+                Import Local JSON
+                <input id="importJsonInput" type="file" accept="application/json" class="hidden" />
+              </label>
+              <button id="seedDemoBtn" class="btn btn-ghost">Reset Demo Data</button>
+            </div>
+          </div>
+
+          <div class="panel glass">
+            <div class="panel-header">
+              <h3>GitHub Upload Notes</h3>
+            </div>
+            <ul class="clean-list">
+              <li>อัปโหลดทั้งโฟลเดอร์ขึ้น GitHub</li>
+              <li>เปิด GitHub Pages ที่ branch <strong>main</strong></li>
+              <li>ไฟล์นี้ใช้งานได้ทันทีใน <strong>Local Demo Mode</strong></li>
+              <li>ถ้าจะต่อ Firebase ให้แทนที่ชั้น local storage ใน <code>js/app.js</code></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <button id="fabNewIssue" class="fab mobile-only" title="New Issue">+</button>
+
+    <nav class="bottom-nav glass mobile-only">
+      <button class="nav-link active" data-view="boardView">Board</button>
+      <button class="nav-link" data-view="newIssueView">New</button>
+      <button class="nav-link" data-view="checklistView">Checklist</button>
+      <button class="nav-link" data-view="activityView">Activity</button>
+      <button class="nav-link" data-view="moreView">More</button>
+    </nav>
+  </div>
+
+  <div id="issueModal" class="modal hidden">
+    <div class="modal-backdrop" data-close-modal="true"></div>
+    <div class="modal-card glass">
+      <button id="closeIssueModalBtn" class="modal-close">×</button>
+      <div id="issueModalContent"></div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

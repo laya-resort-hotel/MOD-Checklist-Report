@@ -1,0 +1,559 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* =========================
+       Common helpers
+    ========================== */
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function myUserExists() {
+      return signedIn() && exists(userPath(request.auth.uid));
+    }
+
+    function myUser() {
+      return get(userPath(request.auth.uid));
+    }
+
+    function myRole() {
+      return myUser().data.role;
+    }
+
+    function myDept() {
+      return myUser().data.department;
+    }
+
+    function myName() {
+      return myUser().data.full_name;
+    }
+
+    function isAdmin() {
+      return myUserExists() && myRole() == 'admin';
+    }
+
+    function isMod() {
+      return myUserExists() && myRole() == 'mod';
+    }
+
+    function isDeptUser() {
+      return myUserExists() && myRole() == 'dept_user';
+    }
+
+    function isViewer() {
+      return myUserExists() && myRole() == 'viewer';
+    }
+
+    function validDept(v) {
+      return v == 'MOD' ||
+             v == 'ENG' ||
+             v == 'HK'  ||
+             v == 'FO'  ||
+             v == 'FB'  ||
+             v == 'SEC' ||
+             v == 'ADMIN';
+    }
+
+    function validIssueStatus(v) {
+      return v == 'open' ||
+             v == 'in_progress' ||
+             v == 'waiting' ||
+             v == 'closed';
+    }
+
+    function validPriority(v) {
+      return v == 'low' ||
+             v == 'medium' ||
+             v == 'high' ||
+             v == 'critical';
+    }
+
+    function validSourceType(v) {
+      return v == 'manual' || v == 'checklist';
+    }
+
+    function canReadIssueDoc(issueData) {
+      return isAdmin() ||
+             isMod() ||
+             isViewer() ||
+             (isDeptUser() && issueData.assigned_department == myDept());
+    }
+
+    function canWorkIssueDoc(issueData) {
+      return isAdmin() ||
+             isMod() ||
+             (isDeptUser() && issueData.assigned_department == myDept());
+    }
+
+    function validTransition(oldStatus, newStatus) {
+      return
+        oldStatus == newStatus ||
+
+        (oldStatus == 'open' &&
+          (newStatus == 'in_progress' ||
+           newStatus == 'waiting' ||
+           newStatus == 'closed')) ||
+
+        (oldStatus == 'in_progress' &&
+          (newStatus == 'open' ||
+           newStatus == 'waiting' ||
+           newStatus == 'closed')) ||
+
+        (oldStatus == 'waiting' &&
+          (newStatus == 'open' ||
+           newStatus == 'in_progress' ||
+           newStatus == 'closed')) ||
+
+        (oldStatus == 'closed' && newStatus == 'open');
+    }
+
+    function issueRunPath(runId) {
+      return /databases/$(database)/documents/checklist_runs/$(runId);
+    }
+
+    function issueAnswerPath(runId, answerId) {
+      return /databases/$(database)/documents/checklist_runs/$(runId)/answers/$(answerId);
+    }
+
+    function validChecklistLinkOnCreate() {
+      return request.resource.data.source_type != 'checklist' ||
+        (
+          request.resource.data.source_checklist_run_id is string &&
+          request.resource.data.source_checklist_answer_id is string &&
+          exists(issueRunPath(request.resource.data.source_checklist_run_id)) &&
+          exists(issueAnswerPath(
+            request.resource.data.source_checklist_run_id,
+            request.resource.data.source_checklist_answer_id
+          )) &&
+          get(issueRunPath(request.resource.data.source_checklist_run_id)).data.status == 'submitted' &&
+          get(issueAnswerPath(
+            request.resource.data.source_checklist_run_id,
+            request.resource.data.source_checklist_answer_id
+          )).data.response == 'fail'
+        );
+    }
+
+    function issueCreateFieldsAllowed() {
+      return request.resource.data.keys().hasAll([
+        'issue_no',
+        'source_type',
+        'title',
+        'description',
+        'issue_type',
+        'priority',
+        'status',
+        'assigned_department',
+        'location_text',
+        'reported_by_uid',
+        'reported_by_name',
+        'reported_by_department',
+        'before_photos',
+        'after_photos',
+        'comment_count',
+        'activity_count',
+        'created_at',
+        'updated_at',
+        'last_activity_at'
+      ]) &&
+      request.resource.data.keys().hasOnly([
+        'issue_no',
+        'source_type',
+        'source_checklist_run_id',
+        'source_checklist_answer_id',
+
+        'title',
+        'description',
+        'issue_type',
+
+        'priority',
+        'status',
+
+        'assigned_department',
+        'assigned_to_uid',
+        'assigned_to_name',
+
+        'location_text',
+        'building',
+        'floor',
+        'room_no',
+
+        'reported_by_uid',
+        'reported_by_name',
+        'reported_by_department',
+
+        'cover_photo_url',
+        'cover_thumb_url',
+        'before_photos',
+        'after_photos',
+
+        'comment_count',
+        'activity_count',
+        'last_comment_at',
+        'last_activity_at',
+
+        'closed_at',
+        'closed_by_uid',
+        'closed_by_name',
+
+        'created_at',
+        'updated_at'
+      ]);
+    }
+
+    function issueCreateDataValid() {
+      return issueCreateFieldsAllowed() &&
+        request.resource.data.issue_no is string &&
+        request.resource.data.source_type is string &&
+        validSourceType(request.resource.data.source_type) &&
+        validChecklistLinkOnCreate() &&
+
+        request.resource.data.title is string &&
+        request.resource.data.description is string &&
+        request.resource.data.issue_type is string &&
+
+        request.resource.data.priority is string &&
+        validPriority(request.resource.data.priority) &&
+
+        request.resource.data.status == 'open' &&
+        validIssueStatus(request.resource.data.status) &&
+
+        request.resource.data.assigned_department is string &&
+        validDept(request.resource.data.assigned_department) &&
+
+        request.resource.data.location_text is string &&
+
+        request.resource.data.reported_by_uid == request.auth.uid &&
+        request.resource.data.reported_by_name == myName() &&
+        request.resource.data.reported_by_department == myDept() &&
+
+        request.resource.data.before_photos is list &&
+        request.resource.data.after_photos is list &&
+
+        request.resource.data.comment_count == 0 &&
+        request.resource.data.activity_count >= 1;
+    }
+
+    function issueUpdateAllowedForAdminOrMod() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+
+      return changed.hasOnly([
+        'status',
+        'priority',
+        'assigned_department',
+        'assigned_to_uid',
+        'assigned_to_name',
+        'after_photos',
+        'comment_count',
+        'activity_count',
+        'last_comment_at',
+        'last_activity_at',
+        'closed_at',
+        'closed_by_uid',
+        'closed_by_name',
+        'updated_at'
+      ]) &&
+      validIssueStatus(request.resource.data.status) &&
+      validPriority(request.resource.data.priority) &&
+      validDept(request.resource.data.assigned_department) &&
+      validTransition(resource.data.status, request.resource.data.status);
+    }
+
+    function issueUpdateAllowedForDeptUser() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+
+      return changed.hasOnly([
+        'status',
+        'after_photos',
+        'comment_count',
+        'activity_count',
+        'last_comment_at',
+        'last_activity_at',
+        'closed_at',
+        'closed_by_uid',
+        'closed_by_name',
+        'updated_at'
+      ]) &&
+      validIssueStatus(request.resource.data.status) &&
+      request.resource.data.priority == resource.data.priority &&
+      request.resource.data.assigned_department == resource.data.assigned_department &&
+      validTransition(resource.data.status, request.resource.data.status);
+    }
+
+    function issueUpdateIsValid() {
+      return (
+        (isAdmin() || isMod()) &&
+        issueUpdateAllowedForAdminOrMod()
+      ) || (
+        isDeptUser() &&
+        resource.data.assigned_department == myDept() &&
+        issueUpdateAllowedForDeptUser()
+      );
+    }
+
+    function commentCreateValid() {
+      return request.resource.data.keys().hasAll([
+        'type',
+        'message',
+        'by_uid',
+        'by_name',
+        'by_role',
+        'by_department',
+        'mentions',
+        'photos',
+        'created_at'
+      ]) &&
+      request.resource.data.keys().hasOnly([
+        'type',
+        'message',
+        'by_uid',
+        'by_name',
+        'by_role',
+        'by_department',
+        'mentions',
+        'photos',
+        'created_at'
+      ]) &&
+      request.resource.data.type == 'user' &&
+      request.resource.data.message is string &&
+      request.resource.data.by_uid == request.auth.uid &&
+      request.resource.data.by_name == myName() &&
+      request.resource.data.by_role == myRole() &&
+      request.resource.data.by_department == myDept() &&
+      request.resource.data.mentions is list &&
+      request.resource.data.photos is list;
+    }
+
+    function activityCreateValid() {
+      return request.resource.data.keys().hasAll([
+        'action',
+        'by_uid',
+        'by_name',
+        'by_department',
+        'created_at'
+      ]) &&
+      request.resource.data.keys().hasOnly([
+        'action',
+        'from_status',
+        'to_status',
+        'note',
+        'by_uid',
+        'by_name',
+        'by_department',
+        'created_at'
+      ]) &&
+      request.resource.data.action is string &&
+      request.resource.data.by_uid == request.auth.uid &&
+      request.resource.data.by_name == myName() &&
+      request.resource.data.by_department == myDept();
+    }
+
+    function checklistRunCreateValid() {
+      return (isAdmin() || isMod()) &&
+        request.resource.data.keys().hasAll([
+          'run_no',
+          'template_code',
+          'template_name',
+          'template_version',
+          'status',
+          'inspector_uid',
+          'inspector_name',
+          'inspector_department',
+          'inspection_date',
+          'source',
+          'created_at',
+          'updated_at'
+        ]) &&
+        request.resource.data.inspector_uid == request.auth.uid &&
+        request.resource.data.inspector_name == myName() &&
+        request.resource.data.inspector_department == myDept() &&
+        (request.resource.data.status == 'draft' ||
+         request.resource.data.status == 'submitted' ||
+         request.resource.data.status == 'archived');
+    }
+
+    /* =========================
+       users
+    ========================== */
+
+    match /users/{uid} {
+      allow get: if signedIn() && (
+        request.auth.uid == uid ||
+        isAdmin() ||
+        isMod()
+      );
+
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+
+      allow update: if isAdmin() || (
+        request.auth.uid == uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'phone',
+          'avatar_url',
+          'updated_at',
+          'last_login_at'
+        ])
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    /* =========================
+       app settings / lookups
+    ========================== */
+
+    match /app_settings/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    /* =========================
+       checklist templates
+    ========================== */
+
+    match /checklist_templates/{templateId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /* =========================
+       checklist runs
+    ========================== */
+
+    match /checklist_runs/{runId} {
+      allow get, list: if isAdmin() || isMod();
+      allow create: if checklistRunCreateValid();
+
+      allow update: if (isAdmin() || isMod()) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'submitted_at',
+          'overall_result',
+          'total_items',
+          'pass_count',
+          'fail_count',
+          'na_count',
+          'issue_count',
+          'summary_note',
+          'updated_at'
+        ]);
+
+      allow delete: if false;
+
+      match /answers/{answerId} {
+        allow get, list: if isAdmin() || isMod();
+
+        allow create: if (isAdmin() || isMod()) &&
+          request.resource.data.keys().hasAll([
+            'section_code',
+            'section_title',
+            'item_code',
+            'item_text',
+            'response',
+            'note',
+            'photos',
+            'issue_created',
+            'answered_at',
+            'answered_by_uid',
+            'answered_by_name'
+          ]) &&
+          (request.resource.data.response == 'pass' ||
+           request.resource.data.response == 'fail' ||
+           request.resource.data.response == 'na') &&
+          request.resource.data.answered_by_uid == request.auth.uid &&
+          request.resource.data.answered_by_name == myName();
+
+        allow update: if (isAdmin() || isMod()) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'response',
+            'note',
+            'photos',
+            'issue_created',
+            'linked_issue_id',
+            'answered_at',
+            'answered_by_uid',
+            'answered_by_name'
+          ]) &&
+          (request.resource.data.response == 'pass' ||
+           request.resource.data.response == 'fail' ||
+           request.resource.data.response == 'na') &&
+          request.resource.data.answered_by_uid == request.auth.uid &&
+          request.resource.data.answered_by_name == myName();
+
+        allow delete: if false;
+      }
+
+      match /special_form_entries/{entryId} {
+        allow get, list: if isAdmin() || isMod();
+        allow create, update: if isAdmin() || isMod();
+        allow delete: if false;
+      }
+    }
+
+    /* =========================
+       issues
+    ========================== */
+
+    match /issues/{issueId} {
+      allow get: if signedIn() && canReadIssueDoc(resource.data);
+
+      allow list: if signedIn() && (
+        isAdmin() ||
+        isMod() ||
+        isViewer() ||
+        isDeptUser()
+      );
+
+      allow create: if (isAdmin() || isMod()) && issueCreateDataValid();
+
+      allow update: if signedIn() &&
+        canWorkIssueDoc(resource.data) &&
+        issueUpdateIsValid();
+
+      allow delete: if isAdmin();
+
+      match /comments/{commentId} {
+        function parentIssue() {
+          return get(/databases/$(database)/documents/issues/$(issueId));
+        }
+
+        allow get, list: if signedIn() && canReadIssueDoc(parentIssue().data);
+
+        allow create: if signedIn() &&
+          canWorkIssueDoc(parentIssue().data) &&
+          commentCreateValid();
+
+        allow update, delete: if false;
+      }
+
+      match /activity/{activityId} {
+        function parentIssue() {
+          return get(/databases/$(database)/documents/issues/$(issueId));
+        }
+
+        allow get, list: if signedIn() && canReadIssueDoc(parentIssue().data);
+
+        allow create: if signedIn() &&
+          canWorkIssueDoc(parentIssue().data) &&
+          activityCreateValid();
+
+        allow update, delete: if false;
+      }
+    }
+
+    /* =========================
+       counters
+    ========================== */
+
+    match /counters/{counterId} {
+      allow read: if isAdmin() || isMod();
+      allow write: if isAdmin() || isMod();
+    }
+  }
+}
