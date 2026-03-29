@@ -285,6 +285,7 @@
       issueDepartment: qs('#issueDepartment'),
       issuePhotoInput: qs('#issuePhotoInput'),
       issuePhotoPickBtn: qs('#issuePhotoPickBtn'),
+    issuePhotoHint: qs('#issuePhotoHint'),
       issuePhotoPreview: qs('#issuePhotoPreview'),
       saveIssueBtn: qs('#saveIssueBtn'),
       clearIssueBtn: qs('#clearIssueBtn'),
@@ -331,7 +332,6 @@
       qsa('.chip', el.boardFilterChips).forEach(c => c.classList.toggle('active', c === chip));
       renderBoard();
     });
-    el.issuePhotoPickBtn.addEventListener('click', () => el.issuePhotoInput.click());
     el.issuePhotoInput.addEventListener('change', handleIssuePhotoPicked);
     el.saveIssueBtn.addEventListener('click', saveIssueFromForm);
     el.clearIssueBtn.addEventListener('click', clearIssueForm);
@@ -379,13 +379,41 @@
   }
 
   function persist() {
-    localStorage.setItem(APP_KEY, JSON.stringify({
+    const payload = {
       currentUser: isFirebaseLive() ? null : state.currentUser,
       data: {
         ...state.data,
         templates: undefined,
       }
-    }));
+    };
+
+    try {
+      localStorage.setItem(APP_KEY, JSON.stringify(payload));
+    } catch (err) {
+      console.warn('Persist failed, retrying without inline photos', err);
+      const fallback = {
+        ...payload,
+        data: stripInlinePhotosFromData(payload.data),
+      };
+      localStorage.setItem(APP_KEY, JSON.stringify(fallback));
+    }
+  }
+
+  function stripInlinePhotosFromData(data) {
+    return {
+      ...data,
+      issues: (data.issues || []).map(issue => ({
+        ...issue,
+        cover_photo_url: isInlineDataUrl(issue.cover_photo_url) ? '' : (issue.cover_photo_url || ''),
+        cover_thumb_url: isInlineDataUrl(issue.cover_thumb_url) ? '' : (issue.cover_thumb_url || ''),
+        before_photos: [],
+        after_photos: [],
+      })),
+    };
+  }
+
+  function isInlineDataUrl(value) {
+    return typeof value === 'string' && value.startsWith('data:image/');
   }
 
   async function handleLogin() {
@@ -614,10 +642,41 @@
   async function handleIssuePhotoPicked(event) {
     const file = event.target.files?.[0];
     if (!file) return;
-    const result = await fileToDataUrl(file, 1400, 0.82);
-    el.issuePhotoPreview.src = result;
-    el.issuePhotoPreview.classList.remove('hidden');
-    el.issuePhotoPreview.dataset.imageData = result;
+
+    try {
+      setIssuePhotoHint('กำลังย่อรูปก่อนอัปโหลด…', '');
+      if (!file.type || !file.type.startsWith('image/')) {
+        throw new Error('invalid_file_type');
+      }
+      const optimized = await optimizeIssuePhoto(file);
+      el.issuePhotoPreview.src = optimized.previewDataUrl || optimized.thumbDataUrl || optimized.fullDataUrl;
+      el.issuePhotoPreview.classList.remove('hidden');
+      el.issuePhotoPreview.dataset.imageData = optimized.fullDataUrl;
+      el.issuePhotoPreview.dataset.thumbData = optimized.thumbDataUrl;
+      setIssuePhotoHint(
+        `ย่อรูปแล้ว ${formatBytes(optimized.originalBytes)} → ${formatBytes(optimized.fullBytes)} • thumbnail ${formatBytes(optimized.thumbBytes)}`,
+        'success'
+      );
+    } catch (err) {
+      console.error('Issue photo process failed', err);
+      el.issuePhotoInput.value = '';
+      el.issuePhotoPreview.src = '';
+      el.issuePhotoPreview.classList.add('hidden');
+      delete el.issuePhotoPreview.dataset.imageData;
+      delete el.issuePhotoPreview.dataset.thumbData;
+      const msg = err?.message === 'invalid_file_type'
+        ? 'ไฟล์นี้ไม่ใช่รูปภาพ'
+        : 'เลือกรูปไม่สำเร็จ ลองใช้รูป JPG/PNG หรือถ่ายใหม่อีกครั้ง';
+      setIssuePhotoHint(msg, 'error');
+      alert(msg);
+    }
+  }
+
+  function setIssuePhotoHint(message, tone = '') {
+    if (!el.issuePhotoHint) return;
+    el.issuePhotoHint.textContent = message;
+    el.issuePhotoHint.classList.remove('error', 'success');
+    if (tone) el.issuePhotoHint.classList.add(tone);
   }
 
   function clearIssueForm() {
@@ -630,6 +689,8 @@
     el.issuePhotoPreview.src = '';
     el.issuePhotoPreview.classList.add('hidden');
     delete el.issuePhotoPreview.dataset.imageData;
+    delete el.issuePhotoPreview.dataset.thumbData;
+    setIssuePhotoHint('แนะนำรูปไม่เกิน 10 MB • ระบบจะย่อรูปก่อนบันทึกทุกครั้ง');
     state.ui.newIssuePriority = 'medium';
     qsa('.segment', el.prioritySegment).forEach(seg => seg.classList.toggle('active', seg.dataset.value === 'medium'));
   }
@@ -642,6 +703,7 @@
     const assignedDepartment = el.issueDepartment.value;
     const priority = state.ui.newIssuePriority;
     const photoData = el.issuePhotoPreview.dataset.imageData || '';
+    const thumbData = el.issuePhotoPreview.dataset.thumbData || photoData;
 
     if (!title) return alert('กรุณาใส่หัวข้อ issue');
     if (!location) return alert('กรุณาใส่ location');
@@ -654,7 +716,7 @@
       priority,
       assigned_department: assignedDepartment,
       location_text: location,
-      before_photos: photoData ? [{ url: photoData, thumb_url: photoData }] : [],
+      before_photos: photoData ? [{ url: photoData, thumb_url: thumbData }] : [],
     });
 
     clearIssueForm();
@@ -1295,15 +1357,86 @@
     return `CHK-${y}${m}${d}-${String(nextNumber).padStart(4, '0')}`;
   }
 
-  async function fileToDataUrl(file, maxSize = 1400, quality = 0.82) {
-    const img = await readFileAsImage(file);
+  async function fileToDataUrl(fileOrImage, maxSize = 1400, quality = 0.82) {
+    const img = fileOrImage instanceof HTMLImageElement ? fileOrImage : await readFileAsImage(fileOrImage);
     const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
     const canvas = document.createElement('canvas');
-    canvas.width = Math.round(img.width * scale);
-    canvas.height = Math.round(img.height * scale);
-    const ctx = canvas.getContext('2d');
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+    const ctx = canvas.getContext('2d', { alpha: false });
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     return canvas.toDataURL('image/jpeg', quality);
+  }
+
+  async function fileToOptimizedDataUrl(fileOrImage, options = {}) {
+    const img = fileOrImage instanceof HTMLImageElement ? fileOrImage : await readFileAsImage(fileOrImage);
+    const targetBytes = options.targetBytes || 220 * 1024;
+    const steps = options.steps || [
+      { maxSize: 1440, quality: 0.8 },
+      { maxSize: 1280, quality: 0.76 },
+      { maxSize: 1080, quality: 0.72 },
+      { maxSize: 960, quality: 0.66 },
+      { maxSize: 820, quality: 0.6 },
+      { maxSize: 720, quality: 0.56 },
+      { maxSize: 640, quality: 0.5 },
+    ];
+
+    let best = '';
+    for (const step of steps) {
+      const candidate = await fileToDataUrl(img, step.maxSize, step.quality);
+      best = candidate;
+      if (estimateDataUrlBytes(candidate) <= targetBytes) break;
+    }
+    return best;
+  }
+
+  async function optimizeIssuePhoto(file) {
+    const img = await readFileAsImage(file);
+    const fullDataUrl = await fileToOptimizedDataUrl(img, {
+      targetBytes: 220 * 1024,
+      steps: [
+        { maxSize: 1400, quality: 0.8 },
+        { maxSize: 1280, quality: 0.76 },
+        { maxSize: 1080, quality: 0.7 },
+        { maxSize: 960, quality: 0.64 },
+        { maxSize: 820, quality: 0.58 },
+        { maxSize: 720, quality: 0.52 },
+      ],
+    });
+    const thumbDataUrl = await fileToOptimizedDataUrl(img, {
+      targetBytes: 45 * 1024,
+      steps: [
+        { maxSize: 640, quality: 0.68 },
+        { maxSize: 520, quality: 0.62 },
+        { maxSize: 420, quality: 0.56 },
+        { maxSize: 360, quality: 0.5 },
+      ],
+    });
+
+    return {
+      originalBytes: file.size || 0,
+      fullBytes: estimateDataUrlBytes(fullDataUrl),
+      thumbBytes: estimateDataUrlBytes(thumbDataUrl),
+      fullDataUrl,
+      thumbDataUrl,
+      previewDataUrl: thumbDataUrl,
+    };
+  }
+
+  function estimateDataUrlBytes(dataUrl) {
+    if (!dataUrl || typeof dataUrl !== 'string') return 0;
+    const base64 = dataUrl.split(',')[1] || '';
+    return Math.ceil((base64.length * 3) / 4);
+  }
+
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 KB';
+    if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   }
 
   function readFileAsImage(file) {

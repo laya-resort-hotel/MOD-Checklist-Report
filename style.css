@@ -830,3 +830,9 @@ code {
 .auth-status.success { background: rgba(47,122,88,0.12); color: var(--success); }
 .auth-status.error { background: rgba(181,77,66,0.12); color: var(--danger); }
 .auth-status.info { background: rgba(85,120,138,0.12); color: var(--info); }
+
+
+.photo-pick-label{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;text-align:center;}
+.photo-hint{margin-top:10px;font-size:12px;line-height:1.45;}
+.photo-hint.error{color:#b85050;font-weight:600;}
+.photo-hint.success{color:#2b5a45;font-weight:600;}

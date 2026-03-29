@@ -141,8 +141,9 @@
           </div>
 
           <div class="photo-uploader" id="issuePhotoDrop">
-            <input id="issuePhotoInput" type="file" accept="image/*" class="hidden" />
-            <button id="issuePhotoPickBtn" class="btn btn-secondary" type="button">เลือกหรือถ่ายรูป</button>
+            <input id="issuePhotoInput" type="file" accept="image/*" capture="environment" class="hidden" />
+            <label id="issuePhotoPickBtn" for="issuePhotoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">เลือกหรือถ่ายรูป</label>
+            <div id="issuePhotoHint" class="photo-hint muted">แนะนำรูปไม่เกิน 10 MB • ระบบจะย่อรูปให้อัตโนมัติ</div>
             <div class="photo-preview-wrap">
               <img id="issuePhotoPreview" class="photo-preview hidden" alt="Issue Preview" />
             </div>
