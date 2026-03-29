@@ -46,6 +46,8 @@
   async function init() {
     cacheEls();
     bindEvents();
+    bindFirebaseEvents();
+    applyRuntimeMode();
     await loadTemplates();
     hydrateFromStorage();
     if (!state.data.issues.length && !state.data.activity.length) {
@@ -53,6 +55,42 @@
     }
     renderTemplateCards();
     renderAll();
+  }
+
+
+  function bindFirebaseEvents() {
+    window.addEventListener('laya-firebase-ready', applyRuntimeMode);
+    window.addEventListener('laya-firebase-error', applyRuntimeMode);
+  }
+
+  function applyRuntimeMode() {
+    const fb = window.LAYA_FIREBASE;
+    if (fb?.ready) {
+      if (el.modeBanner) el.modeBanner.textContent = `Firebase Config Ready • ${fb.projectId || 'connected'}`;
+      if (el.connectionBadge) {
+        el.connectionBadge.textContent = 'Firebase Configured';
+        el.connectionBadge.classList.remove('warning');
+        el.connectionBadge.classList.add('success');
+      }
+      return;
+    }
+
+    if (window.LAYA_FIREBASE_CONFIG_PRESENT) {
+      if (el.modeBanner) el.modeBanner.textContent = 'Firebase Config Added • Data layer is still Local Demo';
+      if (el.connectionBadge) {
+        el.connectionBadge.textContent = 'Demo Data';
+        el.connectionBadge.classList.remove('success');
+        el.connectionBadge.classList.add('warning');
+      }
+      return;
+    }
+
+    if (el.modeBanner) el.modeBanner.textContent = 'Local Demo Mode';
+    if (el.connectionBadge) {
+      el.connectionBadge.textContent = 'Ready';
+      el.connectionBadge.classList.remove('warning');
+      el.connectionBadge.classList.add('success');
+    }
   }
 
   function cacheEls() {
@@ -89,6 +127,8 @@
       importJsonInput: qs('#importJsonInput'),
       seedDemoBtn: qs('#seedDemoBtn'),
       fabNewIssue: qs('#fabNewIssue'),
+      modeBanner: qs('#modeBanner'),
+      connectionBadge: qs('#connectionBadge'),
     });
 
     populateDepartmentSelects();
