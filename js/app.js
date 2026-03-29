@@ -1,6 +1,6 @@
 (() => {
   const APP_KEY = 'laya_mod_checklist_v1';
-  const USERS = [
+  const DEMO_USERS = [
     { uid: 'uid_admin_9000', employee_id: '9000', password: '9000', full_name: 'Admin Demo', role: 'admin', department: 'ADMIN' },
     { uid: 'uid_mod_9901', employee_id: '9901', password: '9901', full_name: 'Somchai MOD', role: 'mod', department: 'MOD' },
     { uid: 'uid_eng_3001', employee_id: '3001', password: '3001', full_name: 'Engineering Demo', role: 'dept_user', department: 'ENG' },
@@ -22,6 +22,7 @@
 
   const state = {
     currentUser: null,
+    firebaseAuthBound: false,
     ui: {
       activeView: 'boardView',
       boardFilter: 'all',
@@ -47,6 +48,7 @@
     cacheEls();
     bindEvents();
     bindFirebaseEvents();
+    showAuthTab('signin');
     applyRuntimeMode();
     await loadTemplates();
     hydrateFromStorage();
@@ -66,22 +68,25 @@
   function applyRuntimeMode() {
     const fb = window.LAYA_FIREBASE;
     if (fb?.ready) {
-      if (el.modeBanner) el.modeBanner.textContent = `Firebase Config Ready • ${fb.projectId || 'connected'}`;
+      if (el.modeBanner) el.modeBanner.textContent = `Firebase Auth Ready • ${fb.projectId || 'connected'}`;
       if (el.connectionBadge) {
-        el.connectionBadge.textContent = 'Firebase Configured';
+        el.connectionBadge.textContent = 'Firebase Live';
         el.connectionBadge.classList.remove('warning');
         el.connectionBadge.classList.add('success');
       }
+      if (el.demoBox) el.demoBox.classList.add('hidden');
+      bootstrapFirebaseAuth();
       return;
     }
 
     if (window.LAYA_FIREBASE_CONFIG_PRESENT) {
-      if (el.modeBanner) el.modeBanner.textContent = 'Firebase Config Added • Data layer is still Local Demo';
+      if (el.modeBanner) el.modeBanner.textContent = 'Firebase Config Added • Waiting for Auth / fallback to Local Demo';
       if (el.connectionBadge) {
         el.connectionBadge.textContent = 'Demo Data';
         el.connectionBadge.classList.remove('success');
         el.connectionBadge.classList.add('warning');
       }
+      if (el.demoBox) el.demoBox.classList.remove('hidden');
       return;
     }
 
@@ -91,7 +96,85 @@
       el.connectionBadge.classList.remove('warning');
       el.connectionBadge.classList.add('success');
     }
+    if (el.demoBox) el.demoBox.classList.remove('hidden');
   }
+
+  function showAuthTab(tab) {
+    const signIn = tab !== 'register';
+    el.showSignInTab.classList.toggle('active', signIn);
+    el.showRegisterTab.classList.toggle('active', !signIn);
+    el.signInPane.classList.toggle('hidden', !signIn);
+    el.registerPane.classList.toggle('hidden', signIn);
+    setAuthStatus('');
+  }
+
+  function setAuthStatus(message, type = 'info') {
+    if (!el.authStatus) return;
+    if (!message) {
+      el.authStatus.textContent = '';
+      el.authStatus.className = 'auth-status hidden';
+      return;
+    }
+    el.authStatus.textContent = message;
+    el.authStatus.className = `auth-status ${type}`;
+  }
+
+  function syncRegisterRoleDepartment() {
+    if (!el.registerRole || !el.registerDepartment) return;
+    const role = el.registerRole.value;
+    if (role === 'mod') {
+      el.registerDepartment.value = 'MOD';
+      el.registerDepartment.disabled = true;
+    } else {
+      el.registerDepartment.disabled = false;
+      if (el.registerDepartment.value === 'MOD' || el.registerDepartment.value === 'ADMIN') {
+        el.registerDepartment.value = 'ENG';
+      }
+    }
+  }
+
+  function employeeIdToEmail(employeeId) {
+    return `${String(employeeId).trim().toLowerCase()}@employee.mod-checklist-report.local`;
+  }
+
+  function isFirebaseLive() {
+    return !!(window.LAYA_FIREBASE && window.LAYA_FIREBASE.ready && window.LAYA_FIREBASE.auth && window.LAYA_FIREBASE.db);
+  }
+
+  function bootstrapFirebaseAuth() {
+    if (!isFirebaseLive() || state.firebaseAuthBound) return;
+    state.firebaseAuthBound = true;
+
+    const fb = window.LAYA_FIREBASE;
+    fb.sdk.onAuthStateChanged(fb.auth, async (user) => {
+      if (!user) {
+        state.currentUser = null;
+        renderAuthState();
+        return;
+      }
+      try {
+        const userRef = fb.sdk.doc(fb.db, 'users', user.uid);
+        const snap = await fb.sdk.getDoc(userRef);
+        if (!snap.exists()) {
+          setAuthStatus('ไม่พบโปรไฟล์ผู้ใช้ใน Firestore', 'error');
+          state.currentUser = null;
+          renderAuthState();
+          return;
+        }
+        const profile = snap.data();
+        state.currentUser = { uid: user.uid, ...profile };
+        try {
+          await fb.sdk.updateDoc(userRef, { last_login_at: fb.sdk.serverTimestamp(), updated_at: fb.sdk.serverTimestamp() });
+        } catch (_) {}
+        setAuthStatus('เข้าสู่ระบบสำเร็จ', 'success');
+        renderAll();
+      } catch (err) {
+        console.error(err);
+        setAuthStatus('โหลดข้อมูลผู้ใช้ไม่สำเร็จ', 'error');
+      }
+    });
+  }
+
 
   function cacheEls() {
     Object.assign(el, {
@@ -100,6 +183,19 @@
       loginEmployeeId: qs('#loginEmployeeId'),
       loginPassword: qs('#loginPassword'),
       loginBtn: qs('#loginBtn'),
+      registerEmployeeId: qs('#registerEmployeeId'),
+      registerFullName: qs('#registerFullName'),
+      registerRole: qs('#registerRole'),
+      registerDepartment: qs('#registerDepartment'),
+      registerPassword: qs('#registerPassword'),
+      registerConfirmPassword: qs('#registerConfirmPassword'),
+      registerBtn: qs('#registerBtn'),
+      showSignInTab: qs('#showSignInTab'),
+      showRegisterTab: qs('#showRegisterTab'),
+      signInPane: qs('#signInPane'),
+      registerPane: qs('#registerPane'),
+      authStatus: qs('#authStatus'),
+      demoBox: qs('#demoBox'),
       logoutBtn: qs('#logoutBtn'),
       welcomeText: qs('#welcomeText'),
       summaryGrid: qs('#summaryGrid'),
@@ -136,7 +232,11 @@
 
   function bindEvents() {
     el.loginBtn.addEventListener('click', handleLogin);
+    el.registerBtn.addEventListener('click', handleRegister);
     el.logoutBtn.addEventListener('click', handleLogout);
+    el.showSignInTab.addEventListener('click', () => showAuthTab('signin'));
+    el.showRegisterTab.addEventListener('click', () => showAuthTab('register'));
+    el.registerRole.addEventListener('change', syncRegisterRoleDepartment);
     qsa('.demo-user').forEach(btn => btn.addEventListener('click', () => {
       el.loginEmployeeId.value = btn.dataset.id;
       el.loginPassword.value = btn.dataset.pass;
@@ -196,7 +296,7 @@
     try {
       const parsed = JSON.parse(raw);
       if (parsed?.data) state.data = { ...state.data, ...parsed.data, templates: state.data.templates };
-      if (parsed?.currentUser) state.currentUser = parsed.currentUser;
+      if (!window.LAYA_FIREBASE_CONFIG_PRESENT && parsed?.currentUser) state.currentUser = parsed.currentUser;
     } catch (err) {
       console.warn('Failed to hydrate local state', err);
     }
@@ -204,7 +304,7 @@
 
   function persist() {
     localStorage.setItem(APP_KEY, JSON.stringify({
-      currentUser: state.currentUser,
+      currentUser: isFirebaseLive() ? null : state.currentUser,
       data: {
         ...state.data,
         templates: undefined,
@@ -212,10 +312,27 @@
     }));
   }
 
-  function handleLogin() {
+  async function handleLogin() {
     const employeeId = el.loginEmployeeId.value.trim();
     const password = el.loginPassword.value.trim();
-    const user = USERS.find(u => u.employee_id === employeeId && u.password === password);
+    if (!employeeId || !password) {
+      setAuthStatus('กรุณาใส่ Employee ID และ Password', 'error');
+      return;
+    }
+
+    if (isFirebaseLive()) {
+      try {
+        setAuthStatus('กำลังเข้าสู่ระบบ...', 'info');
+        const fb = window.LAYA_FIREBASE;
+        await fb.sdk.signInWithEmailAndPassword(fb.auth, employeeIdToEmail(employeeId), password);
+      } catch (err) {
+        console.error(err);
+        setAuthStatus('Employee ID หรือ Password ไม่ถูกต้อง', 'error');
+      }
+      return;
+    }
+
+    const user = DEMO_USERS.find(u => u.employee_id === employeeId && u.password === password);
     if (!user) {
       alert('Employee ID หรือ Password ไม่ถูกต้อง');
       return;
@@ -226,7 +343,79 @@
     renderAll();
   }
 
-  function handleLogout() {
+  async function handleRegister() {
+    if (!isFirebaseLive()) {
+      setAuthStatus('ต้องเชื่อม Firebase ให้พร้อมก่อนจึงจะสมัครสมาชิกได้', 'error');
+      return;
+    }
+
+    const employeeId = el.registerEmployeeId.value.trim();
+    const fullName = el.registerFullName.value.trim();
+    const role = el.registerRole.value;
+    const department = role === 'mod' ? 'MOD' : el.registerDepartment.value;
+    const password = el.registerPassword.value.trim();
+    const confirmPassword = el.registerConfirmPassword.value.trim();
+
+    if (!employeeId || !fullName || !password || !confirmPassword) {
+      setAuthStatus('กรุณากรอกข้อมูลสมัครสมาชิกให้ครบ', 'error');
+      return;
+    }
+    if (password.length < 6) {
+      setAuthStatus('รหัสผ่านต้องอย่างน้อย 6 ตัวอักษร', 'error');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setAuthStatus('Confirm Password ไม่ตรงกัน', 'error');
+      return;
+    }
+
+    try {
+      const fb = window.LAYA_FIREBASE;
+      setAuthStatus('กำลังสร้างบัญชี...', 'info');
+      const cred = await fb.sdk.createUserWithEmailAndPassword(fb.auth, employeeIdToEmail(employeeId), password);
+      const userRef = fb.sdk.doc(fb.db, 'users', cred.user.uid);
+      await fb.sdk.setDoc(userRef, {
+        employee_id: employeeId,
+        full_name: fullName,
+        role,
+        department,
+        position: role === 'mod' ? 'MOD' : '',
+        is_active: true,
+        phone: '',
+        email: '',
+        avatar_url: '',
+        created_at: fb.sdk.serverTimestamp(),
+        updated_at: fb.sdk.serverTimestamp(),
+        last_login_at: fb.sdk.serverTimestamp()
+      });
+      setAuthStatus('สร้างบัญชีสำเร็จ สามารถใช้งานได้ทันที', 'success');
+      showAuthTab('signin');
+      el.loginEmployeeId.value = employeeId;
+      el.loginPassword.value = '';
+      el.registerPassword.value = '';
+      el.registerConfirmPassword.value = '';
+    } catch (err) {
+      console.error(err);
+      if (String(err?.code).includes('email-already-in-use')) {
+        setAuthStatus('รหัสพนักงานนี้ถูกสมัครไว้แล้ว', 'error');
+      } else {
+        setAuthStatus('สร้างบัญชีไม่สำเร็จ', 'error');
+      }
+    }
+  }
+
+
+  async function handleLogout() {
+    if (isFirebaseLive()) {
+      try {
+        await window.LAYA_FIREBASE.sdk.signOut(window.LAYA_FIREBASE.auth);
+        setAuthStatus('ออกจากระบบแล้ว', 'info');
+      } catch (err) {
+        console.error(err);
+        setAuthStatus('ออกจากระบบไม่สำเร็จ', 'error');
+      }
+      return;
+    }
     state.currentUser = null;
     persist();
     renderAuthState();
@@ -878,12 +1067,16 @@
   }
 
   function populateDepartmentSelects() {
-    const html = renderDepartmentOptions();
-    el.issueDepartment.innerHTML = html;
+    const issueHtml = renderDepartmentOptions();
+    const registerHtml = renderDepartmentOptions(['ENG', 'HK', 'FO', 'FB', 'SEC', 'MOD']);
+    el.issueDepartment.innerHTML = issueHtml;
+    if (el.registerDepartment) el.registerDepartment.innerHTML = registerHtml;
+    syncRegisterRoleDepartment();
   }
 
-  function renderDepartmentOptions() {
-    return DEPARTMENTS.map(dept => `<option value="${dept.code}">${dept.name}</option>`).join('');
+  function renderDepartmentOptions(allowedCodes = null) {
+    const list = allowedCodes ? DEPARTMENTS.filter(dept => allowedCodes.includes(dept.code)) : DEPARTMENTS;
+    return list.map(dept => `<option value="${dept.code}">${dept.name}</option>`).join('');
   }
 
   function seedDemoData() {
@@ -919,7 +1112,7 @@
       }
     ];
 
-    const reporter = USERS.find(u => u.role === 'mod');
+    const reporter = DEMO_USERS.find(u => u.role === 'mod');
     demoIssues.forEach((entry, idx) => {
       state.data.counters.issue += 1;
       const createdAt = new Date(Date.now() - (idx * 60 * 60 * 1000)).toISOString();

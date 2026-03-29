@@ -389,16 +389,66 @@ service cloud.firestore {
       );
 
       allow list: if isAdmin();
-      allow create: if isAdmin();
+
+      allow create: if (
+        isAdmin()
+      ) || (
+        signedIn() &&
+        request.auth.uid == uid &&
+        !exists(/databases/$(database)/documents/users/$(uid)) &&
+        request.resource.data.keys().hasAll([
+          'employee_id',
+          'full_name',
+          'role',
+          'department',
+          'position',
+          'is_active',
+          'phone',
+          'email',
+          'avatar_url',
+          'created_at',
+          'updated_at',
+          'last_login_at'
+        ]) &&
+        request.resource.data.keys().hasOnly([
+          'employee_id',
+          'full_name',
+          'role',
+          'department',
+          'position',
+          'is_active',
+          'phone',
+          'email',
+          'avatar_url',
+          'created_at',
+          'updated_at',
+          'last_login_at'
+        ]) &&
+        request.resource.data.employee_id is string &&
+        request.resource.data.full_name is string &&
+        request.resource.data.role in ['mod', 'dept_user'] &&
+        validDept(request.resource.data.department) &&
+        request.resource.data.position is string &&
+        request.resource.data.is_active == true &&
+        request.resource.data.phone is string &&
+        request.resource.data.email is string &&
+        request.resource.data.avatar_url is string
+      );
 
       allow update: if isAdmin() || (
         request.auth.uid == uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'full_name',
+          'department',
+          'position',
           'phone',
           'avatar_url',
           'updated_at',
           'last_login_at'
-        ])
+        ]) &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.employee_id == resource.data.employee_id &&
+        request.resource.data.is_active == resource.data.is_active
       );
 
       allow delete: if isAdmin();

@@ -640,3 +640,44 @@ code {
   .issue-title { font-size: 18px; }
   .detail-head h3 { font-size: 24px; }
 }
+
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 16px 0 8px;
+}
+.auth-tab {
+  border: 1px solid rgba(134,110,75,0.18);
+  background: rgba(255,255,255,0.7);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-weight: 700;
+}
+.auth-tab.active {
+  background: rgba(134,110,75,0.12);
+  color: var(--brand-dark);
+  border-color: rgba(134,110,75,0.35);
+}
+.auth-pane { margin-top: 6px; }
+.compact-grid { gap: 12px; }
+.register-note {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(36,53,44,0.06);
+  color: var(--muted);
+  font-size: 13px;
+}
+.auth-status {
+  margin: 12px 0 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.auth-status.success { background: rgba(47,122,88,0.12); color: var(--success); }
+.auth-status.error { background: rgba(181,77,66,0.12); color: var(--danger); }
+.auth-status.info { background: rgba(85,120,138,0.12); color: var(--info); }
