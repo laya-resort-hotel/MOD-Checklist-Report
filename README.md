@@ -42,3 +42,10 @@
 - แยกปุ่ม "เลือกรูปจากเครื่อง" และ "ถ่ายรูป"
 - ไม่บังคับ `capture` กับการเลือกรูปจากเครื่องอีกต่อไป
 - รองรับมือถือได้เสถียรกว่าเดิม
+
+
+## Patch note v5
+- New Issue now writes to Firestore when Firebase is live
+- Board reads issues from Firestore via onSnapshot
+- Status changes and comments also write to Firestore
+- Mobile image resize flow remains enabled before save

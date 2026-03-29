@@ -16,7 +16,14 @@ import {
   getDoc,
   setDoc,
   updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  runTransaction,
+  increment
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 const cfg = window.LAYA_FIREBASE_CONFIG;
@@ -60,6 +67,13 @@ async function boot() {
         setDoc,
         updateDoc,
         serverTimestamp,
+        collection,
+        query,
+        where,
+        orderBy,
+        onSnapshot,
+        runTransaction,
+        increment,
       }
     };
     window.dispatchEvent(new CustomEvent('laya-firebase-ready', { detail: window.LAYA_FIREBASE }));

@@ -24,6 +24,8 @@
   const state = {
     currentUser: null,
     firebaseAuthBound: false,
+    firebaseIssuesUnsub: null,
+    firebaseIssueCommentsUnsub: null,
     ui: {
       activeView: 'boardView',
       boardFilter: 'all',
@@ -31,6 +33,7 @@
       newIssuePriority: 'medium',
       selectedTemplateCode: null,
       openIssueId: null,
+      liveIssueComments: [],
     },
     data: {
       issues: [],
@@ -53,7 +56,7 @@
     applyRuntimeMode();
     await loadTemplates();
     hydrateFromStorage();
-    if (!state.data.issues.length && !state.data.activity.length) {
+    if (!window.LAYA_FIREBASE_CONFIG_PRESENT && !state.data.issues.length && !state.data.activity.length) {
       seedDemoData();
     }
     renderTemplateCards();
@@ -208,6 +211,9 @@
     fb.sdk.onAuthStateChanged(fb.auth, async (user) => {
       if (!user) {
         state.currentUser = null;
+        stopIssueSync();
+        stopIssueCommentsSync();
+        state.ui.liveIssueComments = [];
         renderAuthState();
         return;
       }
@@ -244,6 +250,7 @@
         } catch (_) {}
 
         setAuthStatus('เข้าสู่ระบบสำเร็จ', 'success');
+        startIssuesSync();
         renderAll();
       } catch (err) {
         console.error(err);
@@ -522,6 +529,8 @@
       return;
     }
     state.currentUser = null;
+    stopIssueSync();
+    stopIssueCommentsSync();
     persist();
     renderAuthState();
   }
@@ -700,7 +709,7 @@
     qsa('.segment', el.prioritySegment).forEach(seg => seg.classList.toggle('active', seg.dataset.value === 'medium'));
   }
 
-  function saveIssueFromForm() {
+  async function saveIssueFromForm() {
     const title = el.issueTitle.value.trim();
     const description = el.issueDescription.value.trim();
     const issueType = el.issueType.value;
@@ -713,22 +722,39 @@
     if (!title) return alert('กรุณาใส่หัวข้อ issue');
     if (!location) return alert('กรุณาใส่ location');
 
-    createIssue({
-      source_type: 'manual',
-      title,
-      description,
-      issue_type: issueType,
-      priority,
-      assigned_department: assignedDepartment,
-      location_text: location,
-      before_photos: photoData ? [{ url: photoData, thumb_url: thumbData }] : [],
-    });
-
-    clearIssueForm();
-    switchView('boardView');
+    try {
+      el.saveIssueBtn.disabled = true;
+      el.saveIssueBtn.textContent = isFirebaseLive() ? 'Saving...' : 'Saving...';
+      await createIssue({
+        source_type: 'manual',
+        title,
+        description,
+        issue_type: issueType,
+        priority,
+        assigned_department: assignedDepartment,
+        location_text: location,
+        before_photos: photoData ? [{ url: photoData, thumb_url: thumbData }] : [],
+      });
+      clearIssueForm();
+      switchView('boardView');
+      setAuthStatus(isFirebaseLive() ? 'บันทึก issue เข้า Firebase แล้ว' : 'บันทึก issue แล้ว', 'success');
+    } catch (err) {
+      console.error('create issue failed', err);
+      alert(friendlyIssueError(err));
+    } finally {
+      el.saveIssueBtn.disabled = false;
+      el.saveIssueBtn.textContent = 'Save Issue';
+    }
   }
 
-  function createIssue(payload) {
+  async function createIssue(payload) {
+    if (isFirebaseLive()) {
+      return createIssueFirebase(payload);
+    }
+    return createIssueLocal(payload);
+  }
+
+  function createIssueLocal(payload) {
     const now = new Date().toISOString();
     state.data.counters.issue += 1;
     const id = `issue_${cryptoRandom()}`;
@@ -770,6 +796,75 @@
     addActivity({ type: 'issue', title: issue.title, text: `${state.currentUser.full_name} created issue ${issue.issue_no}`, created_at: now });
     persist();
     renderAll();
+    return issue;
+  }
+
+  async function createIssueFirebase(payload) {
+    const fb = window.LAYA_FIREBASE;
+    const sdk = fb.sdk;
+    const uid = fb.auth.currentUser?.uid;
+    if (!uid || !state.currentUser) throw new Error('not_signed_in');
+
+    await sdk.runTransaction(fb.db, async (tx) => {
+      const counterRef = sdk.doc(fb.db, 'counters', 'issue_counter');
+      const counterSnap = await tx.get(counterRef);
+      let nextNumber = 1;
+      if (counterSnap.exists()) {
+        nextNumber = (counterSnap.data().last_number || 0) + 1;
+        tx.update(counterRef, { last_number: nextNumber });
+      } else {
+        tx.set(counterRef, { name: 'issue_counter', last_number: 1, updated_at: sdk.serverTimestamp() });
+      }
+
+      const issueRef = sdk.doc(sdk.collection(fb.db, 'issues'));
+      const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${issueRef.id}/activity`));
+      const issueNo = buildIssueNo(nextNumber);
+      const beforePhotos = Array.isArray(payload.before_photos) ? payload.before_photos : [];
+
+      tx.set(issueRef, {
+        issue_no: issueNo,
+        source_type: payload.source_type || 'manual',
+        source_checklist_run_id: payload.source_checklist_run_id || '',
+        source_checklist_answer_id: payload.source_checklist_answer_id || '',
+        title: payload.title,
+        description: payload.description || '',
+        issue_type: payload.issue_type || 'other',
+        priority: payload.priority || 'medium',
+        status: 'open',
+        assigned_department: payload.assigned_department || 'ENG',
+        assigned_to_uid: '',
+        assigned_to_name: '',
+        location_text: payload.location_text || '',
+        building: '',
+        floor: '',
+        room_no: '',
+        reported_by_uid: state.currentUser.uid,
+        reported_by_name: state.currentUser.full_name,
+        reported_by_department: state.currentUser.department,
+        cover_photo_url: beforePhotos[0]?.url || '',
+        cover_thumb_url: beforePhotos[0]?.thumb_url || '',
+        before_photos: beforePhotos,
+        after_photos: [],
+        comment_count: 0,
+        activity_count: 1,
+        last_comment_at: null,
+        last_activity_at: sdk.serverTimestamp(),
+        closed_at: null,
+        closed_by_uid: '',
+        closed_by_name: '',
+        created_at: sdk.serverTimestamp(),
+        updated_at: sdk.serverTimestamp(),
+      });
+
+      tx.set(activityRef, {
+        action: payload.source_type === 'checklist' ? 'created_from_checklist' : 'created',
+        note: '',
+        by_uid: state.currentUser.uid,
+        by_name: state.currentUser.full_name,
+        by_department: state.currentUser.department,
+        created_at: sdk.serverTimestamp(),
+      });
+    });
   }
 
   function renderTemplateCards() {
@@ -1004,7 +1099,17 @@
     const issue = state.data.issues.find(i => i.id === issueId);
     if (!issue) return;
     state.ui.openIssueId = issueId;
-    const comments = Array.isArray(issue.comments) ? issue.comments : [];
+    if (isFirebaseLive()) {
+      startIssueCommentsSync(issueId);
+    }
+    renderIssueModalContent(issue);
+    el.issueModal.classList.remove('hidden');
+  }
+
+  function renderIssueModalContent(issue) {
+    const comments = isFirebaseLive()
+      ? (state.ui.openIssueId === issue.id ? state.ui.liveIssueComments : [])
+      : (Array.isArray(issue.comments) ? issue.comments : []);
 
     el.issueModalContent.innerHTML = `
       <div class="issue-detail-grid">
@@ -1057,87 +1162,199 @@
       </div>
     `;
 
-    el.issueModal.classList.remove('hidden');
-    qsa('[data-detail-status]', el.issueModalContent).forEach(btn => btn.addEventListener('click', () => updateIssueStatus(issueId, btn.dataset.detailStatus)));
+    qsa('[data-detail-status]', el.issueModalContent).forEach(btn => btn.addEventListener('click', () => updateIssueStatus(issue.id, btn.dataset.detailStatus)));
     const addCommentBtn = qs('#addCommentBtn', el.issueModalContent);
     if (addCommentBtn) {
-      addCommentBtn.addEventListener('click', () => {
+      addCommentBtn.addEventListener('click', async () => {
         const input = qs('#detailCommentText', el.issueModalContent);
         const message = input.value.trim();
         if (!message) return;
-        addIssueComment(issueId, message);
-        openIssueModal(issueId);
+        await addIssueComment(issue.id, message);
+        if (!isFirebaseLive()) openIssueModal(issue.id);
       });
     }
   }
 
   function closeIssueModal() {
     state.ui.openIssueId = null;
+    stopIssueCommentsSync();
     el.issueModal.classList.add('hidden');
   }
 
-  function updateIssueStatus(issueId, toStatus) {
+
+  async function updateIssueStatus(issueId, toStatus) {
     const issue = state.data.issues.find(i => i.id === issueId);
     if (!issue || !canWorkIssue(issue)) return;
     if (!isValidTransition(issue.status, toStatus)) return alert('Status transition ไม่ถูกต้อง');
 
-    const fromStatus = issue.status;
-    issue.status = toStatus;
-    issue.updated_at = new Date().toISOString();
-    issue.last_activity_at = issue.updated_at;
+    if (!isFirebaseLive()) {
+      const fromStatus = issue.status;
+      issue.status = toStatus;
+      issue.updated_at = new Date().toISOString();
+      issue.last_activity_at = issue.updated_at;
 
-    if (toStatus === 'closed') {
-      issue.closed_at = issue.updated_at;
-      issue.closed_by_uid = state.currentUser.uid;
-      issue.closed_by_name = state.currentUser.full_name;
+      if (toStatus === 'closed') {
+        issue.closed_at = issue.updated_at;
+        issue.closed_by_uid = state.currentUser.uid;
+        issue.closed_by_name = state.currentUser.full_name;
+      }
+      if (toStatus === 'open') {
+        issue.closed_at = '';
+        issue.closed_by_uid = '';
+        issue.closed_by_name = '';
+      }
+
+      addSystemComment(issue, `Status changed from ${labelize(fromStatus)} to ${labelize(toStatus)}`);
+      addActivity({
+        type: 'issue',
+        title: issue.title,
+        text: `${state.currentUser.full_name} changed status to ${labelize(toStatus)}`,
+        created_at: new Date().toISOString(),
+      });
+
+      persist();
+      renderAll();
+      if (state.ui.openIssueId === issueId) openIssueModal(issueId);
+      return;
     }
-    if (toStatus === 'open') {
-      issue.closed_at = '';
-      issue.closed_by_uid = '';
-      issue.closed_by_name = '';
+
+    try {
+      const fb = window.LAYA_FIREBASE;
+      const sdk = fb.sdk;
+      await sdk.runTransaction(fb.db, async (tx) => {
+        const issueRef = sdk.doc(fb.db, 'issues', issueId);
+        const snap = await tx.get(issueRef);
+        if (!snap.exists()) throw new Error('issue_not_found');
+        const liveIssue = { id: snap.id, ...snap.data() };
+        if (!canWorkIssue(liveIssue)) throw new Error('permission_denied');
+        if (!isValidTransition(liveIssue.status, toStatus)) throw new Error('invalid_transition');
+
+        const commentRef = sdk.doc(sdk.collection(fb.db, `issues/${issueId}/comments`));
+        const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${issueId}/activity`));
+        const patch = {
+          status: toStatus,
+          updated_at: sdk.serverTimestamp(),
+          last_activity_at: sdk.serverTimestamp(),
+          last_comment_at: sdk.serverTimestamp(),
+          comment_count: sdk.increment(1),
+          activity_count: sdk.increment(1),
+        };
+        if (toStatus === 'closed') {
+          patch.closed_at = sdk.serverTimestamp();
+          patch.closed_by_uid = state.currentUser.uid;
+          patch.closed_by_name = state.currentUser.full_name;
+        }
+        if (toStatus === 'open') {
+          patch.closed_at = null;
+          patch.closed_by_uid = '';
+          patch.closed_by_name = '';
+        }
+        tx.update(issueRef, patch);
+        tx.set(commentRef, {
+          type: 'system',
+          message: `Status changed from ${labelize(liveIssue.status)} to ${labelize(toStatus)}`,
+          by_uid: state.currentUser.uid,
+          by_name: 'System',
+          by_role: state.currentUser.role,
+          by_department: state.currentUser.department,
+          mentions: [],
+          photos: [],
+          created_at: sdk.serverTimestamp(),
+        });
+        tx.set(activityRef, {
+          action: toStatus === 'open' && liveIssue.status === 'closed' ? 'reopened' : (toStatus === 'closed' ? 'closed' : 'status_changed'),
+          from_status: liveIssue.status,
+          to_status: toStatus,
+          note: '',
+          by_uid: state.currentUser.uid,
+          by_name: state.currentUser.full_name,
+          by_department: state.currentUser.department,
+          created_at: sdk.serverTimestamp(),
+        });
+      });
+      if (state.ui.openIssueId === issueId) openIssueModal(issueId);
+    } catch (err) {
+      console.error('update status failed', err);
+      alert(friendlyIssueError(err));
     }
-
-    addSystemComment(issue, `Status changed from ${labelize(fromStatus)} to ${labelize(toStatus)}`);
-    addActivity({
-      type: 'issue',
-      title: issue.title,
-      text: `${state.currentUser.full_name} changed status to ${labelize(toStatus)}`,
-      created_at: new Date().toISOString(),
-    });
-
-    persist();
-    renderAll();
-    if (state.ui.openIssueId === issueId) openIssueModal(issueId);
   }
 
-  function addIssueComment(issueId, message) {
+  async function addIssueComment(issueId, message) {
     const issue = state.data.issues.find(i => i.id === issueId);
     if (!issue || !canWorkIssue(issue)) return;
-    const now = new Date().toISOString();
-    issue.comments = Array.isArray(issue.comments) ? issue.comments : [];
-    issue.comments.push({
-      id: cryptoRandom(),
-      type: 'user',
-      by_uid: state.currentUser.uid,
-      by_name: state.currentUser.full_name,
-      created_at: now,
-      message,
-    });
-    issue.comment_count = issue.comments.length;
-    issue.updated_at = now;
-    issue.last_comment_at = now;
-    issue.last_activity_at = now;
 
-    addActivity({
-      type: 'comment',
-      title: issue.title,
-      text: `${state.currentUser.full_name}: ${message}`,
-      created_at: now,
-    });
+    if (!isFirebaseLive()) {
+      const now = new Date().toISOString();
+      issue.comments = Array.isArray(issue.comments) ? issue.comments : [];
+      issue.comments.push({
+        id: cryptoRandom(),
+        type: 'user',
+        by_uid: state.currentUser.uid,
+        by_name: state.currentUser.full_name,
+        created_at: now,
+        message,
+      });
+      issue.comment_count = issue.comments.length;
+      issue.updated_at = now;
+      issue.last_comment_at = now;
+      issue.last_activity_at = now;
 
-    persist();
-    renderBoard();
-    renderActivity();
+      addActivity({
+        type: 'comment',
+        title: issue.title,
+        text: `${state.currentUser.full_name}: ${message}`,
+        created_at: now,
+      });
+
+      persist();
+      renderBoard();
+      renderActivity();
+      return;
+    }
+
+    try {
+      const fb = window.LAYA_FIREBASE;
+      const sdk = fb.sdk;
+      await sdk.runTransaction(fb.db, async (tx) => {
+        const issueRef = sdk.doc(fb.db, 'issues', issueId);
+        const snap = await tx.get(issueRef);
+        if (!snap.exists()) throw new Error('issue_not_found');
+        const liveIssue = { id: snap.id, ...snap.data() };
+        if (!canWorkIssue(liveIssue)) throw new Error('permission_denied');
+
+        const commentRef = sdk.doc(sdk.collection(fb.db, `issues/${issueId}/comments`));
+        const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${issueId}/activity`));
+        tx.set(commentRef, {
+          type: 'user',
+          message,
+          by_uid: state.currentUser.uid,
+          by_name: state.currentUser.full_name,
+          by_role: state.currentUser.role,
+          by_department: state.currentUser.department,
+          mentions: [],
+          photos: [],
+          created_at: sdk.serverTimestamp(),
+        });
+        tx.set(activityRef, {
+          action: 'comment_added',
+          note: message,
+          by_uid: state.currentUser.uid,
+          by_name: state.currentUser.full_name,
+          by_department: state.currentUser.department,
+          created_at: sdk.serverTimestamp(),
+        });
+        tx.update(issueRef, {
+          comment_count: sdk.increment(1),
+          activity_count: sdk.increment(1),
+          last_comment_at: sdk.serverTimestamp(),
+          last_activity_at: sdk.serverTimestamp(),
+          updated_at: sdk.serverTimestamp(),
+        });
+      });
+    } catch (err) {
+      console.error('add comment failed', err);
+      alert(friendlyIssueError(err));
+    }
   }
 
   function addSystemComment(issue, message) {
@@ -1151,6 +1368,110 @@
       message,
     });
     issue.comment_count = issue.comments.length;
+  }
+
+  function stopIssueSync() {
+    if (typeof state.firebaseIssuesUnsub === 'function') {
+      try { state.firebaseIssuesUnsub(); } catch (_) {}
+    }
+    state.firebaseIssuesUnsub = null;
+  }
+
+  function stopIssueCommentsSync() {
+    if (typeof state.firebaseIssueCommentsUnsub === 'function') {
+      try { state.firebaseIssueCommentsUnsub(); } catch (_) {}
+    }
+    state.firebaseIssueCommentsUnsub = null;
+    state.ui.liveIssueComments = [];
+  }
+
+  function startIssuesSync() {
+    if (!isFirebaseLive() || !state.currentUser) return;
+    stopIssueSync();
+    const fb = window.LAYA_FIREBASE;
+    const sdk = fb.sdk;
+    let q = null;
+    if (state.currentUser.role === 'dept_user') {
+      q = sdk.query(sdk.collection(fb.db, 'issues'), sdk.where('assigned_department', '==', state.currentUser.department));
+    } else {
+      q = sdk.query(sdk.collection(fb.db, 'issues'));
+    }
+
+    state.firebaseIssuesUnsub = sdk.onSnapshot(q, (snap) => {
+      state.data.issues = snap.docs.map(normalizeIssueDoc);
+      renderAll();
+      if (state.ui.openIssueId) {
+        const liveIssue = state.data.issues.find(i => i.id === state.ui.openIssueId);
+        if (!liveIssue) closeIssueModal();
+        else renderIssueModalContent(liveIssue);
+      }
+    }, (err) => {
+      console.error('issues onSnapshot failed', err);
+      setAuthStatus('อ่าน Issue จาก Firestore ไม่สำเร็จ', 'error');
+    });
+  }
+
+  function startIssueCommentsSync(issueId) {
+    if (!isFirebaseLive()) return;
+    stopIssueCommentsSync();
+    const fb = window.LAYA_FIREBASE;
+    const sdk = fb.sdk;
+    const q = sdk.query(sdk.collection(fb.db, `issues/${issueId}/comments`));
+    state.firebaseIssueCommentsUnsub = sdk.onSnapshot(q, (snap) => {
+      state.ui.liveIssueComments = snap.docs
+        .map(docSnap => normalizeCommentDoc(docSnap))
+        .sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+      const issue = state.data.issues.find(i => i.id === issueId);
+      if (issue && state.ui.openIssueId === issueId) renderIssueModalContent(issue);
+    }, (err) => {
+      console.error('issue comments onSnapshot failed', err);
+    });
+  }
+
+  function normalizeIssueDoc(docSnap) {
+    const data = docSnap.data() || {};
+    return {
+      id: docSnap.id,
+      ...data,
+      created_at: normalizeDateValue(data.created_at),
+      updated_at: normalizeDateValue(data.updated_at),
+      last_activity_at: normalizeDateValue(data.last_activity_at),
+      last_comment_at: normalizeDateValue(data.last_comment_at),
+      closed_at: normalizeDateValue(data.closed_at),
+      comments: [],
+    };
+  }
+
+  function normalizeCommentDoc(docSnap) {
+    const data = docSnap.data() || {};
+    return {
+      id: docSnap.id,
+      ...data,
+      created_at: normalizeDateValue(data.created_at),
+    };
+  }
+
+  function normalizeDateValue(value) {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value?.toDate === 'function') return value.toDate().toISOString();
+    if (value instanceof Date) return value.toISOString();
+    return String(value);
+  }
+
+  function friendlyIssueError(err) {
+    const code = String(err?.code || '');
+    const msg = String(err?.message || err || '');
+    if (code.includes('permission-denied') || msg.includes('permission_denied')) {
+      return 'ไม่มีสิทธิ์ทำรายการนี้ หรือ Firestore Rules ยังไม่ถูกต้อง';
+    }
+    if (msg.includes('issue_counter_not_found')) {
+      return 'ไม่พบตัวนับ issue แต่ระบบควรสร้างให้อัตโนมัติแล้ว ลองใหม่อีกครั้ง';
+    }
+    if (msg.includes('not_signed_in')) {
+      return 'กรุณาเข้าสู่ระบบใหม่';
+    }
+    return msg ? `บันทึกข้อมูลไม่สำเร็จ: ${msg}` : 'บันทึกข้อมูลไม่สำเร็จ';
   }
 
   function renderActivity() {
