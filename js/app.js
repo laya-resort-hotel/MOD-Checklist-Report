@@ -1289,14 +1289,11 @@
         if (!canWorkIssue(liveIssue)) throw new Error('permission_denied');
         if (!isValidTransition(liveIssue.status, toStatus)) throw new Error('invalid_transition');
 
-        const commentRef = sdk.doc(sdk.collection(fb.db, `issues/${issueId}/comments`));
         const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${issueId}/activity`));
         const patch = {
           status: toStatus,
           updated_at: sdk.serverTimestamp(),
           last_activity_at: sdk.serverTimestamp(),
-          last_comment_at: sdk.serverTimestamp(),
-          comment_count: sdk.increment(1),
           activity_count: sdk.increment(1),
         };
         if (toStatus === 'closed') {
@@ -1310,17 +1307,6 @@
           patch.closed_by_name = '';
         }
         tx.update(issueRef, patch);
-        tx.set(commentRef, {
-          type: 'system',
-          message: `Status changed from ${labelize(liveIssue.status)} to ${labelize(toStatus)}`,
-          by_uid: state.currentUser.uid,
-          by_name: 'System',
-          by_role: state.currentUser.role,
-          by_department: state.currentUser.department,
-          mentions: [],
-          photos: [],
-          created_at: sdk.serverTimestamp(),
-        });
         tx.set(activityRef, {
           action: toStatus === 'open' && liveIssue.status === 'closed' ? 'reopened' : (toStatus === 'closed' ? 'closed' : 'status_changed'),
           from_status: liveIssue.status,
