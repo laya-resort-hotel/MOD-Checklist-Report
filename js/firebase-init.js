@@ -25,6 +25,12 @@ import {
   runTransaction,
   increment
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import {
+  getStorage,
+  ref as storageRef,
+  uploadString,
+  getDownloadURL
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js';
 
 const cfg = window.LAYA_FIREBASE_CONFIG;
 
@@ -39,6 +45,7 @@ async function boot() {
     const app = initializeApp(cfg);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const storage = getStorage(app);
     await setPersistence(auth, browserLocalPersistence);
 
     let analytics = null;
@@ -53,6 +60,7 @@ async function boot() {
       app,
       auth,
       db,
+      storage,
       analytics,
       config: cfg,
       projectId: cfg.projectId || '',
@@ -74,6 +82,9 @@ async function boot() {
         onSnapshot,
         runTransaction,
         increment,
+        storageRef,
+        uploadString,
+        getDownloadURL,
       }
     };
     window.dispatchEvent(new CustomEvent('laya-firebase-ready', { detail: window.LAYA_FIREBASE }));

@@ -49,3 +49,9 @@
 - Board reads issues from Firestore via onSnapshot
 - Status changes and comments also write to Firestore
 - Mobile image resize flow remains enabled before save
+
+
+## Firebase Storage
+- Publish ไฟล์ `storage.rules` ใน Firebase Storage Rules
+- เวอร์ชันนี้อัปภาพ issue ไปที่ `issue_photos/{uid}/{issueId}/before/...`
+- Firestore จะเก็บเฉพาะ URL และ path ของรูป ไม่เก็บ base64 ลง issue document

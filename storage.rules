@@ -1,0 +1,35 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isImage() {
+      return request.resource != null && request.resource.contentType.matches('image/.*');
+    }
+
+    function under5MB() {
+      return request.resource != null && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    match /issue_photos/{uid}/{issueId}/{allPaths=**} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid && isImage() && under5MB();
+    }
+
+    match /checklist_photos/{uid}/{runId}/{allPaths=**} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid && isImage() && under5MB();
+    }
+
+    match /comment_photos/{uid}/{issueId}/{allPaths=**} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid && isImage() && under5MB();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -34,6 +34,7 @@
       selectedTemplateCode: null,
       openIssueId: null,
       liveIssueComments: [],
+      pendingIssuePhoto: null,
     },
     data: {
       issues: [],
@@ -661,10 +662,9 @@
         throw new Error('invalid_file_type');
       }
       const optimized = await optimizeIssuePhoto(file);
+      state.ui.pendingIssuePhoto = optimized;
       el.issuePhotoPreview.src = optimized.previewDataUrl || optimized.thumbDataUrl || optimized.fullDataUrl;
       el.issuePhotoPreview.classList.remove('hidden');
-      el.issuePhotoPreview.dataset.imageData = optimized.fullDataUrl;
-      el.issuePhotoPreview.dataset.thumbData = optimized.thumbDataUrl;
       setIssuePhotoHint(
         `ย่อรูปแล้ว ${formatBytes(optimized.originalBytes)} → ${formatBytes(optimized.fullBytes)} • thumbnail ${formatBytes(optimized.thumbBytes)}`,
         'success'
@@ -675,8 +675,7 @@
       if (el.issueCameraInput) el.issueCameraInput.value = '';
       el.issuePhotoPreview.src = '';
       el.issuePhotoPreview.classList.add('hidden');
-      delete el.issuePhotoPreview.dataset.imageData;
-      delete el.issuePhotoPreview.dataset.thumbData;
+      state.ui.pendingIssuePhoto = null;
       const msg = err?.message === 'invalid_file_type'
         ? 'ไฟล์นี้ไม่ใช่รูปภาพ'
         : 'เลือกรูปไม่สำเร็จ ลองใช้รูป JPG/PNG เปิดสิทธิ์รูปภาพ/กล้อง แล้วลองอีกครั้ง';
@@ -716,8 +715,7 @@
     const location = el.issueLocation.value.trim();
     const assignedDepartment = el.issueDepartment.value;
     const priority = state.ui.newIssuePriority;
-    const photoData = el.issuePhotoPreview.dataset.imageData || '';
-    const thumbData = el.issuePhotoPreview.dataset.thumbData || photoData;
+    const pendingPhoto = state.ui.pendingIssuePhoto;
 
     if (!title) return alert('กรุณาใส่หัวข้อ issue');
     if (!location) return alert('กรุณาใส่ location');
@@ -733,7 +731,7 @@
         priority,
         assigned_department: assignedDepartment,
         location_text: location,
-        before_photos: photoData ? [{ url: photoData, thumb_url: thumbData }] : [],
+        before_photos: pendingPhoto ? [{ url: pendingPhoto.fullDataUrl, thumb_url: pendingPhoto.thumbDataUrl }] : [],
       });
       clearIssueForm();
       switchView('boardView');
@@ -805,21 +803,23 @@
     const uid = fb.auth.currentUser?.uid;
     if (!uid || !state.currentUser) throw new Error('not_signed_in');
 
+    const issueRef = sdk.doc(sdk.collection(fb.db, 'issues'));
+    const uploadedBeforePhotos = await prepareIssuePhotosForFirebase(issueRef.id, payload.before_photos || []);
+
     await sdk.runTransaction(fb.db, async (tx) => {
       const counterRef = sdk.doc(fb.db, 'counters', 'issue_counter');
       const counterSnap = await tx.get(counterRef);
       let nextNumber = 1;
       if (counterSnap.exists()) {
         nextNumber = (counterSnap.data().last_number || 0) + 1;
-        tx.update(counterRef, { last_number: nextNumber });
+        tx.update(counterRef, { last_number: nextNumber, updated_at: sdk.serverTimestamp() });
       } else {
         tx.set(counterRef, { name: 'issue_counter', last_number: 1, updated_at: sdk.serverTimestamp() });
       }
 
-      const issueRef = sdk.doc(sdk.collection(fb.db, 'issues'));
       const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${issueRef.id}/activity`));
       const issueNo = buildIssueNo(nextNumber);
-      const beforePhotos = Array.isArray(payload.before_photos) ? payload.before_photos : [];
+      const beforePhotos = Array.isArray(uploadedBeforePhotos) ? uploadedBeforePhotos : [];
 
       tx.set(issueRef, {
         issue_no: issueNo,
@@ -865,6 +865,66 @@
         created_at: sdk.serverTimestamp(),
       });
     });
+
+    return issueRef.id;
+  }
+
+  async function prepareIssuePhotosForFirebase(issueId, beforePhotos) {
+    if (!Array.isArray(beforePhotos) || beforePhotos.length === 0) return [];
+    if (!isFirebaseLive()) return beforePhotos;
+
+    const first = beforePhotos[0] || {};
+    const fullDataUrl = first.url || '';
+    const thumbDataUrl = first.thumb_url || fullDataUrl;
+    if (!fullDataUrl) return [];
+
+    const uploaded = await uploadIssuePhotoSet({
+      issueId,
+      fullDataUrl,
+      thumbDataUrl,
+      mimeType: 'image/jpeg'
+    });
+
+    return [{
+      url: uploaded.fullUrl,
+      thumb_url: uploaded.thumbUrl,
+      storage_path: uploaded.fullPath,
+      thumb_storage_path: uploaded.thumbPath,
+      uploaded_at: new Date().toISOString(),
+    }];
+  }
+
+  async function uploadIssuePhotoSet({ issueId, fullDataUrl, thumbDataUrl, mimeType = 'image/jpeg' }) {
+    const fb = window.LAYA_FIREBASE;
+    if (!fb?.ready || !fb.storage || !fb.sdk?.storageRef || !fb.sdk?.uploadString || !fb.sdk?.getDownloadURL) {
+      throw new Error('storage_not_ready');
+    }
+
+    const uid = fb.auth.currentUser?.uid;
+    if (!uid) throw new Error('not_signed_in');
+
+    const ts = Date.now();
+    const fullPath = `issue_photos/${uid}/${issueId}/before/full_${ts}.jpg`;
+    const thumbPath = `issue_photos/${uid}/${issueId}/before/thumb_${ts}.jpg`;
+
+    const fullRef = fb.sdk.storageRef(fb.storage, fullPath);
+    await fb.sdk.uploadString(fullRef, fullDataUrl, 'data_url', {
+      contentType: mimeType,
+      cacheControl: 'public,max-age=3600'
+    });
+    const fullUrl = await fb.sdk.getDownloadURL(fullRef);
+
+    let thumbUrl = fullUrl;
+    if (thumbDataUrl) {
+      const thumbRef = fb.sdk.storageRef(fb.storage, thumbPath);
+      await fb.sdk.uploadString(thumbRef, thumbDataUrl, 'data_url', {
+        contentType: mimeType,
+        cacheControl: 'public,max-age=3600'
+      });
+      thumbUrl = await fb.sdk.getDownloadURL(thumbRef);
+    }
+
+    return { fullUrl, thumbUrl, fullPath, thumbPath };
   }
 
   function renderTemplateCards() {
@@ -1470,6 +1530,12 @@
     }
     if (msg.includes('not_signed_in')) {
       return 'กรุณาเข้าสู่ระบบใหม่';
+    }
+    if (code.includes('storage') || msg.includes('storage/')) {
+      return 'อัปโหลดรูปเข้า Firebase Storage ไม่สำเร็จ • ตรวจสอบ Storage Rules และสิทธิ์การอัปโหลดรูป';
+    }
+    if (msg.includes('storage_not_ready')) {
+      return 'Firebase Storage ยังไม่พร้อม • ตรวจสอบ firebase-init และ config';
     }
     return msg ? `บันทึกข้อมูลไม่สำเร็จ: ${msg}` : 'บันทึกข้อมูลไม่สำเร็จ';
   }
