@@ -394,6 +394,30 @@ input:focus, select:focus, textarea:focus {
   margin-bottom: 16px;
   background: rgba(255,255,255,0.52);
 }
+.visually-hidden-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+}
+.photo-action-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.photo-pick-label {
+  min-height: 48px;
+}
+.photo-hint {
+  margin-top: 12px;
+  line-height: 1.5;
+}
 .photo-preview-wrap { margin-top: 14px; }
 .photo-preview {
   width: 100%;
@@ -836,3 +860,7 @@ code {
 .photo-hint{margin-top:10px;font-size:12px;line-height:1.45;}
 .photo-hint.error{color:#b85050;font-weight:600;}
 .photo-hint.success{color:#2b5a45;font-weight:600;}
+
+@media (max-width: 640px) {
+  .photo-action-row { grid-template-columns: 1fr; }
+}

@@ -36,3 +36,9 @@
 - data issue/checklist ในเวอร์ชันนี้ยังเป็น Local Demo Flow เป็นหลัก
 - แต่ระบบ Sign In / Register ใช้ Firebase Auth + Firestore จริงแล้ว
 - รอบถัดไปสามารถย้าย issue board / comments / checklist runs ไป Firestore live ได้ต่อทันที
+
+
+## Mobile photo picker fix
+- แยกปุ่ม "เลือกรูปจากเครื่อง" และ "ถ่ายรูป"
+- ไม่บังคับ `capture` กับการเลือกรูปจากเครื่องอีกต่อไป
+- รองรับมือถือได้เสถียรกว่าเดิม

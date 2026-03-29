@@ -333,6 +333,9 @@
       renderBoard();
     });
     el.issuePhotoInput.addEventListener('change', handleIssuePhotoPicked);
+    if (el.issueCameraInput) el.issueCameraInput.addEventListener('change', handleIssuePhotoPicked);
+    if (el.issuePhotoPickBtn) el.issuePhotoPickBtn.addEventListener('click', () => { if (el.issuePhotoInput) el.issuePhotoInput.value = ''; });
+    if (el.issueCameraPickBtn) el.issueCameraPickBtn.addEventListener('click', () => { if (el.issueCameraInput) el.issueCameraInput.value = ''; });
     el.saveIssueBtn.addEventListener('click', saveIssueFromForm);
     el.clearIssueBtn.addEventListener('click', clearIssueForm);
     el.prioritySegment.addEventListener('click', (e) => {
@@ -660,13 +663,14 @@
     } catch (err) {
       console.error('Issue photo process failed', err);
       el.issuePhotoInput.value = '';
+      if (el.issueCameraInput) el.issueCameraInput.value = '';
       el.issuePhotoPreview.src = '';
       el.issuePhotoPreview.classList.add('hidden');
       delete el.issuePhotoPreview.dataset.imageData;
       delete el.issuePhotoPreview.dataset.thumbData;
       const msg = err?.message === 'invalid_file_type'
         ? 'ไฟล์นี้ไม่ใช่รูปภาพ'
-        : 'เลือกรูปไม่สำเร็จ ลองใช้รูป JPG/PNG หรือถ่ายใหม่อีกครั้ง';
+        : 'เลือกรูปไม่สำเร็จ ลองใช้รูป JPG/PNG เปิดสิทธิ์รูปภาพ/กล้อง แล้วลองอีกครั้ง';
       setIssuePhotoHint(msg, 'error');
       alert(msg);
     }
@@ -686,11 +690,12 @@
     el.issueType.value = 'water_leak';
     el.issueDepartment.value = 'ENG';
     el.issuePhotoInput.value = '';
+    if (el.issueCameraInput) el.issueCameraInput.value = '';
     el.issuePhotoPreview.src = '';
     el.issuePhotoPreview.classList.add('hidden');
     delete el.issuePhotoPreview.dataset.imageData;
     delete el.issuePhotoPreview.dataset.thumbData;
-    setIssuePhotoHint('แนะนำรูปไม่เกิน 10 MB • ระบบจะย่อรูปก่อนบันทึกทุกครั้ง');
+    setIssuePhotoHint('แนะนำรูปไม่เกิน 10 MB • ระบบจะย่อรูปก่อนบันทึกทุกครั้ง • ใช้ได้ทั้งเลือกรูปจากเครื่องและถ่ายรูป');
     state.ui.newIssuePriority = 'medium';
     qsa('.segment', el.prioritySegment).forEach(seg => seg.classList.toggle('active', seg.dataset.value === 'medium'));
   }

@@ -141,9 +141,13 @@
           </div>
 
           <div class="photo-uploader" id="issuePhotoDrop">
-            <input id="issuePhotoInput" type="file" accept="image/*" capture="environment" class="hidden" />
-            <label id="issuePhotoPickBtn" for="issuePhotoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">เลือกหรือถ่ายรูป</label>
-            <div id="issuePhotoHint" class="photo-hint muted">แนะนำรูปไม่เกิน 10 MB • ระบบจะย่อรูปให้อัตโนมัติ</div>
+            <input id="issuePhotoInput" type="file" accept="image/*" class="visually-hidden-file" />
+            <input id="issueCameraInput" type="file" accept="image/*" capture="environment" class="visually-hidden-file" />
+            <div class="photo-action-row">
+              <label id="issuePhotoPickBtn" for="issuePhotoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">เลือกรูปจากเครื่อง</label>
+              <label id="issueCameraPickBtn" for="issueCameraInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">ถ่ายรูป</label>
+            </div>
+            <div id="issuePhotoHint" class="photo-hint muted">แนะนำรูปไม่เกิน 10 MB • ระบบจะย่อรูปให้อัตโนมัติ • มือถือเลือกรูปจากเครื่องหรือเปิดกล้องได้แยกกัน</div>
             <div class="photo-preview-wrap">
               <img id="issuePhotoPreview" class="photo-preview hidden" alt="Issue Preview" />
             </div>
