@@ -1,6 +1,6 @@
 (() => {
   const APP_KEY = 'laya_mod_checklist_v1';
-  const DEMO_USERS = [
+  const USERS = [
     { uid: 'uid_admin_9000', employee_id: '9000', password: '9000', full_name: 'Admin Demo', role: 'admin', department: 'ADMIN' },
     { uid: 'uid_mod_9901', employee_id: '9901', password: '9901', full_name: 'Somchai MOD', role: 'mod', department: 'MOD' },
     { uid: 'uid_eng_3001', employee_id: '3001', password: '3001', full_name: 'Engineering Demo', role: 'dept_user', department: 'ENG' },
@@ -59,7 +59,6 @@
     renderAll();
   }
 
-
   function bindFirebaseEvents() {
     window.addEventListener('laya-firebase-ready', applyRuntimeMode);
     window.addEventListener('laya-firebase-error', applyRuntimeMode);
@@ -101,10 +100,10 @@
 
   function showAuthTab(tab) {
     const signIn = tab !== 'register';
-    el.showSignInTab.classList.toggle('active', signIn);
-    el.showRegisterTab.classList.toggle('active', !signIn);
-    el.signInPane.classList.toggle('hidden', !signIn);
-    el.registerPane.classList.toggle('hidden', signIn);
+    if (el.showSignInTab) el.showSignInTab.classList.toggle('active', signIn);
+    if (el.showRegisterTab) el.showRegisterTab.classList.toggle('active', !signIn);
+    if (el.signInPane) el.signInPane.classList.toggle('hidden', !signIn);
+    if (el.registerPane) el.registerPane.classList.toggle('hidden', signIn);
     setAuthStatus('');
   }
 
@@ -156,7 +155,7 @@
         const userRef = fb.sdk.doc(fb.db, 'users', user.uid);
         const snap = await fb.sdk.getDoc(userRef);
         if (!snap.exists()) {
-          setAuthStatus('ไม่พบโปรไฟล์ผู้ใช้ใน Firestore', 'error');
+          setAuthStatus('สมัคร Auth สำเร็จ แต่ยังไม่พบโปรไฟล์ใน Firestore', 'error');
           state.currentUser = null;
           renderAuthState();
           return;
@@ -170,11 +169,10 @@
         renderAll();
       } catch (err) {
         console.error(err);
-        setAuthStatus('โหลดข้อมูลผู้ใช้ไม่สำเร็จ', 'error');
+        setAuthStatus('โหลดข้อมูลผู้ใช้จาก Firestore ไม่สำเร็จ', 'error');
       }
     });
   }
-
 
   function cacheEls() {
     Object.assign(el, {
@@ -187,6 +185,7 @@
       registerFullName: qs('#registerFullName'),
       registerRole: qs('#registerRole'),
       registerDepartment: qs('#registerDepartment'),
+      registerPosition: qs('#registerPosition'),
       registerPassword: qs('#registerPassword'),
       registerConfirmPassword: qs('#registerConfirmPassword'),
       registerBtn: qs('#registerBtn'),
@@ -228,15 +227,16 @@
     });
 
     populateDepartmentSelects();
+    syncRegisterRoleDepartment();
   }
 
   function bindEvents() {
     el.loginBtn.addEventListener('click', handleLogin);
-    el.registerBtn.addEventListener('click', handleRegister);
+    if (el.registerBtn) el.registerBtn.addEventListener('click', handleRegister);
     el.logoutBtn.addEventListener('click', handleLogout);
-    el.showSignInTab.addEventListener('click', () => showAuthTab('signin'));
-    el.showRegisterTab.addEventListener('click', () => showAuthTab('register'));
-    el.registerRole.addEventListener('change', syncRegisterRoleDepartment);
+    if (el.showSignInTab) el.showSignInTab.addEventListener('click', () => showAuthTab('signin'));
+    if (el.showRegisterTab) el.showRegisterTab.addEventListener('click', () => showAuthTab('register'));
+    if (el.registerRole) el.registerRole.addEventListener('change', syncRegisterRoleDepartment);
     qsa('.demo-user').forEach(btn => btn.addEventListener('click', () => {
       el.loginEmployeeId.value = btn.dataset.id;
       el.loginPassword.value = btn.dataset.pass;
@@ -315,26 +315,27 @@
   async function handleLogin() {
     const employeeId = el.loginEmployeeId.value.trim();
     const password = el.loginPassword.value.trim();
+
     if (!employeeId || !password) {
       setAuthStatus('กรุณาใส่ Employee ID และ Password', 'error');
       return;
     }
 
     if (isFirebaseLive()) {
+      const fb = window.LAYA_FIREBASE;
       try {
         setAuthStatus('กำลังเข้าสู่ระบบ...', 'info');
-        const fb = window.LAYA_FIREBASE;
         await fb.sdk.signInWithEmailAndPassword(fb.auth, employeeIdToEmail(employeeId), password);
       } catch (err) {
         console.error(err);
-        setAuthStatus('Employee ID หรือ Password ไม่ถูกต้อง', 'error');
+        setAuthStatus('เข้าสู่ระบบไม่สำเร็จ ตรวจสอบรหัสพนักงานหรือรหัสผ่าน', 'error');
       }
       return;
     }
 
-    const user = DEMO_USERS.find(u => u.employee_id === employeeId && u.password === password);
+    const user = USERS.find(u => u.employee_id === employeeId && u.password === password);
     if (!user) {
-      alert('Employee ID หรือ Password ไม่ถูกต้อง');
+      setAuthStatus('Employee ID หรือ Password ไม่ถูกต้อง', 'error');
       return;
     }
     state.currentUser = { ...user };
@@ -344,77 +345,81 @@
   }
 
   async function handleRegister() {
+    const employeeId = el.registerEmployeeId?.value.trim() || '';
+    const fullName = el.registerFullName?.value.trim() || '';
+    const role = el.registerRole?.value || 'mod';
+    let department = el.registerDepartment?.value || 'MOD';
+    const position = el.registerPosition?.value.trim() || '';
+    const password = el.registerPassword?.value || '';
+    const confirmPassword = el.registerConfirmPassword?.value || '';
+
     if (!isFirebaseLive()) {
-      setAuthStatus('ต้องเชื่อม Firebase ให้พร้อมก่อนจึงจะสมัครสมาชิกได้', 'error');
+      setAuthStatus('การสมัครสมาชิกต้องใช้ Firebase Live', 'error');
       return;
     }
-
-    const employeeId = el.registerEmployeeId.value.trim();
-    const fullName = el.registerFullName.value.trim();
-    const role = el.registerRole.value;
-    const department = role === 'mod' ? 'MOD' : el.registerDepartment.value;
-    const password = el.registerPassword.value.trim();
-    const confirmPassword = el.registerConfirmPassword.value.trim();
 
     if (!employeeId || !fullName || !password || !confirmPassword) {
       setAuthStatus('กรุณากรอกข้อมูลสมัครสมาชิกให้ครบ', 'error');
       return;
     }
+
     if (password.length < 6) {
       setAuthStatus('รหัสผ่านต้องอย่างน้อย 6 ตัวอักษร', 'error');
       return;
     }
+
     if (password !== confirmPassword) {
-      setAuthStatus('Confirm Password ไม่ตรงกัน', 'error');
+      setAuthStatus('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน', 'error');
       return;
     }
 
+    if (role === 'mod') department = 'MOD';
+    if (role === 'dept_user' && (department === 'MOD' || department === 'ADMIN')) {
+      setAuthStatus('Department User ต้องเลือกแผนกงานจริง เช่น ENG / HK / FO / FB / SEC', 'error');
+      return;
+    }
+
+    const email = employeeIdToEmail(employeeId);
+    const fb = window.LAYA_FIREBASE;
+
     try {
-      const fb = window.LAYA_FIREBASE;
       setAuthStatus('กำลังสร้างบัญชี...', 'info');
-      const cred = await fb.sdk.createUserWithEmailAndPassword(fb.auth, employeeIdToEmail(employeeId), password);
+      const cred = await fb.sdk.createUserWithEmailAndPassword(fb.auth, email, password);
       const userRef = fb.sdk.doc(fb.db, 'users', cred.user.uid);
       await fb.sdk.setDoc(userRef, {
         employee_id: employeeId,
         full_name: fullName,
         role,
         department,
-        position: role === 'mod' ? 'MOD' : '',
+        position,
         is_active: true,
         phone: '',
-        email: '',
+        email,
         avatar_url: '',
         created_at: fb.sdk.serverTimestamp(),
         updated_at: fb.sdk.serverTimestamp(),
         last_login_at: fb.sdk.serverTimestamp()
       });
-      setAuthStatus('สร้างบัญชีสำเร็จ สามารถใช้งานได้ทันที', 'success');
+
+      setAuthStatus('สมัครสมาชิกสำเร็จ', 'success');
+      if (el.registerEmployeeId) el.registerEmployeeId.value = '';
+      if (el.registerFullName) el.registerFullName.value = '';
+      if (el.registerPosition) el.registerPosition.value = '';
+      if (el.registerPassword) el.registerPassword.value = '';
+      if (el.registerConfirmPassword) el.registerConfirmPassword.value = '';
       showAuthTab('signin');
-      el.loginEmployeeId.value = employeeId;
-      el.loginPassword.value = '';
-      el.registerPassword.value = '';
-      el.registerConfirmPassword.value = '';
+      if (el.loginEmployeeId) el.loginEmployeeId.value = employeeId;
     } catch (err) {
       console.error(err);
-      if (String(err?.code).includes('email-already-in-use')) {
-        setAuthStatus('รหัสพนักงานนี้ถูกสมัครไว้แล้ว', 'error');
-      } else {
-        setAuthStatus('สร้างบัญชีไม่สำเร็จ', 'error');
-      }
+      setAuthStatus(`สมัครสมาชิกไม่สำเร็จ: ${err?.message || err}`, 'error');
     }
   }
-
 
   async function handleLogout() {
     if (isFirebaseLive()) {
       try {
         await window.LAYA_FIREBASE.sdk.signOut(window.LAYA_FIREBASE.auth);
-        setAuthStatus('ออกจากระบบแล้ว', 'info');
-      } catch (err) {
-        console.error(err);
-        setAuthStatus('ออกจากระบบไม่สำเร็จ', 'error');
-      }
-      return;
+      } catch (_) {}
     }
     state.currentUser = null;
     persist();
@@ -426,7 +431,7 @@
     el.loginScreen.classList.toggle('hidden', loggedIn);
     el.appShell.classList.toggle('hidden', !loggedIn);
     if (!loggedIn) return;
-    el.welcomeText.textContent = `${state.currentUser.full_name} • ${state.currentUser.role.toUpperCase()} • ${state.currentUser.department}`;
+    el.welcomeText.textContent = `${state.currentUser.full_name} • ${String(state.currentUser.role || '').toUpperCase()} • ${state.currentUser.department}`;
   }
 
   function switchView(viewId) {
@@ -1067,15 +1072,17 @@
   }
 
   function populateDepartmentSelects() {
-    const issueHtml = renderDepartmentOptions();
-    const registerHtml = renderDepartmentOptions(['ENG', 'HK', 'FO', 'FB', 'SEC', 'MOD']);
-    el.issueDepartment.innerHTML = issueHtml;
+    const issueHtml = renderDepartmentOptions(['ENG', 'HK', 'FO', 'FB', 'SEC', 'MOD']);
+    if (el.issueDepartment) el.issueDepartment.innerHTML = issueHtml;
+
+    const registerHtml = renderDepartmentOptions(['MOD', 'ENG', 'HK', 'FO', 'FB', 'SEC']);
     if (el.registerDepartment) el.registerDepartment.innerHTML = registerHtml;
-    syncRegisterRoleDepartment();
   }
 
-  function renderDepartmentOptions(allowedCodes = null) {
-    const list = allowedCodes ? DEPARTMENTS.filter(dept => allowedCodes.includes(dept.code)) : DEPARTMENTS;
+  function renderDepartmentOptions(allowedCodes = []) {
+    const list = allowedCodes.length
+      ? DEPARTMENTS.filter(dept => allowedCodes.includes(dept.code))
+      : DEPARTMENTS;
     return list.map(dept => `<option value="${dept.code}">${dept.name}</option>`).join('');
   }
 
@@ -1112,7 +1119,7 @@
       }
     ];
 
-    const reporter = DEMO_USERS.find(u => u.role === 'mod');
+    const reporter = USERS.find(u => u.role === 'mod');
     demoIssues.forEach((entry, idx) => {
       state.data.counters.issue += 1;
       const createdAt = new Date(Date.now() - (idx * 60 * 60 * 1000)).toISOString();

@@ -1,38 +1,37 @@
-# MOD Checklist Report — GitHub Ready + Firebase Employee ID Auth
+# MOD Checklist Report — GitHub Upload Ready (Firebase Config Added)
 
-เวอร์ชันนี้รองรับ:
-- Sign In ด้วย **Employee ID + Password**
-- Register ด้วย **Employee ID** โดยระบบจะสร้าง email ภายในแบบซ่อนหลังบ้านอัตโนมัติ
-- บันทึกโปรไฟล์ผู้ใช้ลง `users/{uid}` ใน Firestore
-- Local Demo Mode ยังอยู่ เผื่อใช้ตอน Firebase ยังไม่พร้อม
+ชุดนี้เป็นเว็บแอพ MVP สำหรับ GitHub Pages โดย **ใส่ Firebase config ให้แล้ว** จากโปรเจกต์:
+- projectId: `mod-checklist-report`
 
-## การสมัครสมาชิก
-ผู้ใช้กรอก:
-- Employee ID
-- Full Name
-- Access Type (`MOD` หรือ `Department User`)
-- Department
-- Password
+## ไฟล์สำคัญ
+- `index.html`
+- `style.css`
+- `js/app.js` → UI + local demo data layer
+- `js/firebase-config.js` → Firebase config ที่ใส่ให้แล้ว
+- `js/firebase-init.js` → bootstrap Firebase app/analytics แบบ no-build
+- `data/checklist_templates.json`
+- `firestore.rules`
+- `mod_service_layer.js`
 
-ระบบจะสร้าง Firebase Auth account ด้วยรูปแบบ email ภายใน เช่น:
-- `9901@employee.mod-checklist-report.local`
+## สถานะปัจจุบัน
+- หน้าเว็บ **เปิดบน GitHub Pages ได้ทันที**
+- Firebase config **ถูกใส่แล้ว**
+- ตอนนี้ **data layer ยังเป็น Local Demo Mode** เพื่อให้เทส UI/Flow ได้เลย
+- ยังไม่ได้ผูก login / firestore / storage เข้ากับ `js/app.js`
 
-ผู้ใช้จะเห็นแค่ **Employee ID** ไม่ต้องรู้หรือใช้ email นี้
+## วิธีอัปขึ้น GitHub
+1. แตก ZIP
+2. อัปโหลดทุกไฟล์ขึ้น repo
+3. เปิด GitHub Pages จาก branch `main`
+4. เปิดเว็บเพื่อตรวจว่า banner ขึ้น `Firebase Config Ready` หรือ `Firebase Config Added`
 
-## หมายเหตุเรื่องสิทธิ์
-เวอร์ชันนี้เปิด self-register ได้สำหรับ role:
-- `mod`
-- `dept_user`
+## บัญชีเดโม
+- Admin: `9000 / 9000`
+- MOD: `9901 / 9901`
+- ENG: `3001 / 3001`
+- HK: `4001 / 4001`
 
-จะ **ไม่** อนุญาตให้สมัครเป็น `admin` เอง
-
-## ใช้งานจริง
-1. Deploy ขึ้น GitHub Pages
-2. เปิด Email/Password ใน Firebase Authentication
-3. Deploy `firestore.rules`
-4. เปิดหน้าเว็บแล้วสมัครสมาชิกด้วย Employee ID ได้ทันที
-
-## ข้อควรทราบ
-- data issue/checklist ในเวอร์ชันนี้ยังเป็น Local Demo Flow เป็นหลัก
-- แต่ระบบ Sign In / Register ใช้ Firebase Auth + Firestore จริงแล้ว
-- รอบถัดไปสามารถย้าย issue board / comments / checklist runs ไป Firestore live ได้ต่อทันที
+## หมายเหตุสำคัญ
+ถ้าต้องการให้ระบบใช้งาน Firebase จริง:
+- login ต้องเลือกวิธี auth ให้ชัด
+- แล้วค่อยย้าย logic ใน `js/app.js` จาก localStorage ไป Firestore/Storage ตาม service layer

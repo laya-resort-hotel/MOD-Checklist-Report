@@ -19,62 +19,16 @@
       <p class="muted center">เวอร์ชันสำหรับขึ้น GitHub Pages • ใส่ Firebase config แล้ว • พร้อมเทส UI/Flow ทันที</p>
 
       <div class="mode-banner" id="modeBanner">Initializing Firebase...</div>
-      <div id="authStatus" class="auth-status hidden"></div>
 
-      <div class="auth-tabs">
-        <button id="showSignInTab" class="auth-tab active" type="button">Sign In</button>
-        <button id="showRegisterTab" class="auth-tab" type="button">Register</button>
-      </div>
+      <label>Employee ID</label>
+      <input id="loginEmployeeId" type="text" placeholder="เช่น 9901" />
 
-      <div id="signInPane" class="auth-pane active">
-        <label>Employee ID</label>
-        <input id="loginEmployeeId" type="text" placeholder="เช่น 9901" />
+      <label>Password</label>
+      <input id="loginPassword" type="password" placeholder="รหัสผ่าน" />
 
-        <label>Password</label>
-        <input id="loginPassword" type="password" placeholder="รหัสผ่าน" />
+      <button id="loginBtn" class="btn btn-primary btn-block">Sign In</button>
 
-        <button id="loginBtn" class="btn btn-primary btn-block">Sign In</button>
-      </div>
-
-      <div id="registerPane" class="auth-pane hidden">
-        <div class="form-grid two-col compact-grid">
-          <div>
-            <label>Employee ID</label>
-            <input id="registerEmployeeId" type="text" placeholder="เช่น 5521" />
-          </div>
-          <div>
-            <label>Full Name</label>
-            <input id="registerFullName" type="text" placeholder="ชื่อ-นามสกุล" />
-          </div>
-          <div>
-            <label>Access Type</label>
-            <select id="registerRole">
-              <option value="mod">MOD</option>
-              <option value="dept_user">Department User</option>
-            </select>
-          </div>
-          <div>
-            <label>Department</label>
-            <select id="registerDepartment"></select>
-          </div>
-          <div>
-            <label>Password</label>
-            <input id="registerPassword" type="password" placeholder="อย่างน้อย 6 ตัวอักษร" />
-          </div>
-          <div>
-            <label>Confirm Password</label>
-            <input id="registerConfirmPassword" type="password" placeholder="ยืนยันรหัสผ่าน" />
-          </div>
-        </div>
-
-        <div class="register-note">
-          สมัครด้วยรหัสพนักงาน โดยระบบจะซ่อน email ไว้หลังบ้านอัตโนมัติ
-        </div>
-
-        <button id="registerBtn" class="btn btn-primary btn-block">Create Account</button>
-      </div>
-
-      <div class="demo-box" id="demoBox">
+      <div class="demo-box">
         <div class="demo-title">Demo Accounts</div>
         <div class="demo-grid">
           <button class="demo-user" data-id="9000" data-pass="9000">Admin</button>

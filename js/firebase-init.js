@@ -1,22 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getAnalytics, isSupported as analyticsSupported } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics.js';
-import {
-  getAuth,
-  setPersistence,
-  browserLocalPersistence,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut
-} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  serverTimestamp
-} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 const cfg = window.LAYA_FIREBASE_CONFIG;
 
@@ -29,10 +12,6 @@ async function boot() {
 
   try {
     const app = initializeApp(cfg);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    await setPersistence(auth, browserLocalPersistence);
-
     let analytics = null;
     try {
       const ok = await analyticsSupported();
@@ -43,22 +22,9 @@ async function boot() {
       ready: true,
       mode: 'configured',
       app,
-      auth,
-      db,
       analytics,
       config: cfg,
-      projectId: cfg.projectId || '',
-      sdk: {
-        onAuthStateChanged,
-        signInWithEmailAndPassword,
-        createUserWithEmailAndPassword,
-        signOut,
-        doc,
-        getDoc,
-        setDoc,
-        updateDoc,
-        serverTimestamp,
-      }
+      projectId: cfg.projectId || ''
     };
     window.dispatchEvent(new CustomEvent('laya-firebase-ready', { detail: window.LAYA_FIREBASE }));
   } catch (error) {
