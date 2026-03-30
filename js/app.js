@@ -660,14 +660,50 @@
 
   function renderClosedJobs() {
     if (!el.closedList) return;
-    const closedItems = getClosedIssuesForCurrentUser();
+    const closedItems = getClosedBoardItemsForCurrentUser();
 
     if (!closedItems.length) {
-      el.closedList.innerHTML = `<div class="empty-state">ยังไม่มีงานที่ปิดแล้ว</div>`;
+      el.closedList.innerHTML = `<div class="empty-state">ยังไม่มีงานหรือ checklist ที่ย้ายมาเก็บแล้ว</div>`;
       return;
     }
 
-    el.closedList.innerHTML = closedItems.map(issue => {
+    el.closedList.innerHTML = closedItems.map(item => {
+      if (item.closed_type === 'checklist_run') {
+        const hiddenLabel = item.status === 'archived' ? 'Closed' : 'Auto moved';
+        return `
+          <article class="issue-card issue-tone-closed checklist-board-card">
+            <div class="issue-thumb placeholder checklist-placeholder">DONE</div>
+            <div>
+              <div class="issue-title-row">
+                <div>
+                  <div class="issue-title">Checklist submitted: ${escapeHtml(item.template_name || 'Checklist')}</div>
+                  <div class="meta-row">
+                    <span>${escapeHtml(item.location_text || '-')}</span>
+                    <span>•</span>
+                    <span>${formatDateTime(item.submitted_at || item.created_at)}</span>
+                  </div>
+                </div>
+                <div class="issue-badges">
+                  <div class="status-pill status-closed">${hiddenLabel}</div>
+                  <div class="priority-pill priority-low">Checklist</div>
+                </div>
+              </div>
+              <div class="issue-desc">${escapeHtml(`${item.template_name} • ${item.pass_count || 0} pass • ${item.fail_count || 0} fail • ${item.na_count || 0} N/A${item.issue_count ? ` • ${item.issue_count} issue` : ''}`)}</div>
+              <div class="meta-row">
+                <span>${escapeHtml(item.run_no || item.id)}</span>
+                <span>•</span>
+                <span>Inspector ${escapeHtml(item.inspector_name || '-')}</span>
+              </div>
+              <div class="issue-actions">
+                <button class="mini-btn" data-open-checklist-run="${item.id}">Open Summary</button>
+                <button class="mini-btn" data-unarchive-checklist-run="${item.id}">Reopen</button>
+              </div>
+            </div>
+          </article>
+        `;
+      }
+
+      const issue = item;
       const deptName = getDepartmentName(issue.assigned_department);
       const thumb = issue.cover_thumb_url || issue.cover_photo_url || issue.before_videos?.[0]?.thumb_url || issue.before_videos?.[0]?.poster_url || '';
       const hasVideo = Array.isArray(issue.before_videos) && issue.before_videos.length > 0;
@@ -712,6 +748,8 @@
     qsa('[data-status-action]', el.closedList).forEach(btn => btn.addEventListener('click', () => {
       updateIssueStatus(btn.dataset.issueId, btn.dataset.statusAction);
     }));
+    qsa('[data-open-checklist-run]', el.closedList).forEach(btn => btn.addEventListener('click', () => openChecklistRunSummary(btn.dataset.openChecklistRun)));
+    qsa('[data-unarchive-checklist-run]', el.closedList).forEach(btn => btn.addEventListener('click', () => unarchiveChecklistRun(btn.dataset.unarchiveChecklistRun)));
   }
 
   function renderBoard() {
@@ -778,6 +816,7 @@
       updateIssueStatus(btn.dataset.issueId, btn.dataset.statusAction);
     }));
     qsa('[data-open-checklist-run]', el.boardList).forEach(btn => btn.addEventListener('click', () => openChecklistRunSummary(btn.dataset.openChecklistRun)));
+    qsa('[data-archive-checklist-run]', el.boardList).forEach(btn => btn.addEventListener('click', () => archiveChecklistRun(btn.dataset.archiveChecklistRun)));
   }
 
   function getIssueCardToneClass(issue) {
@@ -812,8 +851,6 @@
               <div class="meta-row">
                 <span>${escapeHtml(run.location_text || '-')}</span>
                 <span>•</span>
-                <span>${escapeHtml(labelize(run.shift || '-'))}</span>
-                <span>•</span>
                 <span>${formatDateTime(run.submitted_at || run.created_at)}</span>
               </div>
             </div>
@@ -830,6 +867,7 @@
           </div>
           <div class="issue-actions">
             <button class="mini-btn" data-open-checklist-run="${run.id}">Open Summary</button>
+            <button class="mini-btn" data-archive-checklist-run="${run.id}">Close</button>
           </div>
         </div>
       </article>
@@ -847,7 +885,7 @@
     const filter = state.ui.boardFilter;
     const search = state.ui.boardSearch;
     if (!(filter === 'all' || filter === 'mine')) return [];
-    let runs = [...(state.data.checklistRuns || [])].filter(run => run.status === 'submitted');
+    let runs = [...(state.data.checklistRuns || [])].filter(isChecklistRunVisibleOnBoard);
     if (filter === 'mine') {
       runs = runs.filter(run => (run.inspector_department || 'MOD') === state.currentUser.department);
     }
@@ -1378,15 +1416,6 @@
           <input id="runLocation" type="text" placeholder="เช่น Main Resort / Public Area" />
         </div>
         <div>
-          <label>Shift</label>
-          <select id="runShift">
-            <option value="morning">Morning</option>
-            <option value="afternoon">Afternoon</option>
-            <option value="evening">Evening</option>
-            <option value="night">Night</option>
-          </select>
-        </div>
-        <div>
           <label>Date</label>
           <input id="runDate" type="date" value="${todayInputValue()}" />
         </div>
@@ -1480,7 +1509,6 @@
 
   async function submitChecklistRun(template, runId) {
     const location = qs('#runLocation', el.checklistRunPanel).value.trim();
-    const shift = qs('#runShift', el.checklistRunPanel).value;
     const inspectionDate = qs('#runDate', el.checklistRunPanel).value;
     const itemCards = qsa('.item-card', el.checklistRunPanel);
     const answers = [];
@@ -1522,7 +1550,6 @@
       inspector_department: state.currentUser.department,
       inspection_date: inspectionDate,
       location_text: location,
-      shift,
       status: 'submitted',
       answers,
       created_at: new Date().toISOString(),
@@ -1589,6 +1616,63 @@
     return finalRun;
   }
 
+
+  async function archiveChecklistRun(runId) {
+    const run = (state.data.checklistRuns || []).find(item => item.id === runId);
+    if (!run) return;
+    try {
+      if (isFirebaseLive()) {
+        const fb = window.LAYA_FIREBASE;
+        await fb.sdk.updateDoc(fb.sdk.doc(fb.db, 'checklist_runs', runId), {
+          status: 'archived',
+          updated_at: fb.sdk.serverTimestamp(),
+        });
+      } else {
+        run.status = 'archived';
+        run.updated_at = new Date().toISOString();
+        persist();
+      }
+      const localRun = (state.data.checklistRuns || []).find(item => item.id === runId);
+      if (localRun) {
+        localRun.status = 'archived';
+        localRun.updated_at = new Date().toISOString();
+      }
+      renderAll();
+      setAuthStatus('ย้าย checklist ออกจาก Board แล้ว', 'success');
+    } catch (err) {
+      console.error('archive checklist run failed', err);
+      alert('ปิด checklist ไม่สำเร็จ');
+    }
+  }
+
+  async function unarchiveChecklistRun(runId) {
+    const run = (state.data.checklistRuns || []).find(item => item.id === runId);
+    if (!run) return;
+    try {
+      if (isFirebaseLive()) {
+        const fb = window.LAYA_FIREBASE;
+        await fb.sdk.updateDoc(fb.sdk.doc(fb.db, 'checklist_runs', runId), {
+          status: 'submitted',
+          updated_at: fb.sdk.serverTimestamp(),
+        });
+      } else {
+        run.status = 'submitted';
+        run.updated_at = new Date().toISOString();
+        persist();
+      }
+      const localRun = (state.data.checklistRuns || []).find(item => item.id === runId);
+      if (localRun) {
+        localRun.status = 'submitted';
+        localRun.updated_at = new Date().toISOString();
+      }
+      renderAll();
+      setAuthStatus('นำ checklist กลับมาแสดงแล้ว', 'success');
+    } catch (err) {
+      console.error('unarchive checklist run failed', err);
+      alert('นำ checklist กลับมาไม่สำเร็จ');
+    }
+  }
+
   async function createChecklistRunFirebase(run) {
     const fb = window.LAYA_FIREBASE;
     const sdk = fb.sdk;
@@ -1615,7 +1699,6 @@
         inspector_department: run.inspector_department,
         inspection_date: run.inspection_date,
         location_text: run.location_text || '',
-        shift: run.shift || 'morning',
         source: 'checklist',
         answers: run.answers,
         total_items: run.total_items,
@@ -2521,6 +2604,31 @@
         return !search || hay.includes(search);
       })
       .sort((a, b) => new Date(b.closed_at || b.updated_at || b.created_at) - new Date(a.closed_at || a.updated_at || a.created_at));
+  }
+
+  function isChecklistRunVisibleOnBoard(run) {
+    if (!run || run.status !== 'submitted') return false;
+    const base = run.inspection_date ? new Date(`${run.inspection_date}T00:00:00`) : new Date(run.submitted_at || run.created_at || Date.now());
+    const now = new Date();
+    return base.getFullYear() === now.getFullYear() && base.getMonth() === now.getMonth() && base.getDate() === now.getDate();
+  }
+
+  function getClosedChecklistRunsForCurrentUser() {
+    if (!state.currentUser) return [];
+    const search = state.ui.closedSearch;
+    return [...(state.data.checklistRuns || [])]
+      .filter(run => run.status === 'archived' || (run.status === 'submitted' && !isChecklistRunVisibleOnBoard(run)))
+      .filter(run => {
+        const hay = [run.template_name, run.location_text, run.run_no, run.inspector_name].join(' ').toLowerCase();
+        return !search || hay.includes(search);
+      })
+      .map(run => ({ ...run, closed_type: 'checklist_run' }))
+      .sort((a, b) => new Date(b.updated_at || b.submitted_at || b.created_at || 0) - new Date(a.updated_at || a.submitted_at || a.created_at || 0));
+  }
+
+  function getClosedBoardItemsForCurrentUser() {
+    return [...getClosedIssuesForCurrentUser(), ...getClosedChecklistRunsForCurrentUser()]
+      .sort((a, b) => new Date((b.closed_at || b.updated_at || b.submitted_at || b.created_at || 0)) - new Date((a.closed_at || a.updated_at || a.submitted_at || a.created_at || 0)));
   }
 
   function sortIssues(a, b) {
