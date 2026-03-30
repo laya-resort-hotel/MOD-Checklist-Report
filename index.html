@@ -121,6 +121,7 @@
         <div class="panel glass form-panel">
           <div class="panel-header">
             <h3>New Issue</h3>
+            <p class="muted">แจ้งปัญหาใหม่แบบเร็ว เน้นถ่ายรูปและ assign แผนกให้ชัด</p>
           </div>
 
           <div class="photo-uploader" id="issuePhotoDrop">
@@ -200,6 +201,7 @@
           <div class="panel-header panel-header-split">
             <div>
               <h3>Checklist Module</h3>
+              <p class="muted">แยกจาก Board เพื่อให้หน้าบอร์ดสะอาด และเมื่อ submit แล้วจะขึ้นบน Board เพื่อบอกว่าตรวจแล้ว</p>
             </div>
             <button id="addChecklistTemplateBtn" class="btn btn-secondary">+ Add Checklist</button>
           </div>
@@ -214,6 +216,7 @@
         <div class="panel glass">
           <div class="panel-header">
             <h3>Activity</h3>
+            <p class="muted">ความเคลื่อนไหวล่าสุดของ issue และ checklist</p>
           </div>
           <div id="activityList" class="activity-list"></div>
         </div>
@@ -224,6 +227,7 @@
           <div class="panel-header panel-header-split">
             <div>
               <h3>Usage Log</h3>
+              <p class="muted">โหลดและดูข้อมูลการใช้งานล่าสุดของระบบ เช่น การสร้างงาน ปิดงาน คอมเมนต์ ส่ง checklist และอัปหลักฐาน</p>
             </div>
             <div class="header-actions inline-actions">
             <button id="reloadUsageLogBtn" class="btn btn-secondary" type="button">Load Latest</button>
@@ -245,6 +249,7 @@
           <div class="panel-header panel-header-split">
             <div>
               <h3>Closed Jobs & Checklist History</h3>
+              <p class="muted">งานที่ปิดแล้วและ checklist ที่ซ่อนจาก Board จะถูกเก็บไว้ที่นี่ เพื่อไม่ให้ปนกับงานที่ยังต้องติดตาม</p>
             </div>
             <button id="backToBoardBtn" class="btn btn-ghost" type="button">Back to Board</button>
           </div>
@@ -257,6 +262,33 @@
         </div>
       </section>
 
+      <section id="moreView" class="view">
+        <div class="more-grid">
+          <div class="panel glass">
+            <div class="panel-header">
+              <h3>Team & Tools</h3>
+            </div>
+            <div class="stack">
+              <button id="openClosedJobsFromMore" class="btn btn-secondary">Open Closed Jobs</button>
+              <button id="openUsageLogFromMore" class="btn btn-secondary">Open Usage Log</button>
+              <button id="exportJsonBtn" class="btn btn-secondary">Export Local JSON</button>
+              <label class="btn btn-ghost upload-btn">
+                Import Local JSON
+                <input id="importJsonInput" type="file" accept="application/json" class="hidden" />
+              </label>
+              <button id="seedDemoBtn" class="btn btn-ghost">Reset Demo Data</button>
+            </div>
+          </div>
+
+          <div class="panel glass">
+            <div class="panel-header">
+              <h3>Team Members</h3>
+              <p class="muted">ผู้ใช้ทั้งหมดของระบบนี้</p>
+            </div>
+            <div id="teamMembersList" class="team-member-list"></div>
+          </div>
+        </div>
+      </section>
     </main>
 
     <button id="fabNewIssue" class="fab mobile-only" title="New Issue">+</button>
@@ -267,6 +299,7 @@
       <button class="nav-link" data-view="checklistView">Checklist</button>
       <button class="nav-link" data-view="activityView">Activity</button>
       <button class="nav-link" data-view="logView">Log</button>
+      <button class="nav-link" data-view="moreView">Team</button>
     </nav>
   </div>
 
