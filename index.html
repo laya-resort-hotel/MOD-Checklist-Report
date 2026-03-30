@@ -233,7 +233,10 @@
               <h3>Usage Log</h3>
               <p class="muted">โหลดและดูข้อมูลการใช้งานล่าสุดของระบบ เช่น การสร้างงาน ปิดงาน คอมเมนต์ ส่ง checklist และอัปหลักฐาน</p>
             </div>
+            <div class="header-actions inline-actions">
             <button id="reloadUsageLogBtn" class="btn btn-secondary" type="button">Load Latest</button>
+            <button id="exportUsageLogExcelBtn" class="btn btn-primary" type="button">Export Excel</button>
+          </div>
           </div>
           <div class="toolbar glass inner-toolbar">
             <div class="toolbar-left">
@@ -315,6 +318,7 @@
 
   <script src="js/firebase-config.js"></script>
   <script type="module" src="js/firebase-init.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

@@ -329,6 +329,7 @@
       usageLogList: qs('#usageLogList'),
       logSearch: qs('#logSearch'),
       reloadUsageLogBtn: qs('#reloadUsageLogBtn'),
+      exportUsageLogExcelBtn: qs('#exportUsageLogExcelBtn'),
       issueModal: qs('#issueModal'),
       issueModalContent: qs('#issueModalContent'),
       closeIssueModalBtn: qs('#closeIssueModalBtn'),
@@ -371,6 +372,7 @@
       renderUsageLogs();
     });
     if (el.reloadUsageLogBtn) el.reloadUsageLogBtn.addEventListener('click', () => reloadUsageLogs());
+    if (el.exportUsageLogExcelBtn) el.exportUsageLogExcelBtn.addEventListener('click', () => exportUsageLogsToExcel());
     if (el.openClosedJobsBtn) el.openClosedJobsBtn.addEventListener('click', () => switchView('closedView'));
     if (el.openClosedJobsFromMore) el.openClosedJobsFromMore.addEventListener('click', () => switchView('closedView'));
     if (el.openUsageLogFromMore) el.openUsageLogFromMore.addEventListener('click', () => switchView('logView'));
@@ -2674,15 +2676,75 @@
     return map[action] || labelize(String(action || 'log').replace(/_/g, ' '));
   }
 
-  function renderUsageLogs() {
-    if (!el.usageLogList) return;
+
+
+  function getFilteredUsageLogs() {
     const search = state.ui.logSearch || '';
-    const items = [...(state.data.usageLogs || [])]
+    return [...(state.data.usageLogs || [])]
       .filter(item => {
         const hay = [item.title, item.text, item.user_name, item.ref_no, item.action, item.category].join(' ').toLowerCase();
         return !search || hay.includes(search);
       })
       .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  }
+
+  function exportUsageLogsToExcel() {
+    const rows = getFilteredUsageLogs();
+    if (!rows.length) {
+      alert('ยังไม่มี usage log สำหรับ export');
+      return;
+    }
+
+    if (!window.XLSX) {
+      alert('ยังโหลดระบบ Export Excel ไม่สำเร็จ ลองรีเฟรชหน้าเว็บอีกครั้ง');
+      return;
+    }
+
+    const exportRows = rows.map((item, index) => ({
+      'No.': index + 1,
+      'Date Time': formatDateTime(item.created_at),
+      'Action': humanizeLogAction(item.action),
+      'Category': item.category || '',
+      'Title': item.title || humanizeLogAction(item.action),
+      'Detail': item.text || '',
+      'Reference No': item.ref_no || '',
+      'Issue ID': item.issue_id || '',
+      'Checklist Run ID': item.checklist_run_id || '',
+      'User': item.user_name || '',
+      'User UID': item.user_uid || '',
+      'Raw Timestamp': item.created_at || '',
+    }));
+
+    const ws = window.XLSX.utils.json_to_sheet(exportRows);
+    ws['!cols'] = [
+      { wch: 6 },
+      { wch: 22 },
+      { wch: 18 },
+      { wch: 16 },
+      { wch: 28 },
+      { wch: 48 },
+      { wch: 20 },
+      { wch: 24 },
+      { wch: 24 },
+      { wch: 22 },
+      { wch: 28 },
+      { wch: 24 },
+    ];
+    const wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, ws, 'Usage Log');
+    const stamp = new Date();
+    const y = stamp.getFullYear();
+    const m = String(stamp.getMonth() + 1).padStart(2, '0');
+    const d = String(stamp.getDate()).padStart(2, '0');
+    const hh = String(stamp.getHours()).padStart(2, '0');
+    const mm = String(stamp.getMinutes()).padStart(2, '0');
+    window.XLSX.writeFile(wb, `usage_logs_${y}${m}${d}_${hh}${mm}.xlsx`);
+  }
+
+
+  function renderUsageLogs() {
+    if (!el.usageLogList) return;
+    const items = getFilteredUsageLogs();
 
     if (!items.length) {
       el.usageLogList.innerHTML = `<div class="empty-state">ยังไม่มี usage log</div>`;
