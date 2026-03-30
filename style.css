@@ -1099,3 +1099,491 @@ code {
   margin-top: -2px;
   font-size: 12px;
 }
+
+
+/* === Mobile smoothness polish v17 === */
+body {
+  overscroll-behavior-y: contain;
+}
+
+.search-input,
+textarea,
+select,
+input {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.issue-title {
+  word-break: break-word;
+}
+
+.comment-box textarea {
+  min-height: 108px;
+  resize: vertical;
+}
+
+.mention-box {
+  max-height: 200px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.issue-media-stack,
+.card-list,
+.activity-list,
+.team-member-list {
+  contain: layout style;
+}
+
+@media (max-width: 860px) {
+  body {
+    background:
+      radial-gradient(circle at top left, rgba(134,110,75,0.08), transparent 24%),
+      linear-gradient(180deg, #f7f2ea 0%, #faf7f2 58%, #fffdf9 100%);
+  }
+
+  .main-shell {
+    padding: 10px 10px calc(112px + env(safe-area-inset-bottom));
+  }
+
+  .topbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: calc(10px + env(safe-area-inset-top)) 14px 12px;
+    margin: 0 -10px 12px;
+    border-radius: 0 0 22px 22px;
+    border-left: none;
+    border-right: none;
+  }
+
+  .eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.10em;
+  }
+
+  .topbar-title {
+    font-size: 20px;
+    line-height: 1.15;
+  }
+
+  .topbar-sub {
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .topbar-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .topbar-actions .badge {
+    min-width: 74px;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  .topbar-actions .btn-ghost {
+    padding: 10px 14px;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(148px, 58vw);
+    overflow-x: auto;
+    gap: 10px;
+    margin: 0 -2px 14px;
+    padding: 2px 2px 2px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .summary-grid::-webkit-scrollbar,
+  .chip-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .summary-card {
+    scroll-snap-align: start;
+    min-height: 104px;
+  }
+
+  .toolbar,
+  .panel {
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .toolbar {
+    gap: 10px;
+  }
+
+  .toolbar-left,
+  .toolbar-left-split {
+    width: 100%;
+  }
+
+  .toolbar-left-split {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .toolbar-shortcut {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .search-input {
+    min-width: 100%;
+    min-height: 48px;
+  }
+
+  .chip-row {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chip {
+    flex: 0 0 auto;
+    min-height: 42px;
+    padding: 10px 14px;
+  }
+
+  .card-list {
+    gap: 12px;
+  }
+
+  .issue-card {
+    padding: 12px;
+    gap: 12px;
+    border-radius: 22px;
+  }
+
+  .issue-thumb {
+    aspect-ratio: 16 / 9;
+    min-height: 170px;
+  }
+
+  .issue-title-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .issue-title {
+    font-size: 18px;
+    line-height: 1.2;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .issue-badges {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .meta-row {
+    font-size: 12px;
+    line-height: 1.45;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .issue-desc {
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-line-clamp: 3;
+  }
+
+  .issue-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .issue-actions .mini-btn:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .mini-btn {
+    min-height: 46px;
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 14px;
+  }
+
+  .panel-header h3 {
+    font-size: 22px;
+    line-height: 1.2;
+  }
+
+  .panel-header p,
+  .muted {
+    line-height: 1.45;
+  }
+
+  .photo-uploader {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .photo-action-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .photo-pick-label,
+  .segment,
+  .btn {
+    min-height: 48px;
+  }
+
+  .two-col,
+  .template-grid,
+  .more-grid,
+  .checklist-run-head,
+  .fail-extra {
+    grid-template-columns: 1fr;
+  }
+
+  .sticky-actions {
+    position: sticky;
+    bottom: calc(72px + env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 10px 0 0;
+    z-index: 12;
+  }
+
+  .fab {
+    width: 54px;
+    height: 54px;
+    right: 14px;
+    bottom: calc(82px + env(safe-area-inset-bottom));
+    font-size: 26px;
+    box-shadow: 0 12px 24px rgba(28,41,35,0.20);
+  }
+
+  .bottom-nav {
+    display: grid;
+    left: 10px;
+    right: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    padding: 6px;
+    gap: 6px;
+    border-radius: 20px;
+    box-shadow: 0 16px 34px rgba(30,34,32,0.12);
+  }
+
+  .bottom-nav .nav-link {
+    min-height: 52px;
+    padding: 9px 4px;
+    font-size: 11px;
+    border-radius: 14px;
+  }
+
+  .modal-card {
+    width: 100vw;
+    max-height: 100vh;
+    min-height: 100vh;
+    margin: 0;
+    padding: 14px 14px calc(108px + env(safe-area-inset-bottom));
+    border-radius: 20px 20px 0 0;
+  }
+
+  .modal-close {
+    width: 40px;
+    height: 40px;
+    font-size: 22px;
+    z-index: 3;
+  }
+
+  .issue-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .issue-media-stack {
+    gap: 10px;
+  }
+
+  .issue-hero,
+  .issue-video {
+    max-height: none;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    border-radius: 18px;
+  }
+
+  .detail-head h3 {
+    font-size: 22px;
+    line-height: 1.2;
+  }
+
+  .detail-meta {
+    gap: 8px;
+    margin: 12px 0 14px;
+    padding: 12px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.64);
+    border: 1px solid rgba(36,53,44,0.08);
+  }
+
+  .detail-meta div,
+  .detail-head .muted {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .action-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 12px 0 16px;
+  }
+
+  .action-row .btn:only-child {
+    grid-column: 1 / -1;
+  }
+
+  .evidence-box {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .evidence-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .comment-box {
+    gap: 8px;
+  }
+
+  .comment-box textarea {
+    min-height: 110px;
+    border-radius: 16px;
+  }
+
+  .comment-list {
+    gap: 10px;
+  }
+
+  .comment-item {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .empty-state {
+    padding: 26px 16px;
+    border-radius: 16px;
+  }
+
+  .team-member-item {
+    padding: 12px;
+    border-radius: 14px;
+    grid-template-columns: 40px 1fr;
+    gap: 10px;
+  }
+
+  .team-member-avatar {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 560px) {
+  .login-card {
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .login-card h1 {
+    font-size: 24px;
+    line-height: 1.2;
+  }
+
+  .auth-tabs {
+    gap: 6px;
+  }
+
+  .auth-tab {
+    min-height: 46px;
+    padding: 10px 12px;
+  }
+
+  .topbar-actions {
+    gap: 8px;
+  }
+
+  .topbar-actions .badge {
+    font-size: 11px;
+    min-width: 68px;
+  }
+
+  .summary-grid {
+    grid-auto-columns: minmax(138px, 72vw);
+  }
+
+  .summary-card {
+    min-height: 98px;
+    padding: 13px;
+  }
+
+  .summary-value {
+    font-size: 24px;
+  }
+
+  .issue-thumb {
+    min-height: 156px;
+  }
+
+  .issue-actions,
+  .action-row {
+    grid-template-columns: 1fr;
+  }
+
+  .issue-actions .mini-btn:first-child,
+  .action-row .btn {
+    grid-column: auto;
+  }
+
+  .bottom-nav .nav-link {
+    min-height: 48px;
+    font-size: 10.5px;
+    padding: 8px 2px;
+  }
+
+  .fab {
+    width: 52px;
+    height: 52px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+
+  .modal-card {
+    padding: 12px 12px calc(104px + env(safe-area-inset-bottom));
+  }
+
+  .detail-head h3 {
+    font-size: 20px;
+  }
+
+  .priority-pill,
+  .status-pill {
+    min-width: 72px;
+    font-size: 11px;
+  }
+}
