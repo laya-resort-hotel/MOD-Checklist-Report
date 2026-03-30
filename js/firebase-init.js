@@ -29,6 +29,7 @@ import {
   getStorage,
   ref as storageRef,
   uploadString,
+  uploadBytes,
   getDownloadURL
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js';
 
@@ -84,6 +85,7 @@ async function boot() {
         increment,
         storageRef,
         uploadString,
+        uploadBytes,
         getDownloadURL,
       }
     };

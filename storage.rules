@@ -9,8 +9,16 @@ service firebase.storage {
       return request.resource != null && request.resource.contentType.matches('image/.*');
     }
 
+    function isVideo() {
+      return request.resource != null && request.resource.contentType.matches('video/.*');
+    }
+
     function under5MB() {
       return request.resource != null && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    function under25MB() {
+      return request.resource != null && request.resource.size < 25 * 1024 * 1024;
     }
 
     match /issue_photos/{uid}/{issueId}/{allPaths=**} {
@@ -21,6 +29,11 @@ service firebase.storage {
     match /checklist_photos/{uid}/{runId}/{allPaths=**} {
       allow read: if signedIn();
       allow write: if signedIn() && request.auth.uid == uid && isImage() && under5MB();
+    }
+
+    match /issue_videos/{uid}/{issueId}/{allPaths=**} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid && ((isVideo() && under25MB()) || (isImage() && under5MB()));
     }
 
     match /comment_photos/{uid}/{issueId}/{allPaths=**} {

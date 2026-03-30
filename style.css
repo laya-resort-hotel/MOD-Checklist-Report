@@ -297,6 +297,30 @@ input:focus, select:focus, textarea:focus {
   box-shadow: var(--shadow);
   background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(252,248,241,0.94));
 }
+.issue-tone-low {
+  background: linear-gradient(180deg, rgba(246,251,254,0.98), rgba(239,246,249,0.95));
+  border-color: rgba(85,120,138,0.16);
+}
+.issue-tone-medium {
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(252,248,241,0.94));
+  border-color: rgba(134,110,75,0.14);
+}
+.issue-tone-high {
+  background: linear-gradient(180deg, rgba(255,251,244,0.98), rgba(255,246,230,0.95));
+  border-color: rgba(180,134,47,0.22);
+}
+.issue-tone-critical {
+  background: linear-gradient(180deg, rgba(255,247,246,0.98), rgba(255,237,235,0.95));
+  border-color: rgba(181,77,66,0.22);
+}
+.issue-tone-closed {
+  background: linear-gradient(180deg, rgba(242,252,246,0.98), rgba(232,248,238,0.95));
+  border-color: rgba(47,122,88,0.24);
+  box-shadow: 0 10px 26px rgba(47,122,88,0.08);
+}
+.issue-thumb-wrap {
+  position: relative;
+}
 .issue-thumb {
   width: 112px;
   height: 112px;
@@ -310,6 +334,18 @@ input:focus, select:focus, textarea:focus {
   color: var(--muted);
   font-weight: 700;
   font-size: 13px;
+}
+.media-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(20,20,20,0.78);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 .issue-title-row {
   display: flex;
@@ -424,6 +460,12 @@ input:focus, select:focus, textarea:focus {
   max-height: 280px;
   object-fit: cover;
   border-radius: 18px;
+  background: rgba(36,53,44,0.06);
+}
+.video-uploader {
+  margin-top: 12px;
+  border-style: solid;
+  border-color: rgba(36,53,44,0.14);
 }
 .segment-row {
   display: flex;
@@ -607,7 +649,27 @@ input:focus, select:focus, textarea:focus {
   grid-template-columns: minmax(0, 320px) 1fr;
   gap: 20px;
 }
-.issue-hero {
+.issue-media-stack {
+  display: grid;
+  gap: 12px;
+}
+.issue-media-card {
+  position: relative;
+}
+.issue-media-label {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(17,17,17,0.72);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.issue-hero,
+.issue-video {
   width: 100%;
   border-radius: 20px;
   max-height: 320px;

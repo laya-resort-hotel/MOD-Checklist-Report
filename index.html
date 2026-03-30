@@ -153,6 +153,19 @@
             </div>
           </div>
 
+          <div class="photo-uploader video-uploader">
+            <input id="issueVideoInput" type="file" accept="video/*" class="visually-hidden-file" />
+            <input id="issueVideoCameraInput" type="file" accept="video/*" capture="environment" class="visually-hidden-file" />
+            <div class="photo-action-row">
+              <label id="issueVideoPickBtn" for="issueVideoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">เลือกวิดีโอจากเครื่อง</label>
+              <label id="issueVideoCameraPickBtn" for="issueVideoCameraInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">ถ่ายวิดีโอ</label>
+            </div>
+            <div id="issueVideoHint" class="photo-hint muted">รองรับวิดีโอไม่เกิน 25 MB • แนะนำ MP4/MOV • ระบบจะสร้าง poster ให้อัตโนมัติ</div>
+            <div class="photo-preview-wrap">
+              <video id="issueVideoPreview" class="photo-preview hidden" controls playsinline preload="metadata"></video>
+            </div>
+          </div>
+
           <div class="form-grid two-col">
             <div>
               <label>Title</label>

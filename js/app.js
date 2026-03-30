@@ -35,6 +35,7 @@
       openIssueId: null,
       liveIssueComments: [],
       pendingIssuePhoto: null,
+      pendingIssueVideo: null,
     },
     data: {
       issues: [],
@@ -292,9 +293,17 @@
       issueLocation: qs('#issueLocation'),
       issueDepartment: qs('#issueDepartment'),
       issuePhotoInput: qs('#issuePhotoInput'),
+      issueCameraInput: qs('#issueCameraInput'),
       issuePhotoPickBtn: qs('#issuePhotoPickBtn'),
-    issuePhotoHint: qs('#issuePhotoHint'),
+      issueCameraPickBtn: qs('#issueCameraPickBtn'),
+      issuePhotoHint: qs('#issuePhotoHint'),
       issuePhotoPreview: qs('#issuePhotoPreview'),
+      issueVideoInput: qs('#issueVideoInput'),
+      issueVideoCameraInput: qs('#issueVideoCameraInput'),
+      issueVideoPickBtn: qs('#issueVideoPickBtn'),
+      issueVideoCameraPickBtn: qs('#issueVideoCameraPickBtn'),
+      issueVideoHint: qs('#issueVideoHint'),
+      issueVideoPreview: qs('#issueVideoPreview'),
       saveIssueBtn: qs('#saveIssueBtn'),
       clearIssueBtn: qs('#clearIssueBtn'),
       prioritySegment: qs('#prioritySegment'),
@@ -344,6 +353,10 @@
     if (el.issueCameraInput) el.issueCameraInput.addEventListener('change', handleIssuePhotoPicked);
     if (el.issuePhotoPickBtn) el.issuePhotoPickBtn.addEventListener('click', () => { if (el.issuePhotoInput) el.issuePhotoInput.value = ''; });
     if (el.issueCameraPickBtn) el.issueCameraPickBtn.addEventListener('click', () => { if (el.issueCameraInput) el.issueCameraInput.value = ''; });
+    if (el.issueVideoInput) el.issueVideoInput.addEventListener('change', handleIssueVideoPicked);
+    if (el.issueVideoCameraInput) el.issueVideoCameraInput.addEventListener('change', handleIssueVideoPicked);
+    if (el.issueVideoPickBtn) el.issueVideoPickBtn.addEventListener('click', () => { if (el.issueVideoInput) el.issueVideoInput.value = ''; });
+    if (el.issueVideoCameraPickBtn) el.issueVideoCameraPickBtn.addEventListener('click', () => { if (el.issueVideoCameraInput) el.issueVideoCameraInput.value = ''; });
     el.saveIssueBtn.addEventListener('click', saveIssueFromForm);
     el.clearIssueBtn.addEventListener('click', clearIssueForm);
     el.prioritySegment.addEventListener('click', (e) => {
@@ -418,13 +431,15 @@
         cover_photo_url: isInlineDataUrl(issue.cover_photo_url) ? '' : (issue.cover_photo_url || ''),
         cover_thumb_url: isInlineDataUrl(issue.cover_thumb_url) ? '' : (issue.cover_thumb_url || ''),
         before_photos: [],
+        before_videos: [],
         after_photos: [],
+        after_videos: [],
       })),
     };
   }
 
   function isInlineDataUrl(value) {
-    return typeof value === 'string' && value.startsWith('data:image/');
+    return typeof value === 'string' && (value.startsWith('data:image/') || value.startsWith('data:video/'));
   }
 
   async function handleLogin() {
@@ -596,12 +611,14 @@
 
     el.boardList.innerHTML = issues.map(issue => {
       const deptName = getDepartmentName(issue.assigned_department);
-      const thumb = issue.cover_thumb_url || issue.cover_photo_url;
+      const thumb = issue.cover_thumb_url || issue.cover_photo_url || issue.before_videos?.[0]?.thumb_url || issue.before_videos?.[0]?.poster_url || '';
+      const hasVideo = Array.isArray(issue.before_videos) && issue.before_videos.length > 0;
+      const mediaNote = hasVideo ? `<span>•</span><span>${issue.before_videos.length} video${issue.before_videos.length > 1 ? 's' : ''}</span>` : '';
       const thumbHtml = thumb
-        ? `<img class="issue-thumb" src="${thumb}" alt="Issue photo" />`
-        : `<div class="issue-thumb placeholder">NO PHOTO</div>`;
+        ? `<div class="issue-thumb-wrap">${issue.cover_photo_url || issue.cover_thumb_url ? `<img class="issue-thumb" src="${thumb}" alt="Issue photo" />` : `<img class="issue-thumb" src="${thumb}" alt="Issue media poster" />`} ${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div>`
+        : `<div class="issue-thumb placeholder">${hasVideo ? 'VIDEO' : 'NO PHOTO'}</div>`;
       return `
-        <article class="issue-card">
+        <article class="issue-card ${getIssueCardToneClass(issue)}">
           ${thumbHtml}
           <div>
             <div class="issue-title-row">
@@ -623,6 +640,7 @@
             <div class="issue-desc">${escapeHtml(issue.description || '')}</div>
             <div class="meta-row">
               <span>${issue.comment_count || 0} comments</span>
+              ${mediaNote}
               <span>•</span>
               <span>${escapeHtml(issue.issue_no || issue.id)}</span>
               <span>•</span>
@@ -641,6 +659,15 @@
     qsa('[data-status-action]', el.boardList).forEach(btn => btn.addEventListener('click', () => {
       updateIssueStatus(btn.dataset.issueId, btn.dataset.statusAction);
     }));
+  }
+
+  function getIssueCardToneClass(issue) {
+    if (!issue) return 'issue-tone-medium';
+    if (issue.status === 'closed') return 'issue-tone-closed';
+    if (issue.priority === 'critical') return 'issue-tone-critical';
+    if (issue.priority === 'high') return 'issue-tone-high';
+    if (issue.priority === 'low') return 'issue-tone-low';
+    return 'issue-tone-medium';
   }
 
   function renderQuickStatusButtons(issue) {
@@ -684,6 +711,62 @@
     }
   }
 
+  async function handleIssueVideoPicked(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIssueVideoHint('กำลังเตรียมวิดีโอสำหรับอัปโหลด…', '');
+      if (!file.type || !file.type.startsWith('video/')) {
+        throw new Error('invalid_video_type');
+      }
+      if (file.size > 25 * 1024 * 1024) {
+        throw new Error('video_too_large');
+      }
+      const prepared = await prepareIssueVideo(file);
+      revokeIssueVideoPreview();
+      state.ui.pendingIssueVideo = prepared;
+      if (el.issueVideoPreview) {
+        el.issueVideoPreview.src = prepared.previewUrl;
+        el.issueVideoPreview.classList.remove('hidden');
+        el.issueVideoPreview.load();
+      }
+      setIssueVideoHint(`พร้อมอัปโหลดวิดีโอ ${formatBytes(prepared.originalBytes)} • poster ${formatBytes(prepared.posterBytes)}`, 'success');
+    } catch (err) {
+      console.error('Issue video process failed', err);
+      if (el.issueVideoInput) el.issueVideoInput.value = '';
+      if (el.issueVideoCameraInput) el.issueVideoCameraInput.value = '';
+      revokeIssueVideoPreview();
+      state.ui.pendingIssueVideo = null;
+      if (el.issueVideoPreview) {
+        el.issueVideoPreview.pause();
+        el.issueVideoPreview.removeAttribute('src');
+        el.issueVideoPreview.classList.add('hidden');
+      }
+      const msg = err?.message === 'invalid_video_type'
+        ? 'ไฟล์นี้ไม่ใช่วิดีโอ'
+        : err?.message === 'video_too_large'
+          ? 'วิดีโอต้องไม่เกิน 25 MB'
+          : 'เลือกวิดีโอไม่สำเร็จ ลองไฟล์ MP4/MOV ที่ขนาดไม่เกิน 25 MB';
+      setIssueVideoHint(msg, 'error');
+      alert(msg);
+    }
+  }
+
+  function revokeIssueVideoPreview() {
+    const url = state.ui.pendingIssueVideo?.previewUrl;
+    if (url && String(url).startsWith('blob:')) {
+      try { URL.revokeObjectURL(url); } catch (_) {}
+    }
+  }
+
+  function setIssueVideoHint(message, tone = '') {
+    if (!el.issueVideoHint) return;
+    el.issueVideoHint.textContent = message;
+    el.issueVideoHint.classList.remove('error', 'success');
+    if (tone) el.issueVideoHint.classList.add(tone);
+  }
+
   function setIssuePhotoHint(message, tone = '') {
     if (!el.issuePhotoHint) return;
     el.issuePhotoHint.textContent = message;
@@ -703,7 +786,17 @@
     el.issuePhotoPreview.classList.add('hidden');
     delete el.issuePhotoPreview.dataset.imageData;
     delete el.issuePhotoPreview.dataset.thumbData;
+    if (el.issueVideoInput) el.issueVideoInput.value = '';
+    if (el.issueVideoCameraInput) el.issueVideoCameraInput.value = '';
+    revokeIssueVideoPreview();
+    state.ui.pendingIssueVideo = null;
+    if (el.issueVideoPreview) {
+      el.issueVideoPreview.pause();
+      el.issueVideoPreview.removeAttribute('src');
+      el.issueVideoPreview.classList.add('hidden');
+    }
     setIssuePhotoHint('แนะนำรูปไม่เกิน 10 MB • ระบบจะย่อรูปก่อนบันทึกทุกครั้ง • ใช้ได้ทั้งเลือกรูปจากเครื่องและถ่ายรูป');
+    setIssueVideoHint('รองรับวิดีโอไม่เกิน 25 MB • แนะนำ MP4/MOV • ระบบจะสร้าง poster ให้ใช้อัตโนมัติ');
     state.ui.newIssuePriority = 'medium';
     qsa('.segment', el.prioritySegment).forEach(seg => seg.classList.toggle('active', seg.dataset.value === 'medium'));
   }
@@ -716,6 +809,7 @@
     const assignedDepartment = el.issueDepartment.value;
     const priority = state.ui.newIssuePriority;
     const pendingPhoto = state.ui.pendingIssuePhoto;
+    const pendingVideo = state.ui.pendingIssueVideo;
 
     if (!title) return alert('กรุณาใส่หัวข้อ issue');
     if (!location) return alert('กรุณาใส่ location');
@@ -732,6 +826,15 @@
         assigned_department: assignedDepartment,
         location_text: location,
         before_photos: pendingPhoto ? [{ url: pendingPhoto.fullDataUrl, thumb_url: pendingPhoto.thumbDataUrl }] : [],
+        before_videos: pendingVideo ? [{
+          file: pendingVideo.file,
+          preview_url: pendingVideo.previewUrl,
+          poster_url: pendingVideo.posterDataUrl,
+          thumb_url: pendingVideo.thumbDataUrl,
+          mime_type: pendingVideo.mimeType,
+          original_name: pendingVideo.fileName,
+          size: pendingVideo.originalBytes,
+        }] : [],
       });
       clearIssueForm();
       switchView('boardView');
@@ -775,10 +878,12 @@
       reported_by_uid: state.currentUser.uid,
       reported_by_name: state.currentUser.full_name,
       reported_by_department: state.currentUser.department,
-      cover_photo_url: payload.before_photos?.[0]?.url || '',
-      cover_thumb_url: payload.before_photos?.[0]?.thumb_url || '',
+      cover_photo_url: payload.before_photos?.[0]?.url || payload.before_videos?.[0]?.poster_url || '',
+      cover_thumb_url: payload.before_photos?.[0]?.thumb_url || payload.before_videos?.[0]?.thumb_url || payload.before_videos?.[0]?.poster_url || '',
       before_photos: payload.before_photos || [],
+      before_videos: payload.before_videos || [],
       after_photos: [],
+      after_videos: [],
       comments: [],
       comment_count: 0,
       activity_count: 1,
@@ -805,6 +910,7 @@
 
     const issueRef = sdk.doc(sdk.collection(fb.db, 'issues'));
     const uploadedBeforePhotos = await prepareIssuePhotosForFirebase(issueRef.id, payload.before_photos || []);
+    const uploadedBeforeVideos = await prepareIssueVideosForFirebase(issueRef.id, payload.before_videos || []);
 
     await sdk.runTransaction(fb.db, async (tx) => {
       const counterRef = sdk.doc(fb.db, 'counters', 'issue_counter');
@@ -820,6 +926,7 @@
       const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${issueRef.id}/activity`));
       const issueNo = buildIssueNo(nextNumber);
       const beforePhotos = Array.isArray(uploadedBeforePhotos) ? uploadedBeforePhotos : [];
+      const beforeVideos = Array.isArray(uploadedBeforeVideos) ? uploadedBeforeVideos : [];
 
       tx.set(issueRef, {
         issue_no: issueNo,
@@ -841,10 +948,12 @@
         reported_by_uid: state.currentUser.uid,
         reported_by_name: state.currentUser.full_name,
         reported_by_department: state.currentUser.department,
-        cover_photo_url: beforePhotos[0]?.url || '',
-        cover_thumb_url: beforePhotos[0]?.thumb_url || '',
+        cover_photo_url: beforePhotos[0]?.url || beforeVideos[0]?.poster_url || '',
+        cover_thumb_url: beforePhotos[0]?.thumb_url || beforeVideos[0]?.thumb_url || beforeVideos[0]?.poster_url || '',
         before_photos: beforePhotos,
+        before_videos: beforeVideos,
         after_photos: [],
+        after_videos: [],
         comment_count: 0,
         activity_count: 1,
         last_comment_at: null,
@@ -892,6 +1001,74 @@
       thumb_storage_path: uploaded.thumbPath,
       uploaded_at: new Date().toISOString(),
     }];
+  }
+
+  async function prepareIssueVideosForFirebase(issueId, beforeVideos) {
+    if (!Array.isArray(beforeVideos) || beforeVideos.length === 0) return [];
+    if (!isFirebaseLive()) return beforeVideos;
+
+    const first = beforeVideos[0] || {};
+    if (!first.file) return [];
+
+    const uploaded = await uploadIssueVideoSet({
+      issueId,
+      file: first.file,
+      mimeType: first.mime_type || first.file.type || 'video/mp4',
+      fileName: first.original_name || first.file.name || 'video.mp4',
+      posterDataUrl: first.poster_url || '',
+      thumbDataUrl: first.thumb_url || first.poster_url || ''
+    });
+
+    return [{
+      url: uploaded.videoUrl,
+      poster_url: uploaded.posterUrl,
+      thumb_url: uploaded.thumbUrl || uploaded.posterUrl,
+      storage_path: uploaded.videoPath,
+      poster_storage_path: uploaded.posterPath,
+      thumb_storage_path: uploaded.thumbPath,
+      mime_type: first.mime_type || first.file.type || 'video/mp4',
+      original_name: first.original_name || first.file.name || 'video.mp4',
+      size: first.size || first.file.size || 0,
+      uploaded_at: new Date().toISOString(),
+    }];
+  }
+
+  async function uploadIssueVideoSet({ issueId, file, mimeType = 'video/mp4', fileName = 'video.mp4', posterDataUrl = '', thumbDataUrl = '' }) {
+    const fb = window.LAYA_FIREBASE;
+    if (!fb?.ready || !fb.storage || !fb.sdk?.storageRef || !fb.sdk?.uploadBytes || !fb.sdk?.getDownloadURL) {
+      throw new Error('storage_not_ready');
+    }
+
+    const uid = fb.auth.currentUser?.uid;
+    if (!uid) throw new Error('not_signed_in');
+
+    const ts = Date.now();
+    const ext = getFileExtension(fileName, mimeType);
+    const videoPath = `issue_videos/${uid}/${issueId}/before/video_${ts}.${ext}`;
+    const videoRef = fb.sdk.storageRef(fb.storage, videoPath);
+    await fb.sdk.uploadBytes(videoRef, file, { contentType: mimeType, cacheControl: 'public,max-age=3600' });
+    const videoUrl = await fb.sdk.getDownloadURL(videoRef);
+
+    let posterUrl = '';
+    let thumbUrl = '';
+    let posterPath = '';
+    let thumbPath = '';
+
+    if (posterDataUrl) {
+      posterPath = `issue_videos/${uid}/${issueId}/before/poster_${ts}.jpg`;
+      const posterRef = fb.sdk.storageRef(fb.storage, posterPath);
+      await fb.sdk.uploadString(posterRef, posterDataUrl, 'data_url', { contentType: 'image/jpeg', cacheControl: 'public,max-age=3600' });
+      posterUrl = await fb.sdk.getDownloadURL(posterRef);
+    }
+
+    if (thumbDataUrl) {
+      thumbPath = `issue_videos/${uid}/${issueId}/before/thumb_${ts}.jpg`;
+      const thumbRef = fb.sdk.storageRef(fb.storage, thumbPath);
+      await fb.sdk.uploadString(thumbRef, thumbDataUrl, 'data_url', { contentType: 'image/jpeg', cacheControl: 'public,max-age=3600' });
+      thumbUrl = await fb.sdk.getDownloadURL(thumbRef);
+    }
+
+    return { videoUrl, videoPath, posterUrl, posterPath, thumbUrl, thumbPath };
   }
 
   async function uploadIssuePhotoSet({ issueId, fullDataUrl, thumbDataUrl, mimeType = 'image/jpeg' }) {
@@ -1174,7 +1351,7 @@
     el.issueModalContent.innerHTML = `
       <div class="issue-detail-grid">
         <div>
-          ${issue.cover_photo_url ? `<img class="issue-hero" src="${issue.cover_photo_url}" alt="Issue image" />` : `<div class="issue-hero placeholder issue-thumb">NO PHOTO</div>`}
+          ${renderIssueMediaBlock(issue)}
         </div>
         <div>
           <div class="detail-head">
@@ -1190,6 +1367,7 @@
             <div><strong>Issue No:</strong> ${escapeHtml(issue.issue_no || issue.id)}</div>
             <div><strong>Reported by:</strong> ${escapeHtml(issue.reported_by_name || '-')}</div>
             <div><strong>Created:</strong> ${formatDateTime(issue.created_at)}</div>
+            <div><strong>Media:</strong> ${(issue.before_photos?.length || 0)} photo / ${(issue.before_videos?.length || 0)} video</div>
           </div>
           <div class="muted">${escapeHtml(issue.description || '')}</div>
 
@@ -1233,6 +1411,35 @@
         if (!isFirebaseLive()) openIssueModal(issue.id);
       });
     }
+  }
+
+  function renderIssueMediaBlock(issue) {
+    const photos = Array.isArray(issue.before_photos) ? issue.before_photos.filter(Boolean) : [];
+    const videos = Array.isArray(issue.before_videos) ? issue.before_videos.filter(Boolean) : [];
+    const parts = [];
+
+    if (photos.length) {
+      parts.push(...photos.map((photo, index) => `
+        <div class="issue-media-card">
+          <img class="issue-hero" src="${photo.url || photo.thumb_url || issue.cover_photo_url || ''}" alt="Issue image ${index + 1}" />
+        </div>
+      `));
+    }
+
+    if (videos.length) {
+      parts.push(...videos.map((video, index) => `
+        <div class="issue-media-card">
+          <div class="issue-media-label">Video ${index + 1}</div>
+          <video class="issue-video" src="${video.url || ''}" ${video.poster_url ? `poster="${video.poster_url}"` : ''} controls playsinline preload="metadata"></video>
+        </div>
+      `));
+    }
+
+    if (!parts.length) {
+      return `<div class="issue-hero placeholder issue-thumb">NO MEDIA</div>`;
+    }
+
+    return `<div class="issue-media-stack">${parts.join('')}</div>`;
   }
 
   function closeIssueModal() {
@@ -1479,6 +1686,10 @@
     return {
       id: docSnap.id,
       ...data,
+      before_photos: Array.isArray(data.before_photos) ? data.before_photos : [],
+      before_videos: Array.isArray(data.before_videos) ? data.before_videos : [],
+      after_photos: Array.isArray(data.after_photos) ? data.after_photos : [],
+      after_videos: Array.isArray(data.after_videos) ? data.after_videos : [],
       created_at: normalizeDateValue(data.created_at),
       updated_at: normalizeDateValue(data.updated_at),
       last_activity_at: normalizeDateValue(data.last_activity_at),
@@ -1770,6 +1981,83 @@
       if (estimateDataUrlBytes(candidate) <= targetBytes) break;
     }
     return best;
+  }
+
+  async function prepareIssueVideo(file) {
+    const previewUrl = URL.createObjectURL(file);
+    let posterDataUrl = '';
+    let thumbDataUrl = '';
+    try {
+      const poster = await extractVideoPoster(file);
+      posterDataUrl = poster.posterDataUrl || '';
+      thumbDataUrl = poster.thumbDataUrl || poster.posterDataUrl || '';
+    } catch (err) {
+      console.warn('video poster generation failed', err);
+    }
+
+    return {
+      file,
+      fileName: file.name || 'video.mp4',
+      mimeType: file.type || 'video/mp4',
+      originalBytes: file.size || 0,
+      previewUrl,
+      posterDataUrl,
+      thumbDataUrl,
+      posterBytes: estimateDataUrlBytes(posterDataUrl),
+    };
+  }
+
+  async function extractVideoPoster(file) {
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.muted = true;
+      video.playsInline = true;
+      video.src = objectUrl;
+
+      await new Promise((resolve, reject) => {
+        video.onerror = () => reject(new Error('video_load_failed'));
+        video.onloadeddata = () => resolve();
+      });
+
+      const captureAt = Number.isFinite(video.duration) && video.duration > 0.2 ? Math.min(0.2, video.duration / 2) : 0;
+      if (captureAt > 0) {
+        await new Promise((resolve, reject) => {
+          const onSeeked = () => { video.removeEventListener('seeked', onSeeked); resolve(); };
+          video.addEventListener('seeked', onSeeked);
+          video.currentTime = captureAt;
+          setTimeout(() => { video.removeEventListener('seeked', onSeeked); resolve(); }, 1200);
+        });
+      }
+
+      const posterDataUrl = videoFrameToDataUrl(video, 1280, 0.78);
+      const thumbDataUrl = videoFrameToDataUrl(video, 480, 0.62);
+      return { posterDataUrl, thumbDataUrl };
+    } finally {
+      try { URL.revokeObjectURL(objectUrl); } catch (_) {}
+    }
+  }
+
+  function videoFrameToDataUrl(video, maxSize = 1280, quality = 0.76) {
+    const scale = Math.min(1, maxSize / Math.max(video.videoWidth || 1, video.videoHeight || 1));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round((video.videoWidth || 1) * scale));
+    canvas.height = Math.max(1, Math.round((video.videoHeight || 1) * scale));
+    const ctx = canvas.getContext('2d', { alpha: false });
+    ctx.fillStyle = '#111111';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', quality);
+  }
+
+  function getFileExtension(fileName, mimeType = '') {
+    const clean = String(fileName || '').split('?')[0];
+    const ext = clean.includes('.') ? clean.split('.').pop().toLowerCase() : '';
+    if (ext) return ext;
+    if (mimeType.includes('quicktime')) return 'mov';
+    if (mimeType.includes('webm')) return 'webm';
+    return 'mp4';
   }
 
   async function optimizeIssuePhoto(file) {

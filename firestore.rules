@@ -154,7 +154,9 @@ service cloud.firestore {
         'reported_by_name',
         'reported_by_department',
         'before_photos',
+        'before_videos',
         'after_photos',
+        'after_videos',
         'comment_count',
         'activity_count',
         'created_at',
@@ -190,7 +192,9 @@ service cloud.firestore {
         'cover_photo_url',
         'cover_thumb_url',
         'before_photos',
+        'before_videos',
         'after_photos',
+        'after_videos',
 
         'comment_count',
         'activity_count',
@@ -233,7 +237,9 @@ service cloud.firestore {
         request.resource.data.reported_by_department == myDept() &&
 
         request.resource.data.before_photos is list &&
+        request.resource.data.before_videos is list &&
         request.resource.data.after_photos is list &&
+        request.resource.data.after_videos is list &&
 
         request.resource.data.comment_count == 0 &&
         request.resource.data.activity_count >= 1;
@@ -249,6 +255,7 @@ service cloud.firestore {
         'assigned_to_uid',
         'assigned_to_name',
         'after_photos',
+        'after_videos',
         'comment_count',
         'activity_count',
         'last_comment_at',
@@ -270,6 +277,7 @@ service cloud.firestore {
       return changed.hasOnly([
         'status',
         'after_photos',
+        'after_videos',
         'comment_count',
         'activity_count',
         'last_comment_at',
