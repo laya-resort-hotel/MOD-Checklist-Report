@@ -34,7 +34,7 @@
       selectedTemplateCode: null,
       openIssueId: null,
       liveIssueComments: [],
-      pendingIssuePhoto: null,
+      pendingIssuePhotos: [],
       pendingIssueVideo: null,
       pendingEvidenceBusy: false,
       checklistBuilderSections: [],
@@ -307,15 +307,11 @@
       issueLocation: qs('#issueLocation'),
       issueDepartment: qs('#issueDepartment'),
       issuePhotoInput: qs('#issuePhotoInput'),
-      issueCameraInput: qs('#issueCameraInput'),
       issuePhotoPickBtn: qs('#issuePhotoPickBtn'),
-      issueCameraPickBtn: qs('#issueCameraPickBtn'),
       issuePhotoHint: qs('#issuePhotoHint'),
-      issuePhotoPreview: qs('#issuePhotoPreview'),
+      issuePhotoPreviewGrid: qs('#issuePhotoPreviewGrid'),
       issueVideoInput: qs('#issueVideoInput'),
-      issueVideoCameraInput: qs('#issueVideoCameraInput'),
       issueVideoPickBtn: qs('#issueVideoPickBtn'),
-      issueVideoCameraPickBtn: qs('#issueVideoCameraPickBtn'),
       issueVideoHint: qs('#issueVideoHint'),
       issueVideoPreview: qs('#issueVideoPreview'),
       saveIssueBtn: qs('#saveIssueBtn'),
@@ -385,13 +381,9 @@
       renderBoard();
     });
     el.issuePhotoInput.addEventListener('change', handleIssuePhotoPicked);
-    if (el.issueCameraInput) el.issueCameraInput.addEventListener('change', handleIssuePhotoPicked);
     if (el.issuePhotoPickBtn) el.issuePhotoPickBtn.addEventListener('click', () => { if (el.issuePhotoInput) el.issuePhotoInput.value = ''; });
-    if (el.issueCameraPickBtn) el.issueCameraPickBtn.addEventListener('click', () => { if (el.issueCameraInput) el.issueCameraInput.value = ''; });
     if (el.issueVideoInput) el.issueVideoInput.addEventListener('change', handleIssueVideoPicked);
-    if (el.issueVideoCameraInput) el.issueVideoCameraInput.addEventListener('change', handleIssueVideoPicked);
     if (el.issueVideoPickBtn) el.issueVideoPickBtn.addEventListener('click', () => { if (el.issueVideoInput) el.issueVideoInput.value = ''; });
-    if (el.issueVideoCameraPickBtn) el.issueVideoCameraPickBtn.addEventListener('click', () => { if (el.issueVideoCameraInput) el.issueVideoCameraInput.value = ''; });
     el.saveIssueBtn.addEventListener('click', saveIssueFromForm);
     el.clearIssueBtn.addEventListener('click', clearIssueForm);
     el.prioritySegment.addEventListener('click', (e) => {
@@ -982,35 +974,56 @@
     el.issueModal.classList.remove('hidden');
   }
 
+  function renderIssuePhotoPreviewGrid(items = []) {
+    if (!el.issuePhotoPreviewGrid) return;
+    if (!items.length) {
+      el.issuePhotoPreviewGrid.innerHTML = '';
+      el.issuePhotoPreviewGrid.classList.add('hidden');
+      return;
+    }
+    el.issuePhotoPreviewGrid.innerHTML = items.map((item, index) => `
+      <div class="photo-preview-card">
+        <img src="${escapeHtml(item.previewDataUrl || item.thumbDataUrl || item.fullDataUrl || '')}" alt="Issue photo ${index + 1}" />
+        <div class="photo-preview-badge">รูป ${index + 1}</div>
+      </div>
+    `).join('');
+    el.issuePhotoPreviewGrid.classList.remove('hidden');
+  }
+
   async function handleIssuePhotoPicked(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
 
     try {
-      setIssuePhotoHint('กำลังย่อรูปก่อนอัปโหลด…', '');
-      if (!file.type || !file.type.startsWith('image/')) {
-        throw new Error('invalid_file_type');
+      setIssuePhotoHint(`กำลังย่อรูป 0/${files.length}...`, '');
+      const optimizedItems = [];
+      let originalTotal = 0;
+      let compressedTotal = 0;
+      for (let i = 0; i < files.length; i += 1) {
+        const file = files[i];
+        if (!file.type || !file.type.startsWith('image/')) {
+          throw new Error('invalid_file_type');
+        }
+        setIssuePhotoHint(`กำลังย่อรูป ${i + 1}/${files.length}...`, '');
+        const optimized = await optimizeIssuePhoto(file);
+        optimizedItems.push(optimized);
+        originalTotal += optimized.originalBytes || 0;
+        compressedTotal += optimized.fullBytes || 0;
       }
-      const optimized = await optimizeIssuePhoto(file);
-      state.ui.pendingIssuePhoto = optimized;
-      el.issuePhotoPreview.src = optimized.previewDataUrl || optimized.thumbDataUrl || optimized.fullDataUrl;
-      el.issuePhotoPreview.dataset.lockedFromCurrentSelection = '1';
-      el.issuePhotoPreview.classList.remove('hidden');
+      state.ui.pendingIssuePhotos = optimizedItems;
+      renderIssuePhotoPreviewGrid(optimizedItems);
       setIssuePhotoHint(
-        `ย่อรูปแล้ว ${formatBytes(optimized.originalBytes)} → ${formatBytes(optimized.fullBytes)} • thumbnail ${formatBytes(optimized.thumbBytes)}`,
+        `เลือกรูปแล้ว ${optimizedItems.length} รูป • รวม ${formatBytes(originalTotal)} → ${formatBytes(compressedTotal)}`,
         'success'
       );
     } catch (err) {
       console.error('Issue photo process failed', err);
       el.issuePhotoInput.value = '';
-      if (el.issueCameraInput) el.issueCameraInput.value = '';
-      el.issuePhotoPreview.src = '';
-      el.issuePhotoPreview.classList.add('hidden');
-      delete el.issuePhotoPreview.dataset.lockedFromCurrentSelection;
-      state.ui.pendingIssuePhoto = null;
+      renderIssuePhotoPreviewGrid([]);
+      state.ui.pendingIssuePhotos = [];
       const msg = err?.message === 'invalid_file_type'
-        ? 'ไฟล์นี้ไม่ใช่รูปภาพ'
-        : 'เลือกรูปไม่สำเร็จ ลองใช้รูป JPG/PNG เปิดสิทธิ์รูปภาพ/กล้อง แล้วลองอีกครั้ง';
+        ? 'มีไฟล์ที่ไม่ใช่รูปภาพ'
+        : 'เลือกรูปไม่สำเร็จ ลองใช้รูป JPG/PNG แล้วลองอีกครั้ง';
       setIssuePhotoHint(msg, 'error');
       alert(msg);
     }
@@ -1031,14 +1044,10 @@
       const prepared = await prepareIssueVideo(file);
       revokeIssueVideoPreview();
       state.ui.pendingIssueVideo = prepared;
-      const hasCurrentPhotoFile = Boolean(el.issuePhotoInput?.files?.length || el.issueCameraInput?.files?.length);
-      if (!hasCurrentPhotoFile && !el.issuePhotoPreview?.dataset?.lockedFromCurrentSelection) {
-        // กันกรณีรูปเก่าค้างจาก issue ก่อนหน้าแล้วมาปนกับวิดีโอใหม่
-        state.ui.pendingIssuePhoto = null;
-        if (el.issuePhotoPreview) {
-          el.issuePhotoPreview.src = '';
-          el.issuePhotoPreview.classList.add('hidden');
-        }
+      const hasCurrentPhotoFile = Boolean(el.issuePhotoInput?.files?.length || state.ui.pendingIssuePhotos?.length);
+      if (!hasCurrentPhotoFile) {
+        state.ui.pendingIssuePhotos = [];
+        renderIssuePhotoPreviewGrid([]);
         setIssuePhotoHint('ยังไม่ได้เลือกรูป • หากต้องการแนบเฉพาะวิดีโอ ระบบจะใช้ poster จากวิดีโอแทน', '');
       }
       if (el.issueVideoPreview) {
@@ -1050,7 +1059,6 @@
     } catch (err) {
       console.error('Issue video process failed', err);
       if (el.issueVideoInput) el.issueVideoInput.value = '';
-      if (el.issueVideoCameraInput) el.issueVideoCameraInput.value = '';
       revokeIssueVideoPreview();
       state.ui.pendingIssueVideo = null;
       if (el.issueVideoPreview) {
@@ -1096,15 +1104,9 @@
     el.issueType.value = 'water_leak';
     el.issueDepartment.value = 'ENG';
     el.issuePhotoInput.value = '';
-    if (el.issueCameraInput) el.issueCameraInput.value = '';
-    el.issuePhotoPreview.src = '';
-    el.issuePhotoPreview.classList.add('hidden');
-    delete el.issuePhotoPreview.dataset.imageData;
-    delete el.issuePhotoPreview.dataset.thumbData;
-    delete el.issuePhotoPreview.dataset.lockedFromCurrentSelection;
-    state.ui.pendingIssuePhoto = null;
+    renderIssuePhotoPreviewGrid([]);
+    state.ui.pendingIssuePhotos = [];
     if (el.issueVideoInput) el.issueVideoInput.value = '';
-    if (el.issueVideoCameraInput) el.issueVideoCameraInput.value = '';
     revokeIssueVideoPreview();
     state.ui.pendingIssueVideo = null;
     if (el.issueVideoPreview) {
@@ -1112,7 +1114,7 @@
       el.issueVideoPreview.removeAttribute('src');
       el.issueVideoPreview.classList.add('hidden');
     }
-    setIssuePhotoHint('แนะนำรูปไม่เกิน 10 MB • ระบบจะย่อรูปก่อนบันทึกทุกครั้ง • ใช้ได้ทั้งเลือกรูปจากเครื่องและถ่ายรูป');
+    setIssuePhotoHint('แนะนำรูปไม่เกิน 10 MB ต่อรูป • เลือกได้หลายรูป • ระบบจะย่อรูปก่อนบันทึกทุกครั้ง');
     setIssueVideoHint('รองรับวิดีโอไม่เกิน 25 MB • แนะนำ MP4/MOV • ระบบจะสร้าง poster ให้ใช้อัตโนมัติ');
     state.ui.newIssuePriority = 'medium';
     qsa('.segment', el.prioritySegment).forEach(seg => seg.classList.toggle('active', seg.dataset.value === 'medium'));
@@ -1125,7 +1127,7 @@
     const location = el.issueLocation.value.trim();
     const assignedDepartment = el.issueDepartment.value;
     const priority = state.ui.newIssuePriority;
-    const pendingPhoto = state.ui.pendingIssuePhoto;
+    const pendingPhotos = Array.isArray(state.ui.pendingIssuePhotos) ? state.ui.pendingIssuePhotos : [];
     const pendingVideo = state.ui.pendingIssueVideo;
 
     if (!title) return alert('กรุณาใส่หัวข้อ issue');
@@ -1142,7 +1144,7 @@
         priority,
         assigned_department: assignedDepartment,
         location_text: location,
-        before_photos: pendingPhoto ? [{ url: pendingPhoto.fullDataUrl, thumb_url: pendingPhoto.thumbDataUrl }] : [],
+        before_photos: pendingPhotos.map(photo => ({ url: photo.fullDataUrl, thumb_url: photo.thumbDataUrl })),
         before_videos: pendingVideo ? [{
           file: pendingVideo.file,
           preview_url: pendingVideo.previewUrl,
@@ -1317,25 +1319,30 @@
     if (!Array.isArray(beforePhotos) || beforePhotos.length === 0) return [];
     if (!isFirebaseLive()) return beforePhotos;
 
-    const first = beforePhotos[0] || {};
-    const fullDataUrl = first.url || '';
-    const thumbDataUrl = first.thumb_url || fullDataUrl;
-    if (!fullDataUrl) return [];
+    const uploadedItems = [];
+    for (let i = 0; i < beforePhotos.length; i += 1) {
+      const item = beforePhotos[i] || {};
+      const fullDataUrl = item.url || '';
+      const thumbDataUrl = item.thumb_url || fullDataUrl;
+      if (!fullDataUrl) continue;
 
-    const uploaded = await uploadIssuePhotoSet({
-      issueId,
-      fullDataUrl,
-      thumbDataUrl,
-      mimeType: 'image/jpeg'
-    });
+      const uploaded = await uploadIssuePhotoSet({
+        issueId,
+        fullDataUrl,
+        thumbDataUrl,
+        mimeType: 'image/jpeg'
+      });
 
-    return [{
-      url: uploaded.fullUrl,
-      thumb_url: uploaded.thumbUrl,
-      storage_path: uploaded.fullPath,
-      thumb_storage_path: uploaded.thumbPath,
-      uploaded_at: new Date().toISOString(),
-    }];
+      uploadedItems.push({
+        url: uploaded.fullUrl,
+        thumb_url: uploaded.thumbUrl,
+        storage_path: uploaded.fullPath,
+        thumb_storage_path: uploaded.thumbPath,
+        uploaded_at: new Date().toISOString(),
+      });
+    }
+
+    return uploadedItems;
   }
 
   async function prepareIssueVideosForFirebase(issueId, beforeVideos) {
