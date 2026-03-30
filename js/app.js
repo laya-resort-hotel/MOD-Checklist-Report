@@ -2,10 +2,10 @@
   const APP_KEY = 'laya_mod_checklist_v1';
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
   const DEMO_USERS = [
-    { uid: 'uid_admin_9000', employee_id: '9000', password: '9000', full_name: 'Admin Demo', role: 'admin', department: 'ADMIN' },
     { uid: 'uid_mod_9901', employee_id: '9901', password: '9901', full_name: 'Somchai MOD', role: 'mod', department: 'MOD' },
-    { uid: 'uid_eng_3001', employee_id: '3001', password: '3001', full_name: 'Engineering Demo', role: 'dept_user', department: 'ENG' },
-    { uid: 'uid_hk_4001', employee_id: '4001', password: '4001', full_name: 'Housekeeping Demo', role: 'dept_user', department: 'HK' },
+    { uid: 'uid_mod_9902', employee_id: '9902', password: '9902', full_name: 'Nok MOD', role: 'mod', department: 'MOD' },
+    { uid: 'uid_mod_9903', employee_id: '9903', password: '9903', full_name: 'Brown MOD', role: 'mod', department: 'MOD' },
+    { uid: 'uid_mod_9904', employee_id: '9904', password: '9904', full_name: 'Mint MOD', role: 'mod', department: 'MOD' },
   ];
 
   const DEPARTMENTS = [
@@ -28,6 +28,7 @@
     firebaseIssueCommentsUnsub: null,
     firebaseTemplatesUnsub: null,
     firebaseChecklistRunsUnsub: null,
+    firebaseUsersUnsub: null,
     ui: {
       activeView: 'boardView',
       boardFilter: 'all',
@@ -50,6 +51,7 @@
       baseTemplates: [],
       customTemplates: [],
       counters: { issue: 0, checklist: 0 },
+      teamMembers: [],
     },
   };
 
@@ -68,6 +70,7 @@
     if (!window.LAYA_FIREBASE_CONFIG_PRESENT && !state.data.issues.length && !state.data.activity.length) {
       seedDemoData();
     }
+    state.data.teamMembers = DEMO_USERS.map(user => ({ uid: user.uid, employee_id: user.employee_id, full_name: user.full_name, role: 'mod', department: 'MOD', is_active: true }));
     renderTemplateCards();
     renderAll();
   }
@@ -133,17 +136,7 @@
   }
 
   function syncRegisterRoleDepartment() {
-    if (!el.registerRole || !el.registerDepartment) return;
-    const role = el.registerRole.value;
-    if (role === 'mod') {
-      el.registerDepartment.value = 'MOD';
-      el.registerDepartment.disabled = true;
-    } else {
-      el.registerDepartment.disabled = false;
-      if (el.registerDepartment.value === 'MOD' || el.registerDepartment.value === 'ADMIN') {
-        el.registerDepartment.value = 'ENG';
-      }
-    }
+    return;
   }
 
   function employeeIdToEmail(employeeId) {
@@ -171,7 +164,7 @@
     } catch (_) {}
   }
 
-  function buildUserProfile({ employeeId, fullName, role, department, position = '', email = '' }) {
+  function buildUserProfile({ employeeId, fullName, role = 'mod', department = 'MOD', position = '', email = '' }) {
     return {
       employee_id: employeeId,
       full_name: fullName,
@@ -224,6 +217,8 @@
         stopIssueCommentsSync();
         stopTemplatesSync();
         stopChecklistRunsSync();
+        stopUsersSync();
+        state.data.teamMembers = [];
         state.ui.liveIssueComments = [];
         renderAuthState();
         return;
@@ -254,6 +249,7 @@
         state.currentUser = { uid: user.uid, ...profile };
         startTemplatesSync();
         startChecklistRunsSync();
+        startUsersSync();
 
         try {
           await fb.sdk.updateDoc(userRef, {
@@ -337,6 +333,7 @@
       fabNewIssue: qs('#fabNewIssue'),
       modeBanner: qs('#modeBanner'),
       connectionBadge: qs('#connectionBadge'),
+      teamMembersList: qs('#teamMembersList'),
     });
 
     populateDepartmentSelects();
@@ -348,7 +345,7 @@
     el.logoutBtn.addEventListener('click', handleLogout);
     el.showSignInTab.addEventListener('click', () => showAuthTab('signin'));
     el.showRegisterTab.addEventListener('click', () => showAuthTab('register'));
-    el.registerRole.addEventListener('change', syncRegisterRoleDepartment);
+    if (el.registerRole) el.registerRole.addEventListener('change', syncRegisterRoleDepartment);
     qsa('.demo-user').forEach(btn => btn.addEventListener('click', () => {
       el.loginEmployeeId.value = btn.dataset.id;
       el.loginPassword.value = btn.dataset.pass;
@@ -531,8 +528,8 @@
 
     const employeeId = el.registerEmployeeId.value.trim();
     const fullName = el.registerFullName.value.trim();
-    const role = el.registerRole.value;
-    const department = role === 'mod' ? 'MOD' : el.registerDepartment.value;
+    const role = 'mod';
+    const department = 'MOD';
     const position = '';
     const password = el.registerPassword.value.trim();
     const confirmPassword = el.registerConfirmPassword.value.trim();
@@ -597,6 +594,8 @@
     state.currentUser = null;
     stopIssueSync();
     stopIssueCommentsSync();
+    stopUsersSync();
+    state.data.teamMembers = [];
     persist();
     renderAuthState();
   }
@@ -606,7 +605,8 @@
     el.loginScreen.classList.toggle('hidden', loggedIn);
     el.appShell.classList.toggle('hidden', !loggedIn);
     if (!loggedIn) return;
-    el.welcomeText.textContent = `${state.currentUser.full_name} • ${state.currentUser.role.toUpperCase()} • ${state.currentUser.department}`;
+    el.welcomeText.textContent = `${state.currentUser.full_name} • MOD Team`;
+    renderTeamMembers();
   }
 
   function switchView(viewId) {
@@ -620,6 +620,7 @@
     if (viewId === 'activityView') renderActivity();
     if (viewId === 'checklistView') renderTemplateCards();
     if (viewId === 'closedView') renderClosedJobs();
+    if (viewId === 'moreView') renderTeamMembers();
   }
 
   function renderAll() {
@@ -630,6 +631,7 @@
     renderTemplateCards();
     renderActivity();
     renderClosedJobs();
+    renderTeamMembers();
     switchView(state.ui.activeView);
   }
 
@@ -1703,7 +1705,9 @@
               <div id="detailEvidenceStatus" class="detail-evidence-status muted">หลักฐานที่อัปแล้วจะแสดงด้านซ้ายทันที</div>
             </div>
             <div class="comment-box">
-              <textarea id="detailCommentText" rows="3" placeholder="Add comment"></textarea>
+              <textarea id="detailCommentText" rows="3" placeholder="พิมพ์คอมเมนต์ หรือพิมพ์ @ ตามด้วยชื่อเพื่อสั่งงาน"></textarea>
+              <div id="detailMentionBox" class="mention-box hidden"></div>
+              <div class="muted mention-hint">พิมพ์ @ แล้วระบบจะแนะนำชื่อ Team member ให้</div>
               <div class="action-row">
                 <button class="btn btn-secondary" id="addCommentBtn">Add Comment</button>
               </div>
@@ -1737,13 +1741,16 @@
       input.addEventListener('change', (event) => handleDetailEvidencePicked(issue.id, kind, event));
     });
 
+    setupCommentMentions(issue.id);
+
     const addCommentBtn = qs('#addCommentBtn', el.issueModalContent);
     if (addCommentBtn) {
       addCommentBtn.addEventListener('click', async () => {
         const input = qs('#detailCommentText', el.issueModalContent);
         const message = input.value.trim();
         if (!message) return;
-        await addIssueComment(issue.id, message);
+        const mentions = extractMentionNames(message);
+        await addIssueComment(issue.id, message, mentions);
         if (!isFirebaseLive()) openIssueModal(issue.id);
       });
     }
@@ -2073,7 +2080,7 @@
     }
   }
 
-  async function addIssueComment(issueId, message) {
+  async function addIssueComment(issueId, message, mentions = []) {
     const issue = state.data.issues.find(i => i.id === issueId);
     if (!issue || !canWorkIssue(issue)) return;
 
@@ -2087,6 +2094,7 @@
         by_name: state.currentUser.full_name,
         created_at: now,
         message,
+        mentions,
       });
       issue.comment_count = issue.comments.length;
       issue.updated_at = now;
@@ -2125,7 +2133,7 @@
           by_name: state.currentUser.full_name,
           by_role: state.currentUser.role,
           by_department: state.currentUser.department,
-          mentions: [],
+          mentions,
           photos: [],
           created_at: sdk.serverTimestamp(),
         });
@@ -2227,12 +2235,7 @@
     stopIssueSync();
     const fb = window.LAYA_FIREBASE;
     const sdk = fb.sdk;
-    let q = null;
-    if (state.currentUser.role === 'dept_user') {
-      q = sdk.query(sdk.collection(fb.db, 'issues'), sdk.where('assigned_department', '==', state.currentUser.department));
-    } else {
-      q = sdk.query(sdk.collection(fb.db, 'issues'));
-    }
+    const q = sdk.query(sdk.collection(fb.db, 'issues'));
 
     state.firebaseIssuesUnsub = sdk.onSnapshot(q, (snap) => {
       state.data.issues = snap.docs.map(normalizeIssueDoc);
@@ -2333,6 +2336,142 @@
     return msg ? `บันทึกข้อมูลไม่สำเร็จ: ${msg}` : 'บันทึกข้อมูลไม่สำเร็จ';
   }
 
+
+  function startUsersSync() {
+    if (!isFirebaseLive() || !state.currentUser) {
+      state.data.teamMembers = DEMO_USERS.map(user => ({
+        uid: user.uid,
+        employee_id: user.employee_id,
+        full_name: user.full_name,
+        role: 'mod',
+        department: 'MOD',
+        is_active: true,
+      }));
+      renderTeamMembers();
+      return;
+    }
+    stopUsersSync();
+    const fb = window.LAYA_FIREBASE;
+    const sdk = fb.sdk;
+    const q = sdk.query(sdk.collection(fb.db, 'users'));
+    state.firebaseUsersUnsub = sdk.onSnapshot(q, (snap) => {
+      state.data.teamMembers = snap.docs.map(docSnap => ({ uid: docSnap.id, ...docSnap.data() }))
+        .filter(user => user.is_active !== false)
+        .sort((a, b) => String(a.full_name || '').localeCompare(String(b.full_name || ''), 'th'));
+      renderTeamMembers();
+    }, (err) => {
+      console.error('users onSnapshot failed', err);
+    });
+  }
+
+  function stopUsersSync() {
+    if (typeof state.firebaseUsersUnsub === 'function') {
+      try { state.firebaseUsersUnsub(); } catch (_) {}
+    }
+    state.firebaseUsersUnsub = null;
+  }
+
+  function getTeamMembers() {
+    if (Array.isArray(state.data.teamMembers) && state.data.teamMembers.length) return state.data.teamMembers;
+    return DEMO_USERS.map(user => ({
+      uid: user.uid,
+      employee_id: user.employee_id,
+      full_name: user.full_name,
+      role: 'mod',
+      department: 'MOD',
+      is_active: true,
+    }));
+  }
+
+  function renderTeamMembers() {
+    if (!el.teamMembersList) return;
+    const members = getTeamMembers();
+    if (!members.length) {
+      el.teamMembersList.innerHTML = '<div class="empty-state">ยังไม่มีรายชื่อผู้ใช้</div>';
+      return;
+    }
+    el.teamMembersList.innerHTML = members.map(member => `
+      <div class="team-member-item">
+        <div class="team-member-avatar">${escapeHtml((member.full_name || '?').trim().charAt(0).toUpperCase())}</div>
+        <div>
+          <div class="team-member-name">${escapeHtml(member.full_name || '-')}</div>
+          <div class="team-member-meta">MOD • ${escapeHtml(member.employee_id || '')}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function getMentionContext(text, caretPos) {
+    const value = String(text || '');
+    const cursor = typeof caretPos === 'number' ? caretPos : value.length;
+    const before = value.slice(0, cursor);
+    const atIndex = before.lastIndexOf('@');
+    if (atIndex < 0) return null;
+    const prefix = before.slice(atIndex + 1);
+    if (prefix.includes('\n')) return null;
+    if (/\s/.test(prefix)) return null;
+    if (atIndex > 0 && /\S/.test(before.charAt(atIndex - 1))) return null;
+    return { start: atIndex, end: cursor, query: prefix.trim().toLowerCase() };
+  }
+
+  function extractMentionNames(message) {
+    const text = String(message || '');
+    const members = getTeamMembers();
+    return members
+      .filter(member => member.full_name && text.toLowerCase().includes(`@${member.full_name.toLowerCase()}`))
+      .map(member => member.full_name);
+  }
+
+  function setupCommentMentions(issueId) {
+    const input = qs('#detailCommentText', el.issueModalContent);
+    const box = qs('#detailMentionBox', el.issueModalContent);
+    if (!input || !box) return;
+
+    const refresh = () => {
+      const ctx = getMentionContext(input.value, input.selectionStart);
+      if (!ctx) {
+        box.innerHTML = '';
+        box.classList.add('hidden');
+        return;
+      }
+      const members = getTeamMembers().filter(member => {
+        const name = String(member.full_name || '').toLowerCase();
+        return !ctx.query || name.includes(ctx.query);
+      }).slice(0, 6);
+      if (!members.length) {
+        box.innerHTML = '';
+        box.classList.add('hidden');
+        return;
+      }
+      box.innerHTML = members.map(member => `
+        <button type="button" class="mention-option" data-mention-name="${escapeHtml(member.full_name || '')}">
+          <span class="mention-option-name">${escapeHtml(member.full_name || '')}</span>
+          <span class="mention-option-meta">MOD</span>
+        </button>
+      `).join('');
+      box.classList.remove('hidden');
+
+      qsa('.mention-option', box).forEach(btn => btn.addEventListener('click', () => {
+        const name = btn.dataset.mentionName || '';
+        const current = getMentionContext(input.value, input.selectionStart);
+        if (!current) return;
+        const prefix = input.value.slice(0, current.start);
+        const suffix = input.value.slice(current.end);
+        input.value = `${prefix}@${name} ${suffix}`;
+        const caret = (prefix + `@${name} `).length;
+        input.focus();
+        input.setSelectionRange(caret, caret);
+        box.classList.add('hidden');
+      }));
+    };
+
+    input.addEventListener('input', refresh);
+    input.addEventListener('click', refresh);
+    input.addEventListener('keyup', refresh);
+    input.addEventListener('blur', () => setTimeout(() => box.classList.add('hidden'), 120));
+    input.addEventListener('focus', refresh);
+  }
+
   function renderActivity() {
     const items = [...state.data.activity].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     if (!items.length) {
@@ -2355,30 +2494,22 @@
 
   function getVisibleIssuesForCurrentUser() {
     if (!state.currentUser) return [];
-    if (['admin', 'mod', 'viewer'].includes(state.currentUser.role)) return [...state.data.issues];
-    if (state.currentUser.role === 'dept_user') {
-      return state.data.issues.filter(i => i.assigned_department === state.currentUser.department);
-    }
-    return [];
+    return [...state.data.issues];
   }
 
   function canWorkIssue(issue) {
-    if (!state.currentUser || !issue) return false;
-    return state.currentUser.role === 'admin'
-      || state.currentUser.role === 'mod'
-      || (state.currentUser.role === 'dept_user' && issue.assigned_department === state.currentUser.department);
+    return !!(state.currentUser && issue);
   }
 
   function applyBoardFilters(issues) {
     return issues.filter(issue => {
       const filter = state.ui.boardFilter;
       const search = state.ui.boardSearch;
-      const deptMatch = filter !== 'mine' || issue.assigned_department === state.currentUser.department;
       const openOnly = issue.status !== 'closed';
-      const statusMatch = filter === 'all' || filter === 'mine' ? openOnly : issue.status === filter;
+      const statusMatch = filter === 'all' ? openOnly : issue.status === filter;
       const hay = [issue.title, issue.description, issue.location_text, issue.assigned_department, issue.issue_no].join(' ').toLowerCase();
       const searchMatch = !search || hay.includes(search);
-      return deptMatch && statusMatch && searchMatch;
+      return statusMatch && searchMatch;
     });
   }
 
@@ -2545,9 +2676,8 @@
 
   function populateDepartmentSelects() {
     const issueHtml = renderDepartmentOptions();
-    const registerHtml = renderDepartmentOptions(['ENG', 'HK', 'FO', 'FB', 'SEC', 'MOD']);
-    el.issueDepartment.innerHTML = issueHtml;
-    if (el.registerDepartment) el.registerDepartment.innerHTML = registerHtml;
+    if (el.issueDepartment) el.issueDepartment.innerHTML = issueHtml;
+    if (el.registerDepartment) el.registerDepartment.innerHTML = '<option value="MOD">MOD</option>';
     syncRegisterRoleDepartment();
   }
 

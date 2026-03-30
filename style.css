@@ -1030,3 +1030,72 @@ code {
     width: 100%;
   }
 }
+
+
+.team-member-list {
+  display: grid;
+  gap: 10px;
+}
+.team-member-item {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.72);
+  border: 1px solid rgba(36,53,44,0.08);
+}
+.team-member-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(134,110,75,0.12);
+  color: var(--brand-dark);
+  font-weight: 800;
+}
+.team-member-name {
+  font-weight: 700;
+  color: var(--text);
+}
+.team-member-meta {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+.mention-box {
+  display: grid;
+  gap: 6px;
+  margin-top: -2px;
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(134,110,75,0.16);
+  background: rgba(255,255,255,0.86);
+}
+.mention-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  border: 1px solid rgba(36,53,44,0.08);
+  background: rgba(246,241,232,0.72);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  text-align: left;
+}
+.mention-option-name {
+  font-weight: 700;
+}
+.mention-option-meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+.mention-hint {
+  margin-top: -2px;
+  font-size: 12px;
+}

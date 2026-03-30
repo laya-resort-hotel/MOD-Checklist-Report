@@ -44,17 +44,6 @@
             <input id="registerFullName" type="text" placeholder="ชื่อ-นามสกุล" />
           </div>
           <div>
-            <label>Access Type</label>
-            <select id="registerRole">
-              <option value="mod">MOD</option>
-              <option value="dept_user">Department User</option>
-            </select>
-          </div>
-          <div>
-            <label>Department</label>
-            <select id="registerDepartment"></select>
-          </div>
-          <div>
             <label>Password</label>
             <input id="registerPassword" type="password" placeholder="อย่างน้อย 6 ตัวอักษร" />
           </div>
@@ -71,10 +60,10 @@
       <div class="demo-box" id="demoBox">
         <div class="demo-title">Demo Accounts</div>
         <div class="demo-grid">
-          <button class="demo-user" data-id="9000" data-pass="9000">Admin</button>
-          <button class="demo-user" data-id="9901" data-pass="9901">MOD</button>
-          <button class="demo-user" data-id="3001" data-pass="3001">ENG</button>
-          <button class="demo-user" data-id="4001" data-pass="4001">HK</button>
+          <button class="demo-user" data-id="9901" data-pass="9901">Somchai MOD</button>
+          <button class="demo-user" data-id="9902" data-pass="9902">Nok MOD</button>
+          <button class="demo-user" data-id="9903" data-pass="9903">Brown MOD</button>
+          <button class="demo-user" data-id="9904" data-pass="9904">Mint MOD</button>
         </div>
       </div>
     </div>
@@ -121,8 +110,7 @@
             <button class="chip" data-filter="open">Open</button>
             <button class="chip" data-filter="in_progress">In Progress</button>
             <button class="chip" data-filter="waiting">Waiting</button>
-            <button class="chip" data-filter="mine">My Dept</button>
-          </div>
+                      </div>
         </div>
 
         <div id="boardList" class="card-list"></div>
@@ -276,16 +264,10 @@
 
           <div class="panel glass">
             <div class="panel-header">
-              <h3>GitHub Upload Notes</h3>
+              <h3>Team Members</h3>
+              <p class="muted">ผู้ใช้ทั้งหมดของระบบนี้</p>
             </div>
-            <ul class="clean-list">
-              <li>อัปโหลดทั้งโฟลเดอร์ขึ้น GitHub</li>
-              <li>เปิด GitHub Pages ที่ branch <strong>main</strong></li>
-              <li>ไฟล์นี้ใส่ <strong>Firebase config</strong> ให้แล้ว</li>
-              <li>ปัจจุบัน data layer ยังเป็น <strong>Local Demo Mode</strong> เพื่อเทส UI/Flow ได้ทันที</li>
-              <li>มีไฟล์ <code>js/firebase-config.js</code> และ <code>js/firebase-init.js</code> ให้แล้ว</li>
-              <li>รอบถัดไปค่อยผูก login / firestore / storage เข้ากับ <code>js/app.js</code></li>
-            </ul>
+            <div id="teamMembersList" class="team-member-list"></div>
           </div>
         </div>
       </section>

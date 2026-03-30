@@ -394,7 +394,7 @@ service cloud.firestore {
         isMod()
       );
 
-      allow list: if isAdmin();
+      allow list: if signedIn();
 
       allow create: if (
         isAdmin()
@@ -432,8 +432,8 @@ service cloud.firestore {
         ]) &&
         request.resource.data.employee_id is string &&
         request.resource.data.full_name is string &&
-        request.resource.data.role in ['mod', 'dept_user'] &&
-        validDept(request.resource.data.department) &&
+        request.resource.data.role == 'mod' &&
+        request.resource.data.department == 'MOD' &&
         request.resource.data.position is string &&
         request.resource.data.is_active == true &&
         request.resource.data.phone is string &&
@@ -445,8 +445,6 @@ service cloud.firestore {
         request.auth.uid == uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'full_name',
-          'department',
-          'position',
           'phone',
           'avatar_url',
           'updated_at',
