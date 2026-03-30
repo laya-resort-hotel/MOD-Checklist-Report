@@ -1692,17 +1692,13 @@
                 <strong>หลักฐานส่งงาน</strong>
                 <span class="muted">เพิ่มรูปหรือวิดีโอก่อนปิดงานได้</span>
               </div>
-              <input id="detailEvidencePhotoInput" type="file" accept="image/*" class="visually-hidden-file" />
-              <input id="detailEvidenceCameraInput" type="file" accept="image/*" capture="environment" class="visually-hidden-file" />
+              <input id="detailEvidencePhotoInput" type="file" accept="image/*" multiple class="visually-hidden-file" />
               <input id="detailEvidenceVideoInput" type="file" accept="video/*" class="visually-hidden-file" />
-              <input id="detailEvidenceVideoCameraInput" type="file" accept="video/*" capture="environment" class="visually-hidden-file" />
               <div class="action-row compact-wrap evidence-actions">
-                <label for="detailEvidencePhotoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">เพิ่มรูป</label>
-                <label for="detailEvidenceCameraInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">ถ่ายรูป</label>
-                <label for="detailEvidenceVideoInput" class="btn btn-ghost photo-pick-label" role="button" tabindex="0">เพิ่มวิดีโอ</label>
-                <label for="detailEvidenceVideoCameraInput" class="btn btn-ghost photo-pick-label" role="button" tabindex="0">ถ่ายวิดีโอ</label>
+                <label for="detailEvidencePhotoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">เพิ่มรูป / ถ่ายรูป</label>
+                <label for="detailEvidenceVideoInput" class="btn btn-ghost photo-pick-label" role="button" tabindex="0">เพิ่มวิดีโอ / ถ่ายวิดีโอ</label>
               </div>
-              <div id="detailEvidenceStatus" class="detail-evidence-status muted">หลักฐานที่อัปแล้วจะแสดงด้านซ้ายทันที</div>
+              <div id="detailEvidenceStatus" class="detail-evidence-status muted">หลักฐานที่อัปแล้วจะแสดงด้านซ้ายทันที • เลือกรูปได้หลายรูป</div>
             </div>
             <div class="comment-box">
               <textarea id="detailCommentText" rows="3" placeholder="พิมพ์คอมเมนต์ หรือพิมพ์ @ ตามด้วยชื่อเพื่อสั่งงาน"></textarea>
@@ -1730,9 +1726,7 @@
 
     const evidenceInputs = [
       ['#detailEvidencePhotoInput', 'photo'],
-      ['#detailEvidenceCameraInput', 'photo'],
       ['#detailEvidenceVideoInput', 'video'],
-      ['#detailEvidenceVideoCameraInput', 'video'],
     ];
     evidenceInputs.forEach(([selector, kind]) => {
       const input = qs(selector, el.issueModalContent);
@@ -1819,9 +1813,9 @@
 
   async function handleDetailEvidencePicked(issueId, kind, event) {
     const input = event.target;
-    const file = input?.files?.[0];
+    const files = Array.from(input?.files || []);
     input.value = '';
-    if (!file) return;
+    if (!files.length) return;
     const issue = state.data.issues.find(i => i.id === issueId);
     if (!issue || !canWorkIssue(issue)) return;
     if (state.ui.pendingEvidenceBusy) return alert('กำลังอัปหลักฐาน กรุณารอสักครู่');
@@ -1832,13 +1826,17 @@
     try {
       state.ui.pendingEvidenceBusy = true;
       if (kind === 'photo') {
-        setStatus('กำลังย่อและอัปรูปหลักฐาน...');
-        await addIssueEvidencePhoto(issueId, file);
-        setStatus('เพิ่มรูปหลักฐานเรียบร้อย');
+        for (let i = 0; i < files.length; i += 1) {
+          setStatus(`กำลังย่อและอัปรูปหลักฐาน ${i + 1}/${files.length}...`);
+          await addIssueEvidencePhoto(issueId, files[i]);
+        }
+        setStatus(`เพิ่มรูปหลักฐานเรียบร้อย ${files.length} รูป`);
       } else {
-        setStatus('กำลังเตรียมและอัปวิดีโอหลักฐาน...');
-        await addIssueEvidenceVideo(issueId, file);
-        setStatus('เพิ่มวิดีโอหลักฐานเรียบร้อย');
+        for (let i = 0; i < files.length; i += 1) {
+          setStatus(`กำลังเตรียมและอัปวิดีโอหลักฐาน ${i + 1}/${files.length}...`);
+          await addIssueEvidenceVideo(issueId, files[i]);
+        }
+        setStatus(`เพิ่มวิดีโอหลักฐานเรียบร้อย ${files.length} ไฟล์`);
       }
       if (!isFirebaseLive()) openIssueModal(issueId);
     } catch (err) {
