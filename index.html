@@ -96,6 +96,7 @@
         <button class="nav-link" data-view="newIssueView">New Issue</button>
         <button class="nav-link" data-view="checklistView">Checklist</button>
         <button class="nav-link" data-view="activityView">Activity</button>
+        <button class="nav-link" data-view="closedView">Closed Jobs</button>
         <button class="nav-link" data-view="moreView">More</button>
       </nav>
     </aside>
@@ -117,15 +118,15 @@
         <div class="summary-grid" id="summaryGrid"></div>
 
         <div class="toolbar glass">
-          <div class="toolbar-left">
+          <div class="toolbar-left toolbar-left-split">
             <input id="boardSearch" class="search-input" type="search" placeholder="ค้นหา issue, location, department" />
+            <button id="openClosedJobsBtn" class="btn btn-secondary toolbar-shortcut" type="button">Closed Jobs</button>
           </div>
           <div class="chip-row" id="boardFilterChips">
             <button class="chip active" data-filter="all">All</button>
             <button class="chip" data-filter="open">Open</button>
             <button class="chip" data-filter="in_progress">In Progress</button>
             <button class="chip" data-filter="waiting">Waiting</button>
-            <button class="chip" data-filter="closed">Closed</button>
             <button class="chip" data-filter="mine">My Dept</button>
           </div>
         </div>
@@ -242,6 +243,25 @@
         </div>
       </section>
 
+
+      <section id="closedView" class="view">
+        <div class="panel glass">
+          <div class="panel-header panel-header-split">
+            <div>
+              <h3>Closed Jobs</h3>
+              <p class="muted">งานที่ปิดแล้วจะถูกแยกมาเก็บที่นี่ เพื่อไม่ให้ปนกับงานที่ยังต้องติดตาม</p>
+            </div>
+            <button id="backToBoardBtn" class="btn btn-ghost" type="button">Back to Board</button>
+          </div>
+          <div class="toolbar glass inner-toolbar">
+            <div class="toolbar-left">
+              <input id="closedSearch" class="search-input" type="search" placeholder="ค้นหางานที่ปิดแล้ว, location, issue no" />
+            </div>
+          </div>
+          <div id="closedList" class="card-list"></div>
+        </div>
+      </section>
+
       <section id="moreView" class="view">
         <div class="more-grid">
           <div class="panel glass">
@@ -250,6 +270,7 @@
               <p class="muted">สำหรับเดโมและสำรองข้อมูล</p>
             </div>
             <div class="stack">
+              <button id="openClosedJobsFromMore" class="btn btn-secondary">Open Closed Jobs</button>
               <button id="exportJsonBtn" class="btn btn-secondary">Export Local JSON</button>
               <label class="btn btn-ghost upload-btn">
                 Import Local JSON

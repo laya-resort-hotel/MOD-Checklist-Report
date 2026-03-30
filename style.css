@@ -964,3 +964,30 @@ code {
     width: 100%;
   }
 }
+
+
+.toolbar-left-split {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.toolbar-shortcut {
+  white-space: nowrap;
+}
+
+.inner-toolbar {
+  margin-bottom: 18px;
+}
+
+@media (max-width: 720px) {
+  .toolbar-left-split {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-shortcut {
+    width: 100%;
+  }
+}

@@ -32,6 +32,7 @@
       activeView: 'boardView',
       boardFilter: 'all',
       boardSearch: '',
+      closedSearch: '',
       newIssuePriority: 'medium',
       selectedTemplateCode: null,
       openIssueId: null,
@@ -295,7 +296,12 @@
       summaryGrid: qs('#summaryGrid'),
       boardList: qs('#boardList'),
       boardSearch: qs('#boardSearch'),
+      closedSearch: qs('#closedSearch'),
       boardFilterChips: qs('#boardFilterChips'),
+      closedList: qs('#closedList'),
+      openClosedJobsBtn: qs('#openClosedJobsBtn'),
+      openClosedJobsFromMore: qs('#openClosedJobsFromMore'),
+      backToBoardBtn: qs('#backToBoardBtn'),
       issueTitle: qs('#issueTitle'),
       issueDescription: qs('#issueDescription'),
       issueType: qs('#issueType'),
@@ -353,6 +359,13 @@
       state.ui.boardSearch = e.target.value.trim().toLowerCase();
       renderBoard();
     });
+    if (el.closedSearch) el.closedSearch.addEventListener('input', (e) => {
+      state.ui.closedSearch = e.target.value.trim().toLowerCase();
+      renderClosedJobs();
+    });
+    if (el.openClosedJobsBtn) el.openClosedJobsBtn.addEventListener('click', () => switchView('closedView'));
+    if (el.openClosedJobsFromMore) el.openClosedJobsFromMore.addEventListener('click', () => switchView('closedView'));
+    if (el.backToBoardBtn) el.backToBoardBtn.addEventListener('click', () => switchView('boardView'));
     el.boardFilterChips.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');
       if (!chip) return;
@@ -605,6 +618,7 @@
     if (viewId === 'boardView') renderBoard();
     if (viewId === 'activityView') renderActivity();
     if (viewId === 'checklistView') renderTemplateCards();
+    if (viewId === 'closedView') renderClosedJobs();
   }
 
   function renderAll() {
@@ -614,6 +628,7 @@
     renderBoard();
     renderTemplateCards();
     renderActivity();
+    renderClosedJobs();
     switchView(state.ui.activeView);
   }
 
@@ -640,7 +655,64 @@
     `).join('');
   }
 
+  function renderClosedJobs() {
+    if (!el.closedList) return;
+    const closedItems = getClosedIssuesForCurrentUser();
+
+    if (!closedItems.length) {
+      el.closedList.innerHTML = `<div class="empty-state">ยังไม่มีงานที่ปิดแล้ว</div>`;
+      return;
+    }
+
+    el.closedList.innerHTML = closedItems.map(issue => {
+      const deptName = getDepartmentName(issue.assigned_department);
+      const thumb = issue.cover_thumb_url || issue.cover_photo_url || issue.before_videos?.[0]?.thumb_url || issue.before_videos?.[0]?.poster_url || '';
+      const hasVideo = Array.isArray(issue.before_videos) && issue.before_videos.length > 0;
+      const thumbHtml = thumb
+        ? `<div class="issue-thumb-wrap">${thumb ? `<img class="issue-thumb" src="${thumb}" alt="Closed issue media" />` : ''}${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div>`
+        : `<div class="issue-thumb placeholder">DONE</div>`;
+      const closedMeta = issue.closed_at ? `<span>•</span><span>Closed ${formatDateTime(issue.closed_at)}</span>` : '';
+      return `
+        <article class="issue-card issue-tone-closed">
+          ${thumbHtml}
+          <div>
+            <div class="issue-title-row">
+              <div>
+                <div class="issue-title">${escapeHtml(issue.title)}</div>
+                <div class="meta-row">
+                  <span>${escapeHtml(deptName)}</span>
+                  <span>•</span>
+                  <span>${escapeHtml(issue.location_text || '-')}</span>
+                  ${closedMeta}
+                </div>
+              </div>
+              <div class="issue-badges">
+                <div class="status-pill status-closed">Closed</div>
+              </div>
+            </div>
+            <div class="issue-desc">${escapeHtml(issue.description || '')}</div>
+            <div class="meta-row">
+              <span>${escapeHtml(issue.issue_no || issue.id)}</span>
+              <span>•</span>
+              <span>Closed by ${escapeHtml(issue.closed_by_name || '-')}</span>
+            </div>
+            <div class="issue-actions">
+              <button class="mini-btn" data-open-issue="${issue.id}">Open Detail</button>
+              ${canWorkIssue(issue) ? `<button class="mini-btn" data-status-action="open" data-issue-id="${issue.id}">Reopen</button>` : ''}
+            </div>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    qsa('[data-open-issue]', el.closedList).forEach(btn => btn.addEventListener('click', () => openIssueModal(btn.dataset.openIssue)));
+    qsa('[data-status-action]', el.closedList).forEach(btn => btn.addEventListener('click', () => {
+      updateIssueStatus(btn.dataset.issueId, btn.dataset.statusAction);
+    }));
+  }
+
   function renderBoard() {
+    if (state.ui.boardFilter === 'closed') state.ui.boardFilter = 'all';
     const boardItems = getBoardFeedItems();
 
     if (!boardItems.length) {
@@ -771,7 +843,7 @@
     if (!state.currentUser) return [];
     const filter = state.ui.boardFilter;
     const search = state.ui.boardSearch;
-    if (!(filter === 'all' || filter === 'mine' || filter === 'closed')) return [];
+    if (!(filter === 'all' || filter === 'mine')) return [];
     let runs = [...(state.data.checklistRuns || [])].filter(run => run.status === 'submitted');
     if (filter === 'mine') {
       runs = runs.filter(run => (run.inspector_department || 'MOD') === state.currentUser.department);
@@ -2061,11 +2133,24 @@
       const filter = state.ui.boardFilter;
       const search = state.ui.boardSearch;
       const deptMatch = filter !== 'mine' || issue.assigned_department === state.currentUser.department;
-      const statusMatch = filter === 'all' || filter === 'mine' || issue.status === filter;
+      const openOnly = issue.status !== 'closed';
+      const statusMatch = filter === 'all' || filter === 'mine' ? openOnly : issue.status === filter;
       const hay = [issue.title, issue.description, issue.location_text, issue.assigned_department, issue.issue_no].join(' ').toLowerCase();
       const searchMatch = !search || hay.includes(search);
       return deptMatch && statusMatch && searchMatch;
     });
+  }
+
+  function getClosedIssuesForCurrentUser() {
+    if (!state.currentUser) return [];
+    const search = state.ui.closedSearch;
+    return getVisibleIssuesForCurrentUser()
+      .filter(issue => issue.status === 'closed')
+      .filter(issue => {
+        const hay = [issue.title, issue.description, issue.location_text, issue.assigned_department, issue.issue_no, issue.closed_by_name].join(' ').toLowerCase();
+        return !search || hay.includes(search);
+      })
+      .sort((a, b) => new Date(b.closed_at || b.updated_at || b.created_at) - new Date(a.closed_at || a.updated_at || a.created_at));
   }
 
   function sortIssues(a, b) {
