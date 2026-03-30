@@ -125,17 +125,8 @@ service cloud.firestore {
       return request.resource.data.source_type != 'checklist' ||
         (
           request.resource.data.source_checklist_run_id is string &&
-          request.resource.data.source_checklist_answer_id is string &&
           exists(issueRunPath(request.resource.data.source_checklist_run_id)) &&
-          exists(issueAnswerPath(
-            request.resource.data.source_checklist_run_id,
-            request.resource.data.source_checklist_answer_id
-          )) &&
-          get(issueRunPath(request.resource.data.source_checklist_run_id)).data.status == 'submitted' &&
-          get(issueAnswerPath(
-            request.resource.data.source_checklist_run_id,
-            request.resource.data.source_checklist_answer_id
-          )).data.response == 'fail'
+          get(issueRunPath(request.resource.data.source_checklist_run_id)).data.status == 'submitted'
         );
     }
 
@@ -224,7 +215,14 @@ service cloud.firestore {
         request.resource.data.priority is string &&
         validPriority(request.resource.data.priority) &&
 
-        request.resource.data.status == 'open' &&
+        (
+          request.resource.data.status == 'open' ||
+          (
+            request.resource.data.issue_type == 'checklist_submission' &&
+            request.resource.data.status == 'closed' &&
+            request.resource.data.assigned_department == 'MOD'
+          )
+        ) &&
         validIssueStatus(request.resource.data.status) &&
 
         request.resource.data.assigned_department is string &&
@@ -477,7 +475,8 @@ service cloud.firestore {
 
     match /checklist_templates/{templateId} {
       allow read: if signedIn();
-      allow create, update, delete: if isAdmin();
+      allow create, update: if isAdmin() || isMod();
+      allow delete: if isAdmin();
     }
 
     /* =========================

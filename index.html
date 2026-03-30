@@ -218,13 +218,17 @@
 
       <section id="checklistView" class="view">
         <div class="panel glass">
-          <div class="panel-header">
-            <h3>Checklist Module</h3>
-            <p class="muted">แยกจาก Board เพื่อให้หน้าบอร์ดสะอาด และสร้าง issue เฉพาะข้อที่ fail</p>
+          <div class="panel-header panel-header-split">
+            <div>
+              <h3>Checklist Module</h3>
+              <p class="muted">แยกจาก Board เพื่อให้หน้าบอร์ดสะอาด และเมื่อ submit แล้วจะขึ้นบน Board เพื่อบอกว่าตรวจแล้ว</p>
+            </div>
+            <button id="addChecklistTemplateBtn" class="btn btn-secondary">+ Add Checklist</button>
           </div>
           <div id="templateCards" class="template-grid"></div>
         </div>
 
+        <div id="checklistTemplateBuilder" class="panel glass hidden"></div>
         <div id="checklistRunPanel" class="panel glass hidden"></div>
       </section>
 

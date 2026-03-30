@@ -26,6 +26,8 @@
     firebaseAuthBound: false,
     firebaseIssuesUnsub: null,
     firebaseIssueCommentsUnsub: null,
+    firebaseTemplatesUnsub: null,
+    firebaseChecklistRunsUnsub: null,
     ui: {
       activeView: 'boardView',
       boardFilter: 'all',
@@ -36,12 +38,15 @@
       liveIssueComments: [],
       pendingIssuePhoto: null,
       pendingIssueVideo: null,
+      checklistBuilderSections: [],
     },
     data: {
       issues: [],
       checklistRuns: [],
       activity: [],
       templates: [],
+      baseTemplates: [],
+      customTemplates: [],
       counters: { issue: 0, checklist: 0 },
     },
   };
@@ -215,6 +220,8 @@
         state.currentUser = null;
         stopIssueSync();
         stopIssueCommentsSync();
+        stopTemplatesSync();
+        stopChecklistRunsSync();
         state.ui.liveIssueComments = [];
         renderAuthState();
         return;
@@ -243,6 +250,8 @@
 
         const profile = snap.data();
         state.currentUser = { uid: user.uid, ...profile };
+        startTemplatesSync();
+        startChecklistRunsSync();
 
         try {
           await fb.sdk.updateDoc(userRef, {
@@ -308,6 +317,8 @@
       clearIssueBtn: qs('#clearIssueBtn'),
       prioritySegment: qs('#prioritySegment'),
       templateCards: qs('#templateCards'),
+      addChecklistTemplateBtn: qs('#addChecklistTemplateBtn'),
+      checklistTemplateBuilder: qs('#checklistTemplateBuilder'),
       checklistRunPanel: qs('#checklistRunPanel'),
       activityList: qs('#activityList'),
       issueModal: qs('#issueModal'),
@@ -377,17 +388,32 @@
       persist();
       renderAll();
     });
+    if (el.addChecklistTemplateBtn) {
+      el.addChecklistTemplateBtn.addEventListener('click', openChecklistTemplateBuilder);
+    }
   }
 
   async function loadTemplates() {
     try {
       const res = await fetch('./data/checklist_templates.json');
       const data = await res.json();
-      state.data.templates = Array.isArray(data.templates) ? data.templates : [];
+      state.data.baseTemplates = Array.isArray(data.templates) ? data.templates : [];
     } catch (err) {
       console.error('Failed to load checklist templates', err);
-      state.data.templates = [];
+      state.data.baseTemplates = [];
     }
+    mergeTemplates();
+  }
+
+  function mergeTemplates() {
+    const map = new Map();
+    (state.data.baseTemplates || []).forEach(t => {
+      if (t?.template_code) map.set(t.template_code, t);
+    });
+    (state.data.customTemplates || []).forEach(t => {
+      if (t?.template_code) map.set(t.template_code, t);
+    });
+    state.data.templates = Array.from(map.values()).sort((a, b) => String(a.template_name || '').localeCompare(String(b.template_name || '')));
   }
 
   function hydrateFromStorage() {
@@ -395,7 +421,16 @@
     if (!raw) return;
     try {
       const parsed = JSON.parse(raw);
-      if (parsed?.data) state.data = { ...state.data, ...parsed.data, templates: state.data.templates };
+      if (parsed?.data) {
+        state.data = {
+          ...state.data,
+          ...parsed.data,
+          baseTemplates: state.data.baseTemplates,
+          templates: state.data.templates,
+          customTemplates: Array.isArray(parsed.data.customTemplates) ? parsed.data.customTemplates : (state.data.customTemplates || []),
+        };
+        mergeTemplates();
+      }
       if (!window.LAYA_FIREBASE_CONFIG_PRESENT && parsed?.currentUser) state.currentUser = parsed.currentUser;
     } catch (err) {
       console.warn('Failed to hydrate local state', err);
@@ -408,6 +443,7 @@
       data: {
         ...state.data,
         templates: undefined,
+        baseTemplates: undefined,
       }
     };
 
@@ -579,7 +615,7 @@
   }
 
   function renderSummary() {
-    const visibleIssues = getVisibleIssuesForCurrentUser();
+    const visibleIssues = getVisibleIssuesForCurrentUser().filter(i => i.issue_type !== 'checklist_submission');
     const openCount = visibleIssues.filter(i => i.status === 'open').length;
     const progressCount = visibleIssues.filter(i => i.status === 'in_progress').length;
     const criticalCount = visibleIssues.filter(i => i.priority === 'critical' && i.status !== 'closed').length;
@@ -602,21 +638,25 @@
   }
 
   function renderBoard() {
-    const issues = applyBoardFilters(getVisibleIssuesForCurrentUser()).sort(sortIssues);
+    const boardItems = getBoardFeedItems();
 
-    if (!issues.length) {
-      el.boardList.innerHTML = `<div class="empty-state">ยังไม่มี issue ในมุมมองนี้</div>`;
+    if (!boardItems.length) {
+      el.boardList.innerHTML = `<div class="empty-state">ยังไม่มีรายการในมุมมองนี้</div>`;
       return;
     }
 
-    el.boardList.innerHTML = issues.map(issue => {
+    el.boardList.innerHTML = boardItems.map(item => {
+      if (item.board_type === 'checklist_run') {
+        return renderChecklistBoardCard(item);
+      }
+      const issue = item;
       const deptName = getDepartmentName(issue.assigned_department);
       const thumb = issue.cover_thumb_url || issue.cover_photo_url || issue.before_videos?.[0]?.thumb_url || issue.before_videos?.[0]?.poster_url || '';
       const hasVideo = Array.isArray(issue.before_videos) && issue.before_videos.length > 0;
       const mediaNote = hasVideo ? `<span>•</span><span>${issue.before_videos.length} video${issue.before_videos.length > 1 ? 's' : ''}</span>` : '';
       const thumbHtml = thumb
         ? `<div class="issue-thumb-wrap">${issue.cover_photo_url || issue.cover_thumb_url ? `<img class="issue-thumb" src="${thumb}" alt="Issue photo" />` : `<img class="issue-thumb" src="${thumb}" alt="Issue media poster" />`} ${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div>`
-        : `<div class="issue-thumb placeholder">${hasVideo ? 'VIDEO' : 'NO PHOTO'}</div>`;
+        : `<div class="issue-thumb placeholder">${hasVideo ? 'VIDEO' : (issue.issue_type === 'checklist_submission' ? 'CHECKLIST' : 'NO PHOTO')}</div>`;
       return `
         <article class="issue-card ${getIssueCardToneClass(issue)}">
           ${thumbHtml}
@@ -633,7 +673,7 @@
                 </div>
               </div>
               <div class="issue-badges">
-                <div class="priority-pill priority-${issue.priority}">${labelize(issue.priority)}</div>
+                ${issue.issue_type === 'checklist_submission' ? '<div class="status-pill status-closed">Checklist</div>' : `<div class="priority-pill priority-${issue.priority}">${labelize(issue.priority)}</div>`}
                 <div class="status-pill status-${issue.status}">${labelize(issue.status)}</div>
               </div>
             </div>
@@ -659,6 +699,7 @@
     qsa('[data-status-action]', el.boardList).forEach(btn => btn.addEventListener('click', () => {
       updateIssueStatus(btn.dataset.issueId, btn.dataset.statusAction);
     }));
+    qsa('[data-open-checklist-run]', el.boardList).forEach(btn => btn.addEventListener('click', () => openChecklistRunSummary(btn.dataset.openChecklistRun)));
   }
 
   function getIssueCardToneClass(issue) {
@@ -671,12 +712,113 @@
   }
 
   function renderQuickStatusButtons(issue) {
-    if (!canWorkIssue(issue)) return '';
+    if (!canWorkIssue(issue) || issue.issue_type === 'checklist_submission') return '';
     const buttons = [];
     if (issue.status === 'open') buttons.push(`<button class="mini-btn" data-status-action="in_progress" data-issue-id="${issue.id}">Start Work</button>`);
     if (issue.status !== 'closed') buttons.push(`<button class="mini-btn" data-status-action="closed" data-issue-id="${issue.id}">Close</button>`);
     if (issue.status === 'closed') buttons.push(`<button class="mini-btn" data-status-action="open" data-issue-id="${issue.id}">Reopen</button>`);
     return buttons.join('');
+  }
+
+  function renderChecklistBoardCard(run) {
+    const failCount = run.fail_count || 0;
+    const issueCount = run.issue_count || 0;
+    const desc = `${run.template_name} • ${run.pass_count || 0} pass • ${failCount} fail • ${run.na_count || 0} N/A${issueCount ? ` • ${issueCount} issue` : ''}`;
+    return `
+      <article class="issue-card issue-tone-closed checklist-board-card">
+        <div class="issue-thumb placeholder checklist-placeholder">DONE</div>
+        <div>
+          <div class="issue-title-row">
+            <div>
+              <div class="issue-title">Checklist submitted: ${escapeHtml(run.template_name || 'Checklist')}</div>
+              <div class="meta-row">
+                <span>${escapeHtml(run.location_text || '-')}</span>
+                <span>•</span>
+                <span>${escapeHtml(labelize(run.shift || '-'))}</span>
+                <span>•</span>
+                <span>${formatDateTime(run.submitted_at || run.created_at)}</span>
+              </div>
+            </div>
+            <div class="issue-badges">
+              <div class="status-pill status-closed">Submitted</div>
+              <div class="priority-pill priority-low">Checklist</div>
+            </div>
+          </div>
+          <div class="issue-desc">${escapeHtml(desc)}</div>
+          <div class="meta-row">
+            <span>${escapeHtml(run.run_no || run.id)}</span>
+            <span>•</span>
+            <span>Inspector ${escapeHtml(run.inspector_name || '-')}</span>
+          </div>
+          <div class="issue-actions">
+            <button class="mini-btn" data-open-checklist-run="${run.id}">Open Summary</button>
+          </div>
+        </div>
+      </article>
+    `;
+  }
+
+  function getBoardFeedItems() {
+    const issueItems = applyBoardFilters(getVisibleIssuesForCurrentUser()).sort(sortIssues);
+    const checklistItems = getVisibleChecklistRunsForBoard();
+    return [...issueItems, ...checklistItems].sort(sortBoardItems);
+  }
+
+  function getVisibleChecklistRunsForBoard() {
+    if (!state.currentUser) return [];
+    const filter = state.ui.boardFilter;
+    const search = state.ui.boardSearch;
+    if (!(filter === 'all' || filter === 'mine' || filter === 'closed')) return [];
+    let runs = [...(state.data.checklistRuns || [])].filter(run => run.status === 'submitted');
+    if (filter === 'mine') {
+      runs = runs.filter(run => (run.inspector_department || 'MOD') === state.currentUser.department);
+    }
+    if (search) {
+      runs = runs.filter(run => [run.template_name, run.location_text, run.run_no, run.inspector_name].join(' ').toLowerCase().includes(search));
+    }
+    return runs.map(run => ({ ...run, board_type: 'checklist_run' }));
+  }
+
+  function sortBoardItems(a, b) {
+    const ad = new Date((a.updated_at || a.submitted_at || a.created_at || 0)).getTime();
+    const bd = new Date((b.updated_at || b.submitted_at || b.created_at || 0)).getTime();
+    return bd - ad;
+  }
+
+  function openChecklistRunSummary(runId) {
+    const run = (state.data.checklistRuns || []).find(r => r.id === runId);
+    if (!run) return;
+    const answerHtml = (run.answers || []).map(ans => `
+      <div class="comment-item">
+        <div class="comment-meta">${escapeHtml(ans.section_title || '')}</div>
+        <div><strong>${escapeHtml(ans.item_text || '')}</strong></div>
+        <div class="meta-row"><span>${escapeHtml((ans.response || '').toUpperCase())}</span>${ans.create_issue ? '<span>•</span><span>Issue created</span>' : ''}</div>
+        ${ans.note ? `<div>${escapeHtml(ans.note)}</div>` : ''}
+      </div>
+    `).join('');
+    el.issueModalContent.innerHTML = `
+      <div class="issue-detail-grid">
+        <div>
+          <div class="panel glass inner-panel">
+            <div class="panel-header"><h3>${escapeHtml(run.template_name || 'Checklist')}</h3></div>
+            <div class="detail-meta">
+              <div><strong>Run No:</strong> ${escapeHtml(run.run_no || run.id)}</div>
+              <div><strong>Inspector:</strong> ${escapeHtml(run.inspector_name || '-')}</div>
+              <div><strong>Location:</strong> ${escapeHtml(run.location_text || '-')}</div>
+              <div><strong>Date:</strong> ${formatDateTime(run.submitted_at || run.created_at)}</div>
+              <div><strong>Result:</strong> ${run.pass_count || 0} pass • ${run.fail_count || 0} fail • ${run.na_count || 0} N/A</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="panel glass inner-panel">
+            <div class="panel-header"><h3>Checklist Answers</h3></div>
+            <div class="comments-list">${answerHtml || '<div class="empty-state">No answers</div>'}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    el.issueModal.classList.remove('hidden');
   }
 
   async function handleIssuePhotoPicked(event) {
@@ -870,7 +1012,7 @@
       description: payload.description || '',
       issue_type: payload.issue_type || 'other',
       priority: payload.priority || 'medium',
-      status: 'open',
+      status: payload.status || 'open',
       assigned_department: payload.assigned_department || 'ENG',
       assigned_to_uid: '',
       assigned_to_name: '',
@@ -891,9 +1033,9 @@
       updated_at: now,
       last_activity_at: now,
       last_comment_at: '',
-      closed_at: '',
-      closed_by_uid: '',
-      closed_by_name: '',
+      closed_at: payload.status === 'closed' ? now : '',
+      closed_by_uid: payload.status === 'closed' ? state.currentUser.uid : '',
+      closed_by_name: payload.status === 'closed' ? state.currentUser.full_name : '',
     };
     state.data.issues.unshift(issue);
     addActivity({ type: 'issue', title: issue.title, text: `${state.currentUser.full_name} created issue ${issue.issue_no}`, created_at: now });
@@ -958,9 +1100,9 @@
         activity_count: 1,
         last_comment_at: null,
         last_activity_at: sdk.serverTimestamp(),
-        closed_at: null,
-        closed_by_uid: '',
-        closed_by_name: '',
+        closed_at: payload.status === 'closed' ? sdk.serverTimestamp() : null,
+        closed_by_uid: payload.status === 'closed' ? state.currentUser.uid : '',
+        closed_by_name: payload.status === 'closed' ? state.currentUser.full_name : '',
         created_at: sdk.serverTimestamp(),
         updated_at: sdk.serverTimestamp(),
       });
@@ -1244,7 +1386,7 @@
     });
   }
 
-  function submitChecklistRun(template, runId) {
+  async function submitChecklistRun(template, runId) {
     const location = qs('#runLocation', el.checklistRunPanel).value.trim();
     const shift = qs('#runShift', el.checklistRunPanel).value;
     const inspectionDate = qs('#runDate', el.checklistRunPanel).value;
@@ -1278,11 +1420,9 @@
 
     if (!answers.length) return alert('กรุณาตอบ checklist อย่างน้อย 1 ข้อ');
 
-    state.data.counters.checklist += 1;
-    const runNo = buildChecklistRunNo(state.data.counters.checklist, inspectionDate);
-    const run = {
+    const baseRun = {
       id: runId,
-      run_no: runNo,
+      run_no: buildChecklistRunNo((state.data.counters.checklist || 0) + 1, inspectionDate),
       template_code: template.template_code,
       template_name: template.template_name,
       inspector_uid: state.currentUser.uid,
@@ -1295,41 +1435,112 @@
       answers,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      submitted_at: new Date().toISOString(),
       total_items: answers.length,
       pass_count: answers.filter(a => a.response === 'pass').length,
       fail_count: answers.filter(a => a.response === 'fail').length,
       na_count: answers.filter(a => a.response === 'na').length,
+      issue_count: answers.filter(a => a.create_issue).length,
     };
 
-    state.data.checklistRuns.unshift(run);
+    try {
+      let run = null;
+      if (isFirebaseLive()) {
+        run = await createChecklistRunFirebase(baseRun);
+        if (!state.data.checklistRuns.find(item => item.id === run.id)) {
+          state.data.checklistRuns.unshift(run);
+        }
+      } else {
+        run = createChecklistRunLocal(baseRun);
+      }
 
-    const issueAnswers = answers.filter(a => a.create_issue);
-    issueAnswers.forEach(a => {
-      createIssue({
-        source_type: 'checklist',
-        source_checklist_run_id: run.id,
-        source_checklist_answer_id: a.item_code,
-        title: a.item_text,
-        description: a.note || `Created from checklist fail: ${a.item_text}`,
-        issue_type: 'other',
-        priority: a.fail_priority,
-        assigned_department: a.fail_department,
-        location_text: location || template.template_name,
-        before_photos: [],
+      const issueAnswers = answers.filter(a => a.create_issue);
+      for (const a of issueAnswers) {
+        await createIssue({
+          source_type: 'checklist',
+          source_checklist_run_id: run.id,
+          source_checklist_answer_id: a.item_code,
+          title: a.item_text,
+          description: a.note || `Created from checklist fail: ${a.item_text}`,
+          issue_type: 'other',
+          priority: a.fail_priority,
+          assigned_department: a.fail_department,
+          location_text: location || template.template_name,
+          before_photos: [],
+        });
+      }
+      addActivity({
+        type: 'checklist',
+        title: template.template_name,
+        text: `${state.currentUser.full_name} submitted ${run.run_no}${issueAnswers.length ? ` and created ${issueAnswers.length} issues` : ''}`,
+        created_at: new Date().toISOString(),
+      });
+
+      persist();
+      renderAll();
+      el.checklistRunPanel.classList.add('hidden');
+      switchView('boardView');
+      setAuthStatus('Submit checklist แล้ว และขึ้นบน Board แล้ว', 'success');
+    } catch (err) {
+      console.error('submit checklist failed', err);
+      alert(friendlyIssueError(err));
+    }
+  }
+
+  function createChecklistRunLocal(run) {
+    state.data.counters.checklist += 1;
+    const finalRun = {
+      ...run,
+      run_no: buildChecklistRunNo(state.data.counters.checklist, run.inspection_date),
+    };
+    state.data.checklistRuns.unshift(finalRun);
+    return finalRun;
+  }
+
+  async function createChecklistRunFirebase(run) {
+    const fb = window.LAYA_FIREBASE;
+    const sdk = fb.sdk;
+    const runRef = sdk.doc(sdk.collection(fb.db, 'checklist_runs'));
+    let runNumber = 1;
+    await sdk.runTransaction(fb.db, async (tx) => {
+      const counterRef = sdk.doc(fb.db, 'counters', 'checklist_counter');
+      const counterSnap = await tx.get(counterRef);
+      if (counterSnap.exists()) {
+        runNumber = (counterSnap.data().last_number || 0) + 1;
+        tx.update(counterRef, { last_number: runNumber, updated_at: sdk.serverTimestamp() });
+      } else {
+        runNumber = 1;
+        tx.set(counterRef, { name: 'checklist_counter', last_number: 1, updated_at: sdk.serverTimestamp() });
+      }
+      tx.set(runRef, {
+        run_no: buildChecklistRunNo(runNumber, run.inspection_date),
+        template_code: run.template_code,
+        template_name: run.template_name,
+        template_version: 1,
+        status: 'submitted',
+        inspector_uid: run.inspector_uid,
+        inspector_name: run.inspector_name,
+        inspector_department: run.inspector_department,
+        inspection_date: run.inspection_date,
+        location_text: run.location_text || '',
+        shift: run.shift || 'morning',
+        source: 'checklist',
+        answers: run.answers,
+        total_items: run.total_items,
+        pass_count: run.pass_count,
+        fail_count: run.fail_count,
+        na_count: run.na_count,
+        issue_count: run.issue_count,
+        created_at: sdk.serverTimestamp(),
+        submitted_at: sdk.serverTimestamp(),
+        updated_at: sdk.serverTimestamp(),
       });
     });
-
-    addActivity({
-      type: 'checklist',
-      title: template.template_name,
-      text: `${state.currentUser.full_name} submitted ${run.run_no}${issueAnswers.length ? ` and created ${issueAnswers.length} issues` : ''}`,
-      created_at: new Date().toISOString(),
-    });
-
-    persist();
-    renderAll();
-    el.checklistRunPanel.classList.add('hidden');
-    switchView('boardView');
+    return {
+      ...run,
+      id: runRef.id,
+      run_no: buildChecklistRunNo(runNumber, run.inspection_date),
+    };
   }
 
   function openIssueModal(issueId) {
@@ -1638,6 +1849,49 @@
     state.ui.liveIssueComments = [];
   }
 
+  function stopTemplatesSync() {
+    if (typeof state.firebaseTemplatesUnsub === 'function') {
+      try { state.firebaseTemplatesUnsub(); } catch (_) {}
+    }
+    state.firebaseTemplatesUnsub = null;
+  }
+
+  function stopChecklistRunsSync() {
+    if (typeof state.firebaseChecklistRunsUnsub === 'function') {
+      try { state.firebaseChecklistRunsUnsub(); } catch (_) {}
+    }
+    state.firebaseChecklistRunsUnsub = null;
+  }
+
+  function startTemplatesSync() {
+    if (!isFirebaseLive() || !state.currentUser) return;
+    stopTemplatesSync();
+    const fb = window.LAYA_FIREBASE;
+    const sdk = fb.sdk;
+    const q = sdk.query(sdk.collection(fb.db, 'checklist_templates'));
+    state.firebaseTemplatesUnsub = sdk.onSnapshot(q, (snap) => {
+      state.data.customTemplates = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      mergeTemplates();
+      renderTemplateCards();
+    }, (err) => console.error('checklist templates sync failed', err));
+  }
+
+  function startChecklistRunsSync() {
+    if (!isFirebaseLive() || !state.currentUser) return;
+    if (!['admin', 'mod'].includes(state.currentUser.role)) {
+      state.data.checklistRuns = [];
+      return;
+    }
+    stopChecklistRunsSync();
+    const fb = window.LAYA_FIREBASE;
+    const sdk = fb.sdk;
+    const q = sdk.query(sdk.collection(fb.db, 'checklist_runs'));
+    state.firebaseChecklistRunsUnsub = sdk.onSnapshot(q, (snap) => {
+      state.data.checklistRuns = snap.docs.map(normalizeChecklistRunDoc).sort((a, b) => new Date(b.submitted_at || b.created_at || 0) - new Date(a.submitted_at || a.created_at || 0));
+      renderBoard();
+    }, (err) => console.error('checklist runs sync failed', err));
+  }
+
   function startIssuesSync() {
     if (!isFirebaseLive() || !state.currentUser) return;
     stopIssueSync();
@@ -1705,6 +1959,18 @@
       id: docSnap.id,
       ...data,
       created_at: normalizeDateValue(data.created_at),
+    };
+  }
+
+  function normalizeChecklistRunDoc(docSnap) {
+    const data = docSnap.data() || {};
+    return {
+      id: docSnap.id,
+      ...data,
+      answers: Array.isArray(data.answers) ? data.answers : [],
+      created_at: normalizeDateValue(data.created_at),
+      updated_at: normalizeDateValue(data.updated_at),
+      submitted_at: normalizeDateValue(data.submitted_at),
     };
   }
 
@@ -1791,6 +2057,149 @@
     return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at);
   }
 
+  function openChecklistTemplateBuilder() {
+    state.ui.checklistBuilderSections = [{ id: cryptoRandom(), title: '', itemsText: '' }];
+    renderChecklistTemplateBuilder();
+    el.checklistTemplateBuilder.classList.remove('hidden');
+  }
+
+  function renderChecklistTemplateBuilder() {
+    const sections = state.ui.checklistBuilderSections || [];
+    el.checklistTemplateBuilder.innerHTML = `
+      <div class="panel-header panel-header-split">
+        <div>
+          <h3>Add Checklist</h3>
+          <p class="muted">สร้าง checklist ใหม่ แล้วเก็บไว้ใช้ซ้ำได้</p>
+        </div>
+        <button class="btn btn-ghost" id="closeChecklistBuilderBtn">Hide</button>
+      </div>
+      <div class="form-grid two-col compact-grid">
+        <div>
+          <label>Checklist Name</label>
+          <input id="newChecklistName" type="text" placeholder="เช่น MOD Public Area Check" />
+        </div>
+        <div>
+          <label>Source / Sheet</label>
+          <input id="newChecklistSource" type="text" placeholder="เช่น Custom" value="Custom" />
+        </div>
+      </div>
+      <div id="checklistBuilderSections" class="stack"></div>
+      <div class="sticky-actions">
+        <button class="btn btn-secondary" id="addChecklistSectionBtn">+ Add Section</button>
+        <button class="btn btn-primary" id="saveChecklistTemplateBtn">Save Checklist</button>
+      </div>
+    `;
+    const host = qs('#checklistBuilderSections', el.checklistTemplateBuilder);
+    host.innerHTML = sections.map((section, idx) => `
+      <div class="section-card builder-section" data-builder-section-id="${section.id}">
+        <div class="section-head"><h4>Section ${idx + 1}</h4></div>
+        <div class="section-body">
+          <label>Section Title</label>
+          <input type="text" data-builder-title value="${escapeHtml(section.title || '')}" placeholder="เช่น Public Area" />
+          <label>Checklist Items</label>
+          <textarea rows="5" data-builder-items placeholder="1 บรรทัด = 1 checklist item">${escapeHtml(section.itemsText || '')}</textarea>
+          <div class="sticky-actions">
+            <button class="btn btn-ghost" type="button" data-remove-builder-section="${section.id}">Remove Section</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    qs('#closeChecklistBuilderBtn', el.checklistTemplateBuilder).addEventListener('click', () => el.checklistTemplateBuilder.classList.add('hidden'));
+    qs('#addChecklistSectionBtn', el.checklistTemplateBuilder).addEventListener('click', () => {
+      syncChecklistBuilderDraft();
+      state.ui.checklistBuilderSections.push({ id: cryptoRandom(), title: '', itemsText: '' });
+      renderChecklistTemplateBuilder();
+    });
+    qs('#saveChecklistTemplateBtn', el.checklistTemplateBuilder).addEventListener('click', saveChecklistTemplate);
+    qsa('[data-remove-builder-section]', el.checklistTemplateBuilder).forEach(btn => btn.addEventListener('click', () => {
+      syncChecklistBuilderDraft();
+      state.ui.checklistBuilderSections = state.ui.checklistBuilderSections.filter(sec => sec.id !== btn.dataset.removeBuilderSection);
+      if (!state.ui.checklistBuilderSections.length) state.ui.checklistBuilderSections.push({ id: cryptoRandom(), title: '', itemsText: '' });
+      renderChecklistTemplateBuilder();
+    }));
+  }
+
+  function syncChecklistBuilderDraft() {
+    const sections = qsa('.builder-section', el.checklistTemplateBuilder).map(card => ({
+      id: card.dataset.builderSectionId,
+      title: qs('[data-builder-title]', card)?.value.trim() || '',
+      itemsText: qs('[data-builder-items]', card)?.value || '',
+    }));
+    state.ui.checklistBuilderSections = sections;
+  }
+
+  async function saveChecklistTemplate() {
+    syncChecklistBuilderDraft();
+    const templateName = qs('#newChecklistName', el.checklistTemplateBuilder)?.value.trim() || '';
+    const sourceSheet = qs('#newChecklistSource', el.checklistTemplateBuilder)?.value.trim() || 'Custom';
+    if (!templateName) {
+      alert('กรุณาใส่ชื่อ checklist');
+      return;
+    }
+    const sections = (state.ui.checklistBuilderSections || []).map((sec, secIdx) => {
+      const normalizedItemsText = String(sec.itemsText || '').replace(/\r/g, '');
+      const items = normalizedItemsText
+        .split('\n')
+        .map(v => v.trim())
+        .filter(Boolean)
+        .map((item, itemIdx) => ({
+          item_code: `ITEM_${secIdx + 1}_${itemIdx + 1}_${cryptoRandom().slice(0,4)}`,
+          item_text: item,
+        }));
+      return {
+        section_code: `SEC_${secIdx + 1}_${cryptoRandom().slice(0,4)}`,
+        section_title: sec.title || `Section ${secIdx + 1}`,
+        item_count: items.length,
+        items,
+      };
+    }).filter(sec => sec.items.length > 0);
+
+    if (!sections.length) {
+      alert('กรุณาเพิ่มอย่างน้อย 1 section ที่มี checklist item');
+      return;
+    }
+
+    const templateCode = `CUSTOM_${slugify(templateName)}_${Date.now()}`;
+    const template = {
+      template_code: templateCode,
+      template_name: templateName,
+      source_sheet: sourceSheet,
+      active: true,
+      version: 1,
+      created_by_uid: state.currentUser?.uid || '',
+      created_by_name: state.currentUser?.full_name || '',
+      sections,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    try {
+      if (isFirebaseLive()) {
+        const fb = window.LAYA_FIREBASE;
+        await fb.sdk.setDoc(fb.sdk.doc(fb.db, 'checklist_templates', templateCode), {
+          ...template,
+          created_at: fb.sdk.serverTimestamp(),
+          updated_at: fb.sdk.serverTimestamp(),
+        });
+        state.data.customTemplates.unshift(template);
+        mergeTemplates();
+        renderTemplateCards();
+      } else {
+        state.data.customTemplates.unshift(template);
+        mergeTemplates();
+        persist();
+        renderTemplateCards();
+      }
+      addActivity({ type: 'checklist_template', title: templateName, text: `${state.currentUser.full_name} added checklist template`, created_at: new Date().toISOString() });
+      el.checklistTemplateBuilder.classList.add('hidden');
+      setAuthStatus('บันทึก checklist template แล้ว', 'success');
+    } catch (err) {
+      console.error('save checklist template failed', err);
+      alert(friendlyIssueError(err));
+    }
+  }
+
   function populateDepartmentSelects() {
     const issueHtml = renderDepartmentOptions();
     const registerHtml = renderDepartmentOptions(['ENG', 'HK', 'FO', 'FB', 'SEC', 'MOD']);
@@ -1802,6 +2211,13 @@
   function renderDepartmentOptions(allowedCodes = null) {
     const list = allowedCodes ? DEPARTMENTS.filter(dept => allowedCodes.includes(dept.code)) : DEPARTMENTS;
     return list.map(dept => `<option value="${dept.code}">${dept.name}</option>`).join('');
+  }
+
+  function slugify(value) {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '') || 'checklist';
   }
 
   function seedDemoData() {
