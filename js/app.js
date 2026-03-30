@@ -23,11 +23,13 @@
     firebaseTemplatesUnsub: null,
     firebaseChecklistRunsUnsub: null,
     firebaseUsersUnsub: null,
+    firebaseUsageLogsUnsub: null,
     ui: {
       activeView: 'boardView',
       boardFilter: 'all',
       boardSearch: '',
       closedSearch: '',
+      logSearch: '',
       newIssuePriority: 'medium',
       selectedTemplateCode: null,
       openIssueId: null,
@@ -46,6 +48,7 @@
       customTemplates: [],
       counters: { issue: 0, checklist: 0 },
       teamMembers: [],
+      usageLogs: [],
     },
   };
 
@@ -66,6 +69,7 @@
     }
     state.data.teamMembers = DEMO_USERS.map(user => ({ uid: user.uid, employee_id: user.employee_id, full_name: user.full_name, role: 'mod', department: 'MOD', is_active: true }));
     renderTemplateCards();
+    renderUsageLogs();
     renderAll();
   }
 
@@ -212,7 +216,9 @@
         stopTemplatesSync();
         stopChecklistRunsSync();
         stopUsersSync();
+        stopUsageLogsSync();
         state.data.teamMembers = [];
+        state.data.usageLogs = [];
         state.ui.liveIssueComments = [];
         renderAuthState();
         return;
@@ -244,6 +250,7 @@
         startTemplatesSync();
         startChecklistRunsSync();
         startUsersSync();
+        startUsageLogsSync();
 
         try {
           await fb.sdk.updateDoc(userRef, {
@@ -292,6 +299,7 @@
       closedList: qs('#closedList'),
       openClosedJobsBtn: qs('#openClosedJobsBtn'),
       openClosedJobsFromMore: qs('#openClosedJobsFromMore'),
+      openUsageLogFromMore: qs('#openUsageLogFromMore'),
       backToBoardBtn: qs('#backToBoardBtn'),
       issueTitle: qs('#issueTitle'),
       issueDescription: qs('#issueDescription'),
@@ -318,6 +326,9 @@
       checklistTemplateBuilder: qs('#checklistTemplateBuilder'),
       checklistRunPanel: qs('#checklistRunPanel'),
       activityList: qs('#activityList'),
+      usageLogList: qs('#usageLogList'),
+      logSearch: qs('#logSearch'),
+      reloadUsageLogBtn: qs('#reloadUsageLogBtn'),
       issueModal: qs('#issueModal'),
       issueModalContent: qs('#issueModalContent'),
       closeIssueModalBtn: qs('#closeIssueModalBtn'),
@@ -355,8 +366,14 @@
       state.ui.closedSearch = e.target.value.trim().toLowerCase();
       renderClosedJobs();
     });
+    if (el.logSearch) el.logSearch.addEventListener('input', (e) => {
+      state.ui.logSearch = e.target.value.trim().toLowerCase();
+      renderUsageLogs();
+    });
+    if (el.reloadUsageLogBtn) el.reloadUsageLogBtn.addEventListener('click', () => reloadUsageLogs());
     if (el.openClosedJobsBtn) el.openClosedJobsBtn.addEventListener('click', () => switchView('closedView'));
     if (el.openClosedJobsFromMore) el.openClosedJobsFromMore.addEventListener('click', () => switchView('closedView'));
+    if (el.openUsageLogFromMore) el.openUsageLogFromMore.addEventListener('click', () => switchView('logView'));
     if (el.backToBoardBtn) el.backToBoardBtn.addEventListener('click', () => switchView('boardView'));
     el.boardFilterChips.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');
@@ -509,6 +526,15 @@
       return;
     }
     state.currentUser = { ...user };
+    recordUsageLogLocal({
+      category: 'auth',
+      action: 'login',
+      title: 'Signed in',
+      text: `${user.full_name} signed in`,
+      user_uid: user.uid,
+      user_name: user.full_name,
+      ref_no: user.employee_id,
+    });
     persist();
     renderAuthState();
     renderAll();
@@ -555,6 +581,15 @@
 
       const userRef = fb.sdk.doc(fb.db, 'users', cred.user.uid);
       await fb.sdk.setDoc(userRef, buildUserProfile(pending));
+      recordUsageLog({
+        category: 'auth',
+        action: 'register',
+        title: 'Created account',
+        text: `${fullName} created account`,
+        user_uid: cred.user.uid,
+        user_name: fullName,
+        ref_no: employeeId,
+      });
 
       clearPendingRegistration();
       setAuthStatus('สร้างบัญชีสำเร็จ กำลังเข้าสู่ระบบ...', 'success');
@@ -589,7 +624,9 @@
     stopIssueSync();
     stopIssueCommentsSync();
     stopUsersSync();
+    stopUsageLogsSync();
     state.data.teamMembers = [];
+    state.data.usageLogs = [];
     persist();
     renderAuthState();
   }
@@ -612,6 +649,7 @@
     qsa('.nav-link').forEach(btn => btn.classList.toggle('active', btn.dataset.view === viewId));
     if (viewId === 'boardView') renderBoard();
     if (viewId === 'activityView') renderActivity();
+    if (viewId === 'logView') renderUsageLogs();
     if (viewId === 'checklistView') renderTemplateCards();
     if (viewId === 'closedView') renderClosedJobs();
     if (viewId === 'moreView') renderTeamMembers();
@@ -624,6 +662,7 @@
     renderBoard();
     renderTemplateCards();
     renderActivity();
+    renderUsageLogs();
     renderClosedJobs();
     renderTeamMembers();
     switchView(state.ui.activeView);
@@ -1173,6 +1212,14 @@
     };
     state.data.issues.unshift(issue);
     addActivity({ type: 'issue', title: issue.title, text: `${state.currentUser.full_name} created issue ${issue.issue_no}`, created_at: now });
+    recordUsageLogLocal({
+      category: 'issue',
+      action: 'create_issue',
+      title: issue.title,
+      text: `${state.currentUser.full_name} created ${issue.issue_no}`,
+      issue_id: issue.id,
+      ref_no: issue.issue_no,
+    });
     persist();
     renderAll();
     return issue;
@@ -1188,6 +1235,7 @@
     const uploadedBeforePhotos = await prepareIssuePhotosForFirebase(issueRef.id, payload.before_photos || []);
     const uploadedBeforeVideos = await prepareIssueVideosForFirebase(issueRef.id, payload.before_videos || []);
 
+    let createdIssueNo = '';
     await sdk.runTransaction(fb.db, async (tx) => {
       const counterRef = sdk.doc(fb.db, 'counters', 'issue_counter');
       const counterSnap = await tx.get(counterRef);
@@ -1201,6 +1249,7 @@
 
       const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${issueRef.id}/activity`));
       const issueNo = buildIssueNo(nextNumber);
+      createdIssueNo = issueNo;
       const beforePhotos = Array.isArray(uploadedBeforePhotos) ? uploadedBeforePhotos : [];
       const beforeVideos = Array.isArray(uploadedBeforeVideos) ? uploadedBeforeVideos : [];
 
@@ -1251,6 +1300,14 @@
       });
     });
 
+    recordUsageLog({
+      category: 'issue',
+      action: 'create_issue',
+      title: payload.title,
+      text: `${state.currentUser.full_name} created ${createdIssueNo || issueRef.id}`,
+      issue_id: issueRef.id,
+      ref_no: createdIssueNo || issueRef.id,
+    });
     return issueRef.id;
   }
 
@@ -1612,6 +1669,14 @@
         text: `${state.currentUser.full_name} submitted ${run.run_no}${issueAnswers.length ? ` and created ${issueAnswers.length} issues` : ''}`,
         created_at: new Date().toISOString(),
       });
+      recordUsageLog({
+        category: 'checklist',
+        action: 'submit_checklist',
+        title: template.template_name,
+        text: `${state.currentUser.full_name} submitted ${run.run_no}${issueAnswers.length ? ` and created ${issueAnswers.length} issues` : ''}`,
+        checklist_run_id: run.id,
+        ref_no: run.run_no,
+      });
 
       persist();
       renderAll();
@@ -1656,6 +1721,14 @@
         localRun.updated_at = new Date().toISOString();
       }
       renderAll();
+      recordUsageLog({
+        category: 'checklist',
+        action: 'archive_checklist',
+        title: run.template_name || 'Checklist',
+        text: `${state.currentUser.full_name} moved ${run.run_no || run.id} to history`,
+        checklist_run_id: runId,
+        ref_no: run.run_no || runId,
+      });
       setAuthStatus('ย้าย checklist ออกจาก Board แล้ว', 'success');
     } catch (err) {
       console.error('archive checklist run failed', err);
@@ -1684,6 +1757,14 @@
         localRun.updated_at = new Date().toISOString();
       }
       renderAll();
+      recordUsageLog({
+        category: 'checklist',
+        action: 'reopen_checklist',
+        title: run.template_name || 'Checklist',
+        text: `${state.currentUser.full_name} reopened ${run.run_no || run.id}`,
+        checklist_run_id: runId,
+        ref_no: run.run_no || runId,
+      });
       setAuthStatus('นำ checklist กลับมาแสดงแล้ว', 'success');
     } catch (err) {
       console.error('unarchive checklist run failed', err);
@@ -1968,6 +2049,14 @@
       issue.updated_at = nowIso;
       issue.last_activity_at = nowIso;
       issue.activity_count = Number(issue.activity_count || 0) + 1;
+      recordUsageLogLocal({
+        category: 'evidence',
+        action: 'add_evidence_photo',
+        title: issue.title,
+        text: `${state.currentUser.full_name} added completion photo to ${issue.issue_no || issueId}`,
+        issue_id: issueId,
+        ref_no: issue.issue_no || issueId,
+      });
       persist();
       renderAll();
       return;
@@ -2014,6 +2103,14 @@
         created_at: sdk.serverTimestamp(),
       });
     });
+    recordUsageLog({
+      category: 'evidence',
+      action: 'add_evidence_photo',
+      title: issue.title,
+      text: `${state.currentUser.full_name} added completion photo to ${issue.issue_no || issueId}`,
+      issue_id: issueId,
+      ref_no: issue.issue_no || issueId,
+    });
   }
 
   async function addIssueEvidenceVideo(issueId, file) {
@@ -2040,6 +2137,14 @@
       issue.updated_at = nowIso;
       issue.last_activity_at = nowIso;
       issue.activity_count = Number(issue.activity_count || 0) + 1;
+      recordUsageLogLocal({
+        category: 'evidence',
+        action: 'add_evidence_video',
+        title: issue.title,
+        text: `${state.currentUser.full_name} added completion video to ${issue.issue_no || issueId}`,
+        issue_id: issueId,
+        ref_no: issue.issue_no || issueId,
+      });
       persist();
       renderAll();
       return;
@@ -2095,6 +2200,14 @@
         created_at: sdk.serverTimestamp(),
       });
     });
+    recordUsageLog({
+      category: 'evidence',
+      action: 'add_evidence_video',
+      title: issue.title,
+      text: `${state.currentUser.full_name} added completion video to ${issue.issue_no || issueId}`,
+      issue_id: issueId,
+      ref_no: issue.issue_no || issueId,
+    });
   }
 
   async function updateIssueStatus(issueId, toStatus) {
@@ -2127,6 +2240,14 @@
         created_at: new Date().toISOString(),
       });
 
+      recordUsageLogLocal({
+        category: 'issue',
+        action: toStatus === 'closed' ? 'close_issue' : (toStatus === 'open' && fromStatus === 'closed' ? 'reopen_issue' : 'change_status'),
+        title: issue.title,
+        text: `${state.currentUser.full_name} changed ${issue.issue_no || issueId} from ${labelize(fromStatus)} to ${labelize(toStatus)}`,
+        issue_id: issueId,
+        ref_no: issue.issue_no || issueId,
+      });
       persist();
       renderAll();
       if (state.ui.openIssueId === issueId) openIssueModal(issueId);
@@ -2208,6 +2329,14 @@
         created_at: now,
       });
 
+      recordUsageLogLocal({
+        category: 'comment',
+        action: 'add_comment',
+        title: issue.title,
+        text: `${state.currentUser.full_name}: ${message.slice(0, 120)}`,
+        issue_id: issueId,
+        ref_no: issue.issue_no || issueId,
+      });
       persist();
       renderBoard();
       renderActivity();
@@ -2252,6 +2381,14 @@
           last_activity_at: sdk.serverTimestamp(),
           updated_at: sdk.serverTimestamp(),
         });
+      });
+      recordUsageLog({
+        category: 'comment',
+        action: 'add_comment',
+        title: issue.title,
+        text: `${state.currentUser.full_name}: ${message.slice(0, 120)}`,
+        issue_id: issueId,
+        ref_no: issue.issue_no || issueId,
       });
     } catch (err) {
       console.error('add comment failed', err);
@@ -2482,6 +2619,142 @@
       department: 'MOD',
       is_active: true,
     }));
+  }
+
+
+  function stopUsageLogsSync() {
+    if (typeof state.firebaseUsageLogsUnsub === 'function') {
+      try { state.firebaseUsageLogsUnsub(); } catch (_) {}
+    }
+    state.firebaseUsageLogsUnsub = null;
+  }
+
+  function startUsageLogsSync() {
+    if (!state.currentUser) return;
+    if (!isFirebaseLive()) {
+      renderUsageLogs();
+      return;
+    }
+    stopUsageLogsSync();
+    const fb = window.LAYA_FIREBASE;
+    const sdk = fb.sdk;
+    const q = sdk.query(sdk.collection(fb.db, 'usage_logs'), sdk.orderBy('created_at', 'desc'));
+    state.firebaseUsageLogsUnsub = sdk.onSnapshot(q, (snap) => {
+      state.data.usageLogs = snap.docs.map(normalizeUsageLogDoc).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).slice(0, 400);
+      if (state.ui.activeView === 'logView') renderUsageLogs();
+    }, (err) => {
+      console.error('usage logs onSnapshot failed', err);
+    });
+  }
+
+  function normalizeUsageLogDoc(docSnap) {
+    const data = docSnap.data() || {};
+    return {
+      id: docSnap.id,
+      ...data,
+      created_at: normalizeDateValue(data.created_at),
+    };
+  }
+
+  function humanizeLogAction(action) {
+    const map = {
+      login: 'Signed in',
+      register: 'Created account',
+      create_issue: 'Created issue',
+      submit_checklist: 'Submitted checklist',
+      archive_checklist: 'Closed checklist card',
+      reopen_checklist: 'Reopened checklist card',
+      close_issue: 'Closed issue',
+      reopen_issue: 'Reopened issue',
+      change_status: 'Changed status',
+      add_comment: 'Added comment',
+      add_evidence_photo: 'Added evidence photo',
+      add_evidence_video: 'Added evidence video',
+    };
+    return map[action] || labelize(String(action || 'log').replace(/_/g, ' '));
+  }
+
+  function renderUsageLogs() {
+    if (!el.usageLogList) return;
+    const search = state.ui.logSearch || '';
+    const items = [...(state.data.usageLogs || [])]
+      .filter(item => {
+        const hay = [item.title, item.text, item.user_name, item.ref_no, item.action, item.category].join(' ').toLowerCase();
+        return !search || hay.includes(search);
+      })
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+    if (!items.length) {
+      el.usageLogList.innerHTML = `<div class="empty-state">ยังไม่มี usage log</div>`;
+      return;
+    }
+
+    el.usageLogList.innerHTML = items.map(item => `
+      <div class="activity-item">
+        <div class="comment-meta">${formatDateTime(item.created_at)} • ${escapeHtml(item.user_name || '-')} • ${escapeHtml(humanizeLogAction(item.action))}</div>
+        <div><strong>${escapeHtml(item.title || humanizeLogAction(item.action))}</strong></div>
+        <div>${escapeHtml(item.text || '')}</div>
+        <div class="muted">${escapeHtml([item.ref_no || '', item.category ? `• ${item.category}` : ''].filter(Boolean).join(' '))}</div>
+      </div>
+    `).join('');
+  }
+
+  function recordUsageLogLocal(entry = {}) {
+    const item = {
+      id: cryptoRandom(),
+      category: entry.category || 'general',
+      action: entry.action || 'event',
+      title: entry.title || humanizeLogAction(entry.action || 'event'),
+      text: entry.text || '',
+      issue_id: entry.issue_id || '',
+      checklist_run_id: entry.checklist_run_id || '',
+      ref_no: entry.ref_no || '',
+      user_uid: entry.user_uid || state.currentUser?.uid || '',
+      user_name: entry.user_name || state.currentUser?.full_name || '',
+      created_at: entry.created_at || new Date().toISOString(),
+    };
+    state.data.usageLogs = [item, ...(state.data.usageLogs || [])].slice(0, 500);
+    if (state.ui.activeView === 'logView') renderUsageLogs();
+    return item;
+  }
+
+  async function recordUsageLogFirebase(entry = {}) {
+    if (!isFirebaseLive()) return;
+    const fb = window.LAYA_FIREBASE;
+    const sdk = fb.sdk;
+    const ref = sdk.doc(sdk.collection(fb.db, 'usage_logs'));
+    try {
+      await sdk.setDoc(ref, {
+        category: entry.category || 'general',
+        action: entry.action || 'event',
+        title: entry.title || humanizeLogAction(entry.action || 'event'),
+        text: entry.text || '',
+        issue_id: entry.issue_id || '',
+        checklist_run_id: entry.checklist_run_id || '',
+        ref_no: entry.ref_no || '',
+        user_uid: entry.user_uid || state.currentUser?.uid || '',
+        user_name: entry.user_name || state.currentUser?.full_name || '',
+        created_at: sdk.serverTimestamp(),
+      });
+    } catch (err) {
+      console.warn('record usage log failed', err);
+    }
+  }
+
+  function recordUsageLog(entry = {}) {
+    if (isFirebaseLive()) return recordUsageLogFirebase(entry);
+    recordUsageLogLocal(entry);
+    return Promise.resolve();
+  }
+
+  function reloadUsageLogs() {
+    if (isFirebaseLive()) {
+      startUsageLogsSync();
+      setAuthStatus('โหลด usage log ล่าสุดแล้ว', 'success');
+      return;
+    }
+    renderUsageLogs();
+    setAuthStatus('โหลด usage log จากข้อมูลในเครื่องแล้ว', 'success');
   }
 
   function renderTeamMembers() {

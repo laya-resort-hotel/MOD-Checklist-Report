@@ -79,6 +79,7 @@
         <button class="nav-link" data-view="newIssueView">New Issue</button>
         <button class="nav-link" data-view="checklistView">Checklist</button>
         <button class="nav-link" data-view="activityView">Activity</button>
+        <button class="nav-link" data-view="logView">Log</button>
         <button class="nav-link" data-view="closedView">Closed Jobs</button>
         <button class="nav-link" data-view="moreView">More</button>
       </nav>
@@ -225,6 +226,24 @@
         </div>
       </section>
 
+      <section id="logView" class="view">
+        <div class="panel glass">
+          <div class="panel-header panel-header-split">
+            <div>
+              <h3>Usage Log</h3>
+              <p class="muted">โหลดและดูข้อมูลการใช้งานล่าสุดของระบบ เช่น การสร้างงาน ปิดงาน คอมเมนต์ ส่ง checklist และอัปหลักฐาน</p>
+            </div>
+            <button id="reloadUsageLogBtn" class="btn btn-secondary" type="button">Load Latest</button>
+          </div>
+          <div class="toolbar glass inner-toolbar">
+            <div class="toolbar-left">
+              <input id="logSearch" class="search-input" type="search" placeholder="ค้นหา log, ผู้ใช้, issue no, checklist no" />
+            </div>
+          </div>
+          <div id="usageLogList" class="activity-list"></div>
+        </div>
+      </section>
+
 
       <section id="closedView" class="view">
         <div class="panel glass">
@@ -253,6 +272,7 @@
             </div>
             <div class="stack">
               <button id="openClosedJobsFromMore" class="btn btn-secondary">Open Closed Jobs</button>
+              <button id="openUsageLogFromMore" class="btn btn-secondary">Open Usage Log</button>
               <button id="exportJsonBtn" class="btn btn-secondary">Export Local JSON</button>
               <label class="btn btn-ghost upload-btn">
                 Import Local JSON
@@ -280,6 +300,7 @@
       <button class="nav-link" data-view="newIssueView">New</button>
       <button class="nav-link" data-view="checklistView">Checklist</button>
       <button class="nav-link" data-view="activityView">Activity</button>
+      <button class="nav-link" data-view="logView">Log</button>
       <button class="nav-link" data-view="moreView">More</button>
     </nav>
   </div>
