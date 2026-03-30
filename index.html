@@ -79,9 +79,8 @@
         <button class="nav-link" data-view="newIssueView">New Issue</button>
         <button class="nav-link" data-view="checklistView">Checklist</button>
         <button class="nav-link" data-view="activityView">Activity</button>
-        <button class="nav-link" data-view="logView">Log</button>
         <button class="nav-link" data-view="closedView">Closed Jobs</button>
-        <button class="nav-link" data-view="moreView">Team</button>
+        <button class="nav-link" data-view="moreView">More</button>
       </nav>
     </aside>
 
@@ -126,21 +125,21 @@
 
           <div class="photo-uploader" id="issuePhotoDrop">
             <input id="issuePhotoInput" type="file" accept="image/*" multiple class="visually-hidden-file" />
-            <div class="photo-action-row single-action">
+            <div class="photo-action-row single-action-row">
               <label id="issuePhotoPickBtn" for="issuePhotoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">เพิ่มรูป / ถ่ายรูป</label>
             </div>
-            <div id="issuePhotoHint" class="photo-hint muted">แนะนำรูปไม่เกิน 10 MB ต่อรูป • เลือกได้หลายรูป • ระบบจะย่อรูปให้อัตโนมัติก่อนบันทึก</div>
+            <div id="issuePhotoHint" class="photo-hint muted">เลือกรูปได้มากกว่า 1 รูป • ระบบจะย่อรูปให้อัตโนมัติก่อนอัปโหลด</div>
             <div class="photo-preview-wrap">
-              <div id="issuePhotoPreviewGrid" class="photo-preview-grid hidden"></div>
+              <div id="issuePhotoPreviewGrid" class="media-preview-grid hidden"></div>
             </div>
           </div>
 
           <div class="photo-uploader video-uploader">
             <input id="issueVideoInput" type="file" accept="video/*" class="visually-hidden-file" />
-            <div class="photo-action-row single-action">
+            <div class="photo-action-row single-action-row">
               <label id="issueVideoPickBtn" for="issueVideoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">เพิ่มวิดีโอ / ถ่ายวิดีโอ</label>
             </div>
-            <div id="issueVideoHint" class="photo-hint muted">รองรับวิดีโอไม่เกิน 25 MB • แนะนำ MP4/MOV • ระบบจะสร้าง poster ให้ใช้อัตโนมัติ</div>
+            <div id="issueVideoHint" class="photo-hint muted">รองรับวิดีโอไม่เกิน 25 MB • แนะนำ MP4/MOV • ระบบจะสร้าง poster ให้อัตโนมัติ</div>
             <div class="photo-preview-wrap">
               <video id="issueVideoPreview" class="photo-preview hidden" controls playsinline preload="metadata"></video>
             </div>
@@ -222,27 +221,6 @@
         </div>
       </section>
 
-      <section id="logView" class="view">
-        <div class="panel glass">
-          <div class="panel-header panel-header-split">
-            <div>
-              <h3>Usage Log</h3>
-              <p class="muted">โหลดและดูข้อมูลการใช้งานล่าสุดของระบบ เช่น การสร้างงาน ปิดงาน คอมเมนต์ ส่ง checklist และอัปหลักฐาน</p>
-            </div>
-            <div class="header-actions inline-actions">
-            <button id="reloadUsageLogBtn" class="btn btn-secondary" type="button">Load Latest</button>
-            <button id="exportUsageLogExcelBtn" class="btn btn-primary" type="button">Export Excel</button>
-          </div>
-          </div>
-          <div class="toolbar glass inner-toolbar">
-            <div class="toolbar-left">
-              <input id="logSearch" class="search-input" type="search" placeholder="ค้นหา log, ผู้ใช้, issue no, checklist no" />
-            </div>
-          </div>
-          <div id="usageLogList" class="activity-list"></div>
-        </div>
-      </section>
-
 
       <section id="closedView" class="view">
         <div class="panel glass">
@@ -266,11 +244,11 @@
         <div class="more-grid">
           <div class="panel glass">
             <div class="panel-header">
-              <h3>Team & Tools</h3>
+              <h3>Data Tools</h3>
+              <p class="muted">สำหรับเดโมและสำรองข้อมูล</p>
             </div>
             <div class="stack">
               <button id="openClosedJobsFromMore" class="btn btn-secondary">Open Closed Jobs</button>
-              <button id="openUsageLogFromMore" class="btn btn-secondary">Open Usage Log</button>
               <button id="exportJsonBtn" class="btn btn-secondary">Export Local JSON</button>
               <label class="btn btn-ghost upload-btn">
                 Import Local JSON
@@ -298,8 +276,7 @@
       <button class="nav-link" data-view="newIssueView">New</button>
       <button class="nav-link" data-view="checklistView">Checklist</button>
       <button class="nav-link" data-view="activityView">Activity</button>
-      <button class="nav-link" data-view="logView">Log</button>
-      <button class="nav-link" data-view="moreView">Team</button>
+      <button class="nav-link" data-view="moreView">More</button>
     </nav>
   </div>
 
@@ -313,7 +290,6 @@
 
   <script src="js/firebase-config.js"></script>
   <script type="module" src="js/firebase-init.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
