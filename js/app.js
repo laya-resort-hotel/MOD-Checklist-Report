@@ -597,6 +597,9 @@
 
   function switchView(viewId) {
     state.ui.activeView = viewId;
+    if (viewId === 'newIssueView') {
+      clearIssueForm();
+    }
     qsa('.view').forEach(view => view.classList.toggle('active', view.id === viewId));
     qsa('.nav-link').forEach(btn => btn.classList.toggle('active', btn.dataset.view === viewId));
     if (viewId === 'boardView') renderBoard();
@@ -833,6 +836,7 @@
       const optimized = await optimizeIssuePhoto(file);
       state.ui.pendingIssuePhoto = optimized;
       el.issuePhotoPreview.src = optimized.previewDataUrl || optimized.thumbDataUrl || optimized.fullDataUrl;
+      el.issuePhotoPreview.dataset.lockedFromCurrentSelection = '1';
       el.issuePhotoPreview.classList.remove('hidden');
       setIssuePhotoHint(
         `ย่อรูปแล้ว ${formatBytes(optimized.originalBytes)} → ${formatBytes(optimized.fullBytes)} • thumbnail ${formatBytes(optimized.thumbBytes)}`,
@@ -844,6 +848,7 @@
       if (el.issueCameraInput) el.issueCameraInput.value = '';
       el.issuePhotoPreview.src = '';
       el.issuePhotoPreview.classList.add('hidden');
+      delete el.issuePhotoPreview.dataset.lockedFromCurrentSelection;
       state.ui.pendingIssuePhoto = null;
       const msg = err?.message === 'invalid_file_type'
         ? 'ไฟล์นี้ไม่ใช่รูปภาพ'
@@ -868,6 +873,16 @@
       const prepared = await prepareIssueVideo(file);
       revokeIssueVideoPreview();
       state.ui.pendingIssueVideo = prepared;
+      const hasCurrentPhotoFile = Boolean(el.issuePhotoInput?.files?.length || el.issueCameraInput?.files?.length);
+      if (!hasCurrentPhotoFile && !el.issuePhotoPreview?.dataset?.lockedFromCurrentSelection) {
+        // กันกรณีรูปเก่าค้างจาก issue ก่อนหน้าแล้วมาปนกับวิดีโอใหม่
+        state.ui.pendingIssuePhoto = null;
+        if (el.issuePhotoPreview) {
+          el.issuePhotoPreview.src = '';
+          el.issuePhotoPreview.classList.add('hidden');
+        }
+        setIssuePhotoHint('ยังไม่ได้เลือกรูป • หากต้องการแนบเฉพาะวิดีโอ ระบบจะใช้ poster จากวิดีโอแทน', '');
+      }
       if (el.issueVideoPreview) {
         el.issueVideoPreview.src = prepared.previewUrl;
         el.issueVideoPreview.classList.remove('hidden');
@@ -928,6 +943,8 @@
     el.issuePhotoPreview.classList.add('hidden');
     delete el.issuePhotoPreview.dataset.imageData;
     delete el.issuePhotoPreview.dataset.thumbData;
+    delete el.issuePhotoPreview.dataset.lockedFromCurrentSelection;
+    state.ui.pendingIssuePhoto = null;
     if (el.issueVideoInput) el.issueVideoInput.value = '';
     if (el.issueVideoCameraInput) el.issueVideoCameraInput.value = '';
     revokeIssueVideoPreview();
