@@ -1,12 +1,6 @@
 (() => {
   const APP_KEY = 'laya_mod_checklist_v1';
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
-  const DEMO_USERS = [
-    { uid: 'uid_mod_9901', employee_id: '9901', password: '9901', full_name: 'Somchai MOD', role: 'mod', department: 'MOD' },
-    { uid: 'uid_mod_9902', employee_id: '9902', password: '9902', full_name: 'Nok MOD', role: 'mod', department: 'MOD' },
-    { uid: 'uid_mod_9903', employee_id: '9903', password: '9903', full_name: 'Brown MOD', role: 'mod', department: 'MOD' },
-    { uid: 'uid_mod_9904', employee_id: '9904', password: '9904', full_name: 'Mint MOD', role: 'mod', department: 'MOD' },
-  ];
 
   const DEPARTMENTS = [
     { code: 'ENG', name: 'Engineering' },
