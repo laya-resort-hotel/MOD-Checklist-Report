@@ -912,6 +912,12 @@
         ${ans.note ? `<div>${escapeHtml(ans.note)}</div>` : ''}
       </div>
     `).join('');
+    const specialFormHtml = (run.special_form_entries || []).map(entry => `
+      <div class="comment-item">
+        <div class="comment-meta">${escapeHtml(entry.section_title || '')}</div>
+        <div>${escapeHtml(entry.value || '')}</div>
+      </div>
+    `).join('');
     el.issueModalContent.innerHTML = `
       <div class="issue-detail-grid">
         <div>
@@ -930,6 +936,10 @@
           <div class="panel glass inner-panel">
             <div class="panel-header"><h3>Checklist Answers</h3></div>
             <div class="comments-list">${answerHtml || '<div class="empty-state">No answers</div>'}</div>
+          </div>
+          <div class="panel glass inner-panel" style="margin-top:12px;">
+            <div class="panel-header"><h3>Special Forms</h3></div>
+            <div class="comments-list">${specialFormHtml || '<div class="empty-state">No special form entries</div>'}</div>
           </div>
         </div>
       </div>
@@ -1440,13 +1450,14 @@
     const items = section.items || [];
     if (!items.length) {
       return `
-        <section class="section-card">
+        <section class="section-card section-card-special" data-section-code="${escapeHtml(section.section_code || '')}">
           <div class="section-head">
             <h4>${escapeHtml(section.section_title)}</h4>
-            <span class="muted">Special form / placeholder</span>
+            <span class="muted">Special form</span>
           </div>
           <div class="section-body">
-            <div class="empty-state">ส่วนนี้เป็น form แยกหรือ placeholder จากไฟล์ต้นทาง</div>
+            <label class="special-form-label">รายละเอียด</label>
+            <textarea class="special-form-textarea" data-special-form-input rows="5" placeholder="พิมพ์ข้อมูลในส่วนนี้ได้เลย"></textarea>
           </div>
         </section>
       `;
@@ -1512,6 +1523,7 @@
     const inspectionDate = qs('#runDate', el.checklistRunPanel).value;
     const itemCards = qsa('.item-card', el.checklistRunPanel);
     const answers = [];
+    const specialFormEntries = [];
 
     itemCards.forEach(card => {
       const response = card.dataset.response || '';
@@ -1538,7 +1550,18 @@
       });
     });
 
-    if (!answers.length) return alert('กรุณาตอบ checklist อย่างน้อย 1 ข้อ');
+    qsa('[data-special-form-input]', el.checklistRunPanel).forEach(input => {
+      const value = input.value.trim();
+      if (!value) return;
+      const sectionCard = input.closest('.section-card');
+      specialFormEntries.push({
+        section_code: sectionCard?.dataset.sectionCode || '',
+        section_title: qs('h4', sectionCard)?.textContent || '',
+        value,
+      });
+    });
+
+    if (!answers.length && !specialFormEntries.length) return alert('กรุณากรอก checklist หรือ special form อย่างน้อย 1 ส่วน');
 
     const baseRun = {
       id: runId,
@@ -1552,6 +1575,7 @@
       location_text: location,
       status: 'submitted',
       answers,
+      special_form_entries: specialFormEntries,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       submitted_at: new Date().toISOString(),
@@ -1701,6 +1725,7 @@
         location_text: run.location_text || '',
         source: 'checklist',
         answers: run.answers,
+        special_form_entries: Array.isArray(run.special_form_entries) ? run.special_form_entries : [],
         total_items: run.total_items,
         pass_count: run.pass_count,
         fail_count: run.fail_count,
@@ -2382,6 +2407,7 @@
       id: docSnap.id,
       ...data,
       answers: Array.isArray(data.answers) ? data.answers : [],
+      special_form_entries: Array.isArray(data.special_form_entries) ? data.special_form_entries : [],
       created_at: normalizeDateValue(data.created_at),
       updated_at: normalizeDateValue(data.updated_at),
       submitted_at: normalizeDateValue(data.submitted_at),

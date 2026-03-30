@@ -1587,3 +1587,29 @@ input {
     font-size: 11px;
   }
 }
+
+
+.section-card-special .section-body {
+  display: grid;
+  gap: 8px;
+}
+.special-form-label {
+  font-weight: 700;
+  color: #5f5a50;
+}
+.special-form-textarea {
+  width: 100%;
+  min-height: 120px;
+  border: 1px solid rgba(134,110,75,.18);
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: #fff;
+  color: #1f2e28;
+  resize: vertical;
+  font: inherit;
+}
+.special-form-textarea:focus {
+  outline: none;
+  border-color: rgba(134,110,75,.55);
+  box-shadow: 0 0 0 3px rgba(134,110,75,.10);
+}
