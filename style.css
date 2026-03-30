@@ -689,6 +689,45 @@ input:focus, select:focus, textarea:focus {
   display: grid;
   gap: 10px;
 }
+.evidence-box {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px dashed rgba(47,122,88,0.28);
+  border-radius: 18px;
+  background: rgba(47,122,88,0.05);
+}
+.evidence-box-head {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.evidence-actions {
+  margin: 0;
+}
+.compact-wrap {
+  align-items: stretch;
+}
+.detail-evidence-status {
+  margin-top: 10px;
+  font-size: 13px;
+}
+.issue-media-section {
+  display: grid;
+  gap: 10px;
+}
+.issue-media-section + .issue-media-section {
+  margin-top: 18px;
+}
+.issue-media-section-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+.issue-media-section-title.success {
+  color: var(--success);
+}
 .comment-list { display: grid; gap: 12px; margin-top: 16px; }
 .comment-item {
   padding: 14px;

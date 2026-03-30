@@ -39,6 +39,7 @@
       liveIssueComments: [],
       pendingIssuePhoto: null,
       pendingIssueVideo: null,
+      pendingEvidenceBusy: false,
       checklistBuilderSections: [],
     },
     data: {
@@ -1264,7 +1265,7 @@
     }];
   }
 
-  async function uploadIssueVideoSet({ issueId, file, mimeType = 'video/mp4', fileName = 'video.mp4', posterDataUrl = '', thumbDataUrl = '' }) {
+  async function uploadIssueVideoSet({ issueId, file, mimeType = 'video/mp4', fileName = 'video.mp4', posterDataUrl = '', thumbDataUrl = '', phase = 'before' }) {
     const fb = window.LAYA_FIREBASE;
     if (!fb?.ready || !fb.storage || !fb.sdk?.storageRef || !fb.sdk?.uploadBytes || !fb.sdk?.getDownloadURL) {
       throw new Error('storage_not_ready');
@@ -1275,7 +1276,7 @@
 
     const ts = Date.now();
     const ext = getFileExtension(fileName, mimeType);
-    const videoPath = `issue_videos/${uid}/${issueId}/before/video_${ts}.${ext}`;
+    const videoPath = `issue_videos/${uid}/${issueId}/${phase}/video_${ts}.${ext}`;
     const videoRef = fb.sdk.storageRef(fb.storage, videoPath);
     await fb.sdk.uploadBytes(videoRef, file, { contentType: mimeType, cacheControl: 'public,max-age=3600' });
     const videoUrl = await fb.sdk.getDownloadURL(videoRef);
@@ -1286,14 +1287,14 @@
     let thumbPath = '';
 
     if (posterDataUrl) {
-      posterPath = `issue_videos/${uid}/${issueId}/before/poster_${ts}.jpg`;
+      posterPath = `issue_videos/${uid}/${issueId}/${phase}/poster_${ts}.jpg`;
       const posterRef = fb.sdk.storageRef(fb.storage, posterPath);
       await fb.sdk.uploadString(posterRef, posterDataUrl, 'data_url', { contentType: 'image/jpeg', cacheControl: 'public,max-age=3600' });
       posterUrl = await fb.sdk.getDownloadURL(posterRef);
     }
 
     if (thumbDataUrl) {
-      thumbPath = `issue_videos/${uid}/${issueId}/before/thumb_${ts}.jpg`;
+      thumbPath = `issue_videos/${uid}/${issueId}/${phase}/thumb_${ts}.jpg`;
       const thumbRef = fb.sdk.storageRef(fb.storage, thumbPath);
       await fb.sdk.uploadString(thumbRef, thumbDataUrl, 'data_url', { contentType: 'image/jpeg', cacheControl: 'public,max-age=3600' });
       thumbUrl = await fb.sdk.getDownloadURL(thumbRef);
@@ -1302,7 +1303,7 @@
     return { videoUrl, videoPath, posterUrl, posterPath, thumbUrl, thumbPath };
   }
 
-  async function uploadIssuePhotoSet({ issueId, fullDataUrl, thumbDataUrl, mimeType = 'image/jpeg' }) {
+  async function uploadIssuePhotoSet({ issueId, fullDataUrl, thumbDataUrl, mimeType = 'image/jpeg', phase = 'before' }) {
     const fb = window.LAYA_FIREBASE;
     if (!fb?.ready || !fb.storage || !fb.sdk?.storageRef || !fb.sdk?.uploadString || !fb.sdk?.getDownloadURL) {
       throw new Error('storage_not_ready');
@@ -1312,8 +1313,8 @@
     if (!uid) throw new Error('not_signed_in');
 
     const ts = Date.now();
-    const fullPath = `issue_photos/${uid}/${issueId}/before/full_${ts}.jpg`;
-    const thumbPath = `issue_photos/${uid}/${issueId}/before/thumb_${ts}.jpg`;
+    const fullPath = `issue_photos/${uid}/${issueId}/${phase}/full_${ts}.jpg`;
+    const thumbPath = `issue_photos/${uid}/${issueId}/${phase}/thumb_${ts}.jpg`;
 
     const fullRef = fb.sdk.storageRef(fb.storage, fullPath);
     await fb.sdk.uploadString(fullRef, fullDataUrl, 'data_url', {
@@ -1648,6 +1649,9 @@
       ? (state.ui.openIssueId === issue.id ? state.ui.liveIssueComments : [])
       : (Array.isArray(issue.comments) ? issue.comments : []);
 
+    const afterPhotoCount = Array.isArray(issue.after_photos) ? issue.after_photos.length : 0;
+    const afterVideoCount = Array.isArray(issue.after_videos) ? issue.after_videos.length : 0;
+
     el.issueModalContent.innerHTML = `
       <div class="issue-detail-grid">
         <div>
@@ -1668,6 +1672,7 @@
             <div><strong>Reported by:</strong> ${escapeHtml(issue.reported_by_name || '-')}</div>
             <div><strong>Created:</strong> ${formatDateTime(issue.created_at)}</div>
             <div><strong>Media:</strong> ${(issue.before_photos?.length || 0)} photo / ${(issue.before_videos?.length || 0)} video</div>
+            <div><strong>Evidence:</strong> ${afterPhotoCount} photo / ${afterVideoCount} video</div>
           </div>
           <div class="muted">${escapeHtml(issue.description || '')}</div>
 
@@ -1680,6 +1685,23 @@
           </div>
 
           ${canWorkIssue(issue) ? `
+            <div class="evidence-box">
+              <div class="evidence-box-head">
+                <strong>หลักฐานส่งงาน</strong>
+                <span class="muted">เพิ่มรูปหรือวิดีโอก่อนปิดงานได้</span>
+              </div>
+              <input id="detailEvidencePhotoInput" type="file" accept="image/*" class="visually-hidden-file" />
+              <input id="detailEvidenceCameraInput" type="file" accept="image/*" capture="environment" class="visually-hidden-file" />
+              <input id="detailEvidenceVideoInput" type="file" accept="video/*" class="visually-hidden-file" />
+              <input id="detailEvidenceVideoCameraInput" type="file" accept="video/*" capture="environment" class="visually-hidden-file" />
+              <div class="action-row compact-wrap evidence-actions">
+                <label for="detailEvidencePhotoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">เพิ่มรูป</label>
+                <label for="detailEvidenceCameraInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">ถ่ายรูป</label>
+                <label for="detailEvidenceVideoInput" class="btn btn-ghost photo-pick-label" role="button" tabindex="0">เพิ่มวิดีโอ</label>
+                <label for="detailEvidenceVideoCameraInput" class="btn btn-ghost photo-pick-label" role="button" tabindex="0">ถ่ายวิดีโอ</label>
+              </div>
+              <div id="detailEvidenceStatus" class="detail-evidence-status muted">หลักฐานที่อัปแล้วจะแสดงด้านซ้ายทันที</div>
+            </div>
             <div class="comment-box">
               <textarea id="detailCommentText" rows="3" placeholder="Add comment"></textarea>
               <div class="action-row">
@@ -1701,6 +1723,20 @@
     `;
 
     qsa('[data-detail-status]', el.issueModalContent).forEach(btn => btn.addEventListener('click', () => updateIssueStatus(issue.id, btn.dataset.detailStatus)));
+
+    const evidenceInputs = [
+      ['#detailEvidencePhotoInput', 'photo'],
+      ['#detailEvidenceCameraInput', 'photo'],
+      ['#detailEvidenceVideoInput', 'video'],
+      ['#detailEvidenceVideoCameraInput', 'video'],
+    ];
+    evidenceInputs.forEach(([selector, kind]) => {
+      const input = qs(selector, el.issueModalContent);
+      if (!input) return;
+      input.addEventListener('click', () => { input.value = ''; });
+      input.addEventListener('change', (event) => handleDetailEvidencePicked(issue.id, kind, event));
+    });
+
     const addCommentBtn = qs('#addCommentBtn', el.issueModalContent);
     if (addCommentBtn) {
       addCommentBtn.addEventListener('click', async () => {
@@ -1714,32 +1750,57 @@
   }
 
   function renderIssueMediaBlock(issue) {
-    const photos = Array.isArray(issue.before_photos) ? issue.before_photos.filter(Boolean) : [];
-    const videos = Array.isArray(issue.before_videos) ? issue.before_videos.filter(Boolean) : [];
-    const parts = [];
+    const beforePhotos = Array.isArray(issue.before_photos) ? issue.before_photos.filter(Boolean) : [];
+    const beforeVideos = Array.isArray(issue.before_videos) ? issue.before_videos.filter(Boolean) : [];
+    const afterPhotos = Array.isArray(issue.after_photos) ? issue.after_photos.filter(Boolean) : [];
+    const afterVideos = Array.isArray(issue.after_videos) ? issue.after_videos.filter(Boolean) : [];
 
-    if (photos.length) {
-      parts.push(...photos.map((photo, index) => `
-        <div class="issue-media-card">
-          <img class="issue-hero" src="${photo.url || photo.thumb_url || issue.cover_photo_url || ''}" alt="Issue image ${index + 1}" />
-        </div>
-      `));
-    }
+    const renderMediaCards = (photos = [], videos = []) => {
+      const cards = [];
+      if (photos.length) {
+        cards.push(...photos.map((photo, index) => `
+          <div class="issue-media-card">
+            <img class="issue-hero" src="${photo.url || photo.thumb_url || issue.cover_photo_url || ''}" alt="Issue image ${index + 1}" />
+          </div>
+        `));
+      }
+      if (videos.length) {
+        cards.push(...videos.map((video, index) => `
+          <div class="issue-media-card">
+            <div class="issue-media-label">Video ${index + 1}</div>
+            <video class="issue-video" src="${video.url || ''}" ${video.poster_url ? `poster="${video.poster_url}"` : ''} controls playsinline preload="metadata"></video>
+          </div>
+        `));
+      }
+      return cards;
+    };
 
-    if (videos.length) {
-      parts.push(...videos.map((video, index) => `
-        <div class="issue-media-card">
-          <div class="issue-media-label">Video ${index + 1}</div>
-          <video class="issue-video" src="${video.url || ''}" ${video.poster_url ? `poster="${video.poster_url}"` : ''} controls playsinline preload="metadata"></video>
-        </div>
-      `));
-    }
+    const beforeCards = renderMediaCards(beforePhotos, beforeVideos);
+    const afterCards = renderMediaCards(afterPhotos, afterVideos);
 
-    if (!parts.length) {
+    if (!beforeCards.length && !afterCards.length) {
       return `<div class="issue-hero placeholder issue-thumb">NO MEDIA</div>`;
     }
 
-    return `<div class="issue-media-stack">${parts.join('')}</div>`;
+    const sections = [];
+    if (beforeCards.length) {
+      sections.push(`
+        <div class="issue-media-section">
+          <div class="issue-media-section-title">Reported media</div>
+          <div class="issue-media-stack">${beforeCards.join('')}</div>
+        </div>
+      `);
+    }
+    if (afterCards.length) {
+      sections.push(`
+        <div class="issue-media-section">
+          <div class="issue-media-section-title success">Completion evidence</div>
+          <div class="issue-media-stack">${afterCards.join('')}</div>
+        </div>
+      `);
+    }
+
+    return sections.join('');
   }
 
   function closeIssueModal() {
@@ -1748,6 +1809,186 @@
     el.issueModal.classList.add('hidden');
   }
 
+
+  async function handleDetailEvidencePicked(issueId, kind, event) {
+    const input = event.target;
+    const file = input?.files?.[0];
+    input.value = '';
+    if (!file) return;
+    const issue = state.data.issues.find(i => i.id === issueId);
+    if (!issue || !canWorkIssue(issue)) return;
+    if (state.ui.pendingEvidenceBusy) return alert('กำลังอัปหลักฐาน กรุณารอสักครู่');
+
+    const statusEl = qs('#detailEvidenceStatus', el.issueModalContent);
+    const setStatus = (message) => { if (statusEl) statusEl.textContent = message; };
+
+    try {
+      state.ui.pendingEvidenceBusy = true;
+      if (kind === 'photo') {
+        setStatus('กำลังย่อและอัปรูปหลักฐาน...');
+        await addIssueEvidencePhoto(issueId, file);
+        setStatus('เพิ่มรูปหลักฐานเรียบร้อย');
+      } else {
+        setStatus('กำลังเตรียมและอัปวิดีโอหลักฐาน...');
+        await addIssueEvidenceVideo(issueId, file);
+        setStatus('เพิ่มวิดีโอหลักฐานเรียบร้อย');
+      }
+      if (!isFirebaseLive()) openIssueModal(issueId);
+    } catch (err) {
+      console.error('detail evidence upload failed', err);
+      setStatus('อัปหลักฐานไม่สำเร็จ');
+      alert(kind === 'photo' ? friendlyPhotoError(err) : friendlyVideoError(err));
+    } finally {
+      state.ui.pendingEvidenceBusy = false;
+    }
+  }
+
+  async function addIssueEvidencePhoto(issueId, file) {
+    const issue = state.data.issues.find(i => i.id === issueId);
+    if (!issue || !canWorkIssue(issue)) throw new Error('permission_denied');
+
+    const fullDataUrl = await fileToOptimizedDataUrl(file, { targetBytes: 260 * 1024 });
+    const thumbDataUrl = await fileToDataUrl(file, 520, 0.64);
+    const nowIso = new Date().toISOString();
+
+    if (!isFirebaseLive()) {
+      issue.after_photos = Array.isArray(issue.after_photos) ? issue.after_photos : [];
+      issue.after_photos.push({
+        url: fullDataUrl,
+        thumb_url: thumbDataUrl,
+        uploaded_at: nowIso,
+      });
+      issue.updated_at = nowIso;
+      issue.last_activity_at = nowIso;
+      issue.activity_count = Number(issue.activity_count || 0) + 1;
+      persist();
+      renderAll();
+      return;
+    }
+
+    const uploaded = await uploadIssuePhotoSet({
+      issueId,
+      fullDataUrl,
+      thumbDataUrl,
+      mimeType: 'image/jpeg',
+      phase: 'after'
+    });
+
+    const evidence = {
+      url: uploaded.fullUrl,
+      thumb_url: uploaded.thumbUrl,
+      storage_path: uploaded.fullPath,
+      thumb_storage_path: uploaded.thumbPath,
+      uploaded_at: nowIso,
+    };
+
+    const fb = window.LAYA_FIREBASE;
+    const sdk = fb.sdk;
+    await sdk.runTransaction(fb.db, async (tx) => {
+      const issueRef = sdk.doc(fb.db, 'issues', issueId);
+      const snap = await tx.get(issueRef);
+      if (!snap.exists()) throw new Error('issue_not_found');
+      const liveIssue = { id: snap.id, ...snap.data() };
+      if (!canWorkIssue(liveIssue)) throw new Error('permission_denied');
+      const nextAfterPhotos = Array.isArray(liveIssue.after_photos) ? [...liveIssue.after_photos, evidence] : [evidence];
+      const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${issueId}/activity`));
+      tx.update(issueRef, {
+        after_photos: nextAfterPhotos,
+        updated_at: sdk.serverTimestamp(),
+        last_activity_at: sdk.serverTimestamp(),
+        activity_count: sdk.increment(1),
+      });
+      tx.set(activityRef, {
+        action: 'photo_added',
+        note: 'Added completion evidence photo',
+        by_uid: state.currentUser.uid,
+        by_name: state.currentUser.full_name,
+        by_department: state.currentUser.department,
+        created_at: sdk.serverTimestamp(),
+      });
+    });
+  }
+
+  async function addIssueEvidenceVideo(issueId, file) {
+    const issue = state.data.issues.find(i => i.id === issueId);
+    if (!issue || !canWorkIssue(issue)) throw new Error('permission_denied');
+
+    if (!file.type || !file.type.startsWith('video/')) throw new Error('invalid_video_type');
+    if ((file.size || 0) > 25 * 1024 * 1024) throw new Error('video_too_large');
+
+    const prepared = await prepareIssueVideo(file);
+    const nowIso = new Date().toISOString();
+
+    if (!isFirebaseLive()) {
+      issue.after_videos = Array.isArray(issue.after_videos) ? issue.after_videos : [];
+      issue.after_videos.push({
+        url: prepared.previewUrl,
+        poster_url: prepared.posterDataUrl,
+        thumb_url: prepared.thumbDataUrl || prepared.posterDataUrl,
+        mime_type: prepared.mimeType,
+        original_name: prepared.fileName,
+        size: prepared.originalBytes,
+        uploaded_at: nowIso,
+      });
+      issue.updated_at = nowIso;
+      issue.last_activity_at = nowIso;
+      issue.activity_count = Number(issue.activity_count || 0) + 1;
+      persist();
+      renderAll();
+      return;
+    }
+
+    const uploaded = await uploadIssueVideoSet({
+      issueId,
+      file: prepared.file,
+      mimeType: prepared.mimeType,
+      fileName: prepared.fileName,
+      posterDataUrl: prepared.posterDataUrl || '',
+      thumbDataUrl: prepared.thumbDataUrl || prepared.posterDataUrl || '',
+      phase: 'after'
+    });
+
+    const evidence = {
+      url: uploaded.videoUrl,
+      poster_url: uploaded.posterUrl,
+      thumb_url: uploaded.thumbUrl || uploaded.posterUrl,
+      storage_path: uploaded.videoPath,
+      poster_storage_path: uploaded.posterPath,
+      thumb_storage_path: uploaded.thumbPath,
+      mime_type: prepared.mimeType,
+      original_name: prepared.fileName,
+      size: prepared.originalBytes,
+      uploaded_at: nowIso,
+    };
+
+    try { if (prepared.previewUrl) URL.revokeObjectURL(prepared.previewUrl); } catch (_) {}
+
+    const fb = window.LAYA_FIREBASE;
+    const sdk = fb.sdk;
+    await sdk.runTransaction(fb.db, async (tx) => {
+      const issueRef = sdk.doc(fb.db, 'issues', issueId);
+      const snap = await tx.get(issueRef);
+      if (!snap.exists()) throw new Error('issue_not_found');
+      const liveIssue = { id: snap.id, ...snap.data() };
+      if (!canWorkIssue(liveIssue)) throw new Error('permission_denied');
+      const nextAfterVideos = Array.isArray(liveIssue.after_videos) ? [...liveIssue.after_videos, evidence] : [evidence];
+      const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${issueId}/activity`));
+      tx.update(issueRef, {
+        after_videos: nextAfterVideos,
+        updated_at: sdk.serverTimestamp(),
+        last_activity_at: sdk.serverTimestamp(),
+        activity_count: sdk.increment(1),
+      });
+      tx.set(activityRef, {
+        action: 'video_added',
+        note: 'Added completion evidence video',
+        by_uid: state.currentUser.uid,
+        by_name: state.currentUser.full_name,
+        by_department: state.currentUser.department,
+        created_at: sdk.serverTimestamp(),
+      });
+    });
+  }
 
   async function updateIssueStatus(issueId, toStatus) {
     const issue = state.data.issues.find(i => i.id === issueId);
