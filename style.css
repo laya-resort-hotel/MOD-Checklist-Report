@@ -488,10 +488,9 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   gap: 10px;
   margin-top: 18px;
-  position: sticky;
-  bottom: 12px;
-  background: linear-gradient(180deg, rgba(246,241,232,0.3), rgba(246,241,232,0.9));
-  padding-top: 10px;
+  position: static;
+  background: transparent;
+  padding-top: 0;
 }
 .template-grid, .more-grid {
   display: grid;
@@ -1359,14 +1358,13 @@ input {
   }
 
   .sticky-actions {
-    position: sticky;
-    bottom: calc(72px + env(safe-area-inset-bottom));
+    position: static;
     display: grid;
     grid-template-columns: 1fr;
     gap: 8px;
     margin-top: 16px;
-    padding: 10px 0 0;
-    z-index: 12;
+    padding: 0;
+    z-index: auto;
   }
 
   .fab {

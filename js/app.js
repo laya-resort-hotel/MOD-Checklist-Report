@@ -1432,8 +1432,8 @@
       </div>
       <div id="checklistSections"></div>
       <div class="sticky-actions">
-        <button class="btn btn-primary">Submit Checklist</button>
-        <button class="btn btn-ghost">Hide</button>
+        <button class="btn btn-primary" id="submitChecklistBtn">Submit Checklist</button>
+        <button class="btn btn-ghost" id="hideChecklistBtn">Hide</button>
       </div>
     `;
     el.checklistRunPanel.innerHTML = html;
