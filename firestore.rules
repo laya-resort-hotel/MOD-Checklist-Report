@@ -602,20 +602,6 @@ service cloud.firestore {
       }
     }
 
-
-    match /usage_logs/{logId} {
-      allow read: if signedIn();
-      allow create: if signedIn() &&
-        request.resource.data.keys().hasAll([
-          'category', 'action', 'title', 'text', 'user_uid', 'user_name', 'created_at'
-        ]) &&
-        request.resource.data.keys().hasOnly([
-          'category', 'action', 'title', 'text', 'issue_id', 'checklist_run_id', 'ref_no', 'user_uid', 'user_name', 'created_at'
-        ]) &&
-        request.resource.data.user_uid == request.auth.uid;
-      allow update, delete: if false;
-    }
-
     /* =========================
        counters
     ========================== */

@@ -23,18 +23,16 @@
     firebaseTemplatesUnsub: null,
     firebaseChecklistRunsUnsub: null,
     firebaseUsersUnsub: null,
-    firebaseUsageLogsUnsub: null,
     ui: {
       activeView: 'boardView',
       boardFilter: 'all',
       boardSearch: '',
       closedSearch: '',
-      logSearch: '',
       newIssuePriority: 'medium',
       selectedTemplateCode: null,
       openIssueId: null,
       liveIssueComments: [],
-      pendingIssuePhoto: null,
+      pendingIssuePhotos: [],
       pendingIssueVideo: null,
       pendingEvidenceBusy: false,
       checklistBuilderSections: [],
@@ -48,7 +46,6 @@
       customTemplates: [],
       counters: { issue: 0, checklist: 0 },
       teamMembers: [],
-      usageLogs: [],
     },
   };
 
@@ -69,7 +66,6 @@
     }
     state.data.teamMembers = DEMO_USERS.map(user => ({ uid: user.uid, employee_id: user.employee_id, full_name: user.full_name, role: 'mod', department: 'MOD', is_active: true }));
     renderTemplateCards();
-    renderUsageLogs();
     renderAll();
   }
 
@@ -216,9 +212,7 @@
         stopTemplatesSync();
         stopChecklistRunsSync();
         stopUsersSync();
-        stopUsageLogsSync();
         state.data.teamMembers = [];
-        state.data.usageLogs = [];
         state.ui.liveIssueComments = [];
         renderAuthState();
         return;
@@ -250,7 +244,6 @@
         startTemplatesSync();
         startChecklistRunsSync();
         startUsersSync();
-        startUsageLogsSync();
 
         try {
           await fb.sdk.updateDoc(userRef, {
@@ -299,7 +292,6 @@
       closedList: qs('#closedList'),
       openClosedJobsBtn: qs('#openClosedJobsBtn'),
       openClosedJobsFromMore: qs('#openClosedJobsFromMore'),
-      openUsageLogFromMore: qs('#openUsageLogFromMore'),
       backToBoardBtn: qs('#backToBoardBtn'),
       issueTitle: qs('#issueTitle'),
       issueDescription: qs('#issueDescription'),
@@ -307,15 +299,11 @@
       issueLocation: qs('#issueLocation'),
       issueDepartment: qs('#issueDepartment'),
       issuePhotoInput: qs('#issuePhotoInput'),
-      issueCameraInput: qs('#issueCameraInput'),
       issuePhotoPickBtn: qs('#issuePhotoPickBtn'),
-      issueCameraPickBtn: qs('#issueCameraPickBtn'),
       issuePhotoHint: qs('#issuePhotoHint'),
-      issuePhotoPreview: qs('#issuePhotoPreview'),
+      issuePhotoPreviewGrid: qs('#issuePhotoPreviewGrid'),
       issueVideoInput: qs('#issueVideoInput'),
-      issueVideoCameraInput: qs('#issueVideoCameraInput'),
       issueVideoPickBtn: qs('#issueVideoPickBtn'),
-      issueVideoCameraPickBtn: qs('#issueVideoCameraPickBtn'),
       issueVideoHint: qs('#issueVideoHint'),
       issueVideoPreview: qs('#issueVideoPreview'),
       saveIssueBtn: qs('#saveIssueBtn'),
@@ -326,10 +314,6 @@
       checklistTemplateBuilder: qs('#checklistTemplateBuilder'),
       checklistRunPanel: qs('#checklistRunPanel'),
       activityList: qs('#activityList'),
-      usageLogList: qs('#usageLogList'),
-      logSearch: qs('#logSearch'),
-      reloadUsageLogBtn: qs('#reloadUsageLogBtn'),
-      exportUsageLogExcelBtn: qs('#exportUsageLogExcelBtn'),
       issueModal: qs('#issueModal'),
       issueModalContent: qs('#issueModalContent'),
       closeIssueModalBtn: qs('#closeIssueModalBtn'),
@@ -367,15 +351,8 @@
       state.ui.closedSearch = e.target.value.trim().toLowerCase();
       renderClosedJobs();
     });
-    if (el.logSearch) el.logSearch.addEventListener('input', (e) => {
-      state.ui.logSearch = e.target.value.trim().toLowerCase();
-      renderUsageLogs();
-    });
-    if (el.reloadUsageLogBtn) el.reloadUsageLogBtn.addEventListener('click', () => reloadUsageLogs());
-    if (el.exportUsageLogExcelBtn) el.exportUsageLogExcelBtn.addEventListener('click', () => exportUsageLogsToExcel());
     if (el.openClosedJobsBtn) el.openClosedJobsBtn.addEventListener('click', () => switchView('closedView'));
     if (el.openClosedJobsFromMore) el.openClosedJobsFromMore.addEventListener('click', () => switchView('closedView'));
-    if (el.openUsageLogFromMore) el.openUsageLogFromMore.addEventListener('click', () => switchView('logView'));
     if (el.backToBoardBtn) el.backToBoardBtn.addEventListener('click', () => switchView('boardView'));
     el.boardFilterChips.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');
@@ -385,13 +362,9 @@
       renderBoard();
     });
     el.issuePhotoInput.addEventListener('change', handleIssuePhotoPicked);
-    if (el.issueCameraInput) el.issueCameraInput.addEventListener('change', handleIssuePhotoPicked);
     if (el.issuePhotoPickBtn) el.issuePhotoPickBtn.addEventListener('click', () => { if (el.issuePhotoInput) el.issuePhotoInput.value = ''; });
-    if (el.issueCameraPickBtn) el.issueCameraPickBtn.addEventListener('click', () => { if (el.issueCameraInput) el.issueCameraInput.value = ''; });
     if (el.issueVideoInput) el.issueVideoInput.addEventListener('change', handleIssueVideoPicked);
-    if (el.issueVideoCameraInput) el.issueVideoCameraInput.addEventListener('change', handleIssueVideoPicked);
     if (el.issueVideoPickBtn) el.issueVideoPickBtn.addEventListener('click', () => { if (el.issueVideoInput) el.issueVideoInput.value = ''; });
-    if (el.issueVideoCameraPickBtn) el.issueVideoCameraPickBtn.addEventListener('click', () => { if (el.issueVideoCameraInput) el.issueVideoCameraInput.value = ''; });
     el.saveIssueBtn.addEventListener('click', saveIssueFromForm);
     el.clearIssueBtn.addEventListener('click', clearIssueForm);
     el.prioritySegment.addEventListener('click', (e) => {
@@ -528,15 +501,6 @@
       return;
     }
     state.currentUser = { ...user };
-    recordUsageLogLocal({
-      category: 'auth',
-      action: 'login',
-      title: 'Signed in',
-      text: `${user.full_name} signed in`,
-      user_uid: user.uid,
-      user_name: user.full_name,
-      ref_no: user.employee_id,
-    });
     persist();
     renderAuthState();
     renderAll();
@@ -583,15 +547,6 @@
 
       const userRef = fb.sdk.doc(fb.db, 'users', cred.user.uid);
       await fb.sdk.setDoc(userRef, buildUserProfile(pending));
-      recordUsageLog({
-        category: 'auth',
-        action: 'register',
-        title: 'Created account',
-        text: `${fullName} created account`,
-        user_uid: cred.user.uid,
-        user_name: fullName,
-        ref_no: employeeId,
-      });
 
       clearPendingRegistration();
       setAuthStatus('สร้างบัญชีสำเร็จ กำลังเข้าสู่ระบบ...', 'success');
@@ -626,9 +581,7 @@
     stopIssueSync();
     stopIssueCommentsSync();
     stopUsersSync();
-    stopUsageLogsSync();
     state.data.teamMembers = [];
-    state.data.usageLogs = [];
     persist();
     renderAuthState();
   }
@@ -651,7 +604,6 @@
     qsa('.nav-link').forEach(btn => btn.classList.toggle('active', btn.dataset.view === viewId));
     if (viewId === 'boardView') renderBoard();
     if (viewId === 'activityView') renderActivity();
-    if (viewId === 'logView') renderUsageLogs();
     if (viewId === 'checklistView') renderTemplateCards();
     if (viewId === 'closedView') renderClosedJobs();
     if (viewId === 'moreView') renderTeamMembers();
@@ -664,7 +616,6 @@
     renderBoard();
     renderTemplateCards();
     renderActivity();
-    renderUsageLogs();
     renderClosedJobs();
     renderTeamMembers();
     switchView(state.ui.activeView);
@@ -983,34 +934,41 @@
   }
 
   async function handleIssuePhotoPicked(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
 
     try {
-      setIssuePhotoHint('กำลังย่อรูปก่อนอัปโหลด…', '');
-      if (!file.type || !file.type.startsWith('image/')) {
-        throw new Error('invalid_file_type');
+      setIssuePhotoHint(`กำลังย่อรูป ${files.length} รูปก่อนอัปโหลด…`, '');
+      const optimizedItems = [];
+      let totalOriginalBytes = 0;
+      let totalFullBytes = 0;
+      let totalThumbBytes = 0;
+
+      for (const file of files) {
+        if (!file.type || !file.type.startsWith('image/')) {
+          throw new Error('invalid_file_type');
+        }
+        const optimized = await optimizeIssuePhoto(file);
+        optimizedItems.push(optimized);
+        totalOriginalBytes += optimized.originalBytes || 0;
+        totalFullBytes += optimized.fullBytes || 0;
+        totalThumbBytes += optimized.thumbBytes || 0;
       }
-      const optimized = await optimizeIssuePhoto(file);
-      state.ui.pendingIssuePhoto = optimized;
-      el.issuePhotoPreview.src = optimized.previewDataUrl || optimized.thumbDataUrl || optimized.fullDataUrl;
-      el.issuePhotoPreview.dataset.lockedFromCurrentSelection = '1';
-      el.issuePhotoPreview.classList.remove('hidden');
+
+      state.ui.pendingIssuePhotos = optimizedItems;
+      renderIssuePhotoPreviewGrid(optimizedItems);
       setIssuePhotoHint(
-        `ย่อรูปแล้ว ${formatBytes(optimized.originalBytes)} → ${formatBytes(optimized.fullBytes)} • thumbnail ${formatBytes(optimized.thumbBytes)}`,
+        `ย่อรูปแล้ว ${files.length} รูป • ${formatBytes(totalOriginalBytes)} → ${formatBytes(totalFullBytes)} • thumbnails ${formatBytes(totalThumbBytes)}`,
         'success'
       );
     } catch (err) {
       console.error('Issue photo process failed', err);
-      el.issuePhotoInput.value = '';
-      if (el.issueCameraInput) el.issueCameraInput.value = '';
-      el.issuePhotoPreview.src = '';
-      el.issuePhotoPreview.classList.add('hidden');
-      delete el.issuePhotoPreview.dataset.lockedFromCurrentSelection;
-      state.ui.pendingIssuePhoto = null;
+      if (el.issuePhotoInput) el.issuePhotoInput.value = '';
+      state.ui.pendingIssuePhotos = [];
+      renderIssuePhotoPreviewGrid([]);
       const msg = err?.message === 'invalid_file_type'
-        ? 'ไฟล์นี้ไม่ใช่รูปภาพ'
-        : 'เลือกรูปไม่สำเร็จ ลองใช้รูป JPG/PNG เปิดสิทธิ์รูปภาพ/กล้อง แล้วลองอีกครั้ง';
+        ? 'มีไฟล์ที่ไม่ใช่รูปภาพ'
+        : 'เลือกรูปไม่สำเร็จ ลองใช้รูป JPG/PNG แล้วลองอีกครั้ง';
       setIssuePhotoHint(msg, 'error');
       alert(msg);
     }
@@ -1031,14 +989,8 @@
       const prepared = await prepareIssueVideo(file);
       revokeIssueVideoPreview();
       state.ui.pendingIssueVideo = prepared;
-      const hasCurrentPhotoFile = Boolean(el.issuePhotoInput?.files?.length || el.issueCameraInput?.files?.length);
-      if (!hasCurrentPhotoFile && !el.issuePhotoPreview?.dataset?.lockedFromCurrentSelection) {
-        // กันกรณีรูปเก่าค้างจาก issue ก่อนหน้าแล้วมาปนกับวิดีโอใหม่
-        state.ui.pendingIssuePhoto = null;
-        if (el.issuePhotoPreview) {
-          el.issuePhotoPreview.src = '';
-          el.issuePhotoPreview.classList.add('hidden');
-        }
+      const hasCurrentPhotoFile = Array.isArray(state.ui.pendingIssuePhotos) && state.ui.pendingIssuePhotos.length > 0;
+      if (!hasCurrentPhotoFile) {
         setIssuePhotoHint('ยังไม่ได้เลือกรูป • หากต้องการแนบเฉพาะวิดีโอ ระบบจะใช้ poster จากวิดีโอแทน', '');
       }
       if (el.issueVideoPreview) {
@@ -1050,7 +1002,6 @@
     } catch (err) {
       console.error('Issue video process failed', err);
       if (el.issueVideoInput) el.issueVideoInput.value = '';
-      if (el.issueVideoCameraInput) el.issueVideoCameraInput.value = '';
       revokeIssueVideoPreview();
       state.ui.pendingIssueVideo = null;
       if (el.issueVideoPreview) {
@@ -1066,6 +1017,23 @@
       setIssueVideoHint(msg, 'error');
       alert(msg);
     }
+  }
+
+  function renderIssuePhotoPreviewGrid(items = []) {
+    if (!el.issuePhotoPreviewGrid) return;
+    const photos = Array.isArray(items) ? items.filter(Boolean) : [];
+    if (!photos.length) {
+      el.issuePhotoPreviewGrid.innerHTML = '';
+      el.issuePhotoPreviewGrid.classList.add('hidden');
+      return;
+    }
+    el.issuePhotoPreviewGrid.innerHTML = photos.map((photo, index) => `
+      <div class="media-thumb-card">
+        <span class="media-thumb-index">${index + 1}</span>
+        <img src="${photo.previewDataUrl || photo.thumbDataUrl || photo.fullDataUrl || ''}" alt="Issue image ${index + 1}" />
+      </div>
+    `).join('');
+    el.issuePhotoPreviewGrid.classList.remove('hidden');
   }
 
   function revokeIssueVideoPreview() {
@@ -1096,15 +1064,9 @@
     el.issueType.value = 'water_leak';
     el.issueDepartment.value = 'ENG';
     el.issuePhotoInput.value = '';
-    if (el.issueCameraInput) el.issueCameraInput.value = '';
-    el.issuePhotoPreview.src = '';
-    el.issuePhotoPreview.classList.add('hidden');
-    delete el.issuePhotoPreview.dataset.imageData;
-    delete el.issuePhotoPreview.dataset.thumbData;
-    delete el.issuePhotoPreview.dataset.lockedFromCurrentSelection;
-    state.ui.pendingIssuePhoto = null;
+    renderIssuePhotoPreviewGrid([]);
+    state.ui.pendingIssuePhotos = [];
     if (el.issueVideoInput) el.issueVideoInput.value = '';
-    if (el.issueVideoCameraInput) el.issueVideoCameraInput.value = '';
     revokeIssueVideoPreview();
     state.ui.pendingIssueVideo = null;
     if (el.issueVideoPreview) {
@@ -1112,7 +1074,7 @@
       el.issueVideoPreview.removeAttribute('src');
       el.issueVideoPreview.classList.add('hidden');
     }
-    setIssuePhotoHint('แนะนำรูปไม่เกิน 10 MB • ระบบจะย่อรูปก่อนบันทึกทุกครั้ง • ใช้ได้ทั้งเลือกรูปจากเครื่องและถ่ายรูป');
+    setIssuePhotoHint('เลือกรูปได้มากกว่า 1 รูป • ระบบจะย่อรูปก่อนบันทึกทุกครั้ง');
     setIssueVideoHint('รองรับวิดีโอไม่เกิน 25 MB • แนะนำ MP4/MOV • ระบบจะสร้าง poster ให้ใช้อัตโนมัติ');
     state.ui.newIssuePriority = 'medium';
     qsa('.segment', el.prioritySegment).forEach(seg => seg.classList.toggle('active', seg.dataset.value === 'medium'));
@@ -1125,7 +1087,7 @@
     const location = el.issueLocation.value.trim();
     const assignedDepartment = el.issueDepartment.value;
     const priority = state.ui.newIssuePriority;
-    const pendingPhoto = state.ui.pendingIssuePhoto;
+    const pendingPhotos = Array.isArray(state.ui.pendingIssuePhotos) ? state.ui.pendingIssuePhotos : [];
     const pendingVideo = state.ui.pendingIssueVideo;
 
     if (!title) return alert('กรุณาใส่หัวข้อ issue');
@@ -1142,7 +1104,7 @@
         priority,
         assigned_department: assignedDepartment,
         location_text: location,
-        before_photos: pendingPhoto ? [{ url: pendingPhoto.fullDataUrl, thumb_url: pendingPhoto.thumbDataUrl }] : [],
+        before_photos: pendingPhotos.map(photo => ({ url: photo.fullDataUrl, thumb_url: photo.thumbDataUrl })),
         before_videos: pendingVideo ? [{
           file: pendingVideo.file,
           preview_url: pendingVideo.previewUrl,
@@ -1214,14 +1176,6 @@
     };
     state.data.issues.unshift(issue);
     addActivity({ type: 'issue', title: issue.title, text: `${state.currentUser.full_name} created issue ${issue.issue_no}`, created_at: now });
-    recordUsageLogLocal({
-      category: 'issue',
-      action: 'create_issue',
-      title: issue.title,
-      text: `${state.currentUser.full_name} created ${issue.issue_no}`,
-      issue_id: issue.id,
-      ref_no: issue.issue_no,
-    });
     persist();
     renderAll();
     return issue;
@@ -1237,7 +1191,6 @@
     const uploadedBeforePhotos = await prepareIssuePhotosForFirebase(issueRef.id, payload.before_photos || []);
     const uploadedBeforeVideos = await prepareIssueVideosForFirebase(issueRef.id, payload.before_videos || []);
 
-    let createdIssueNo = '';
     await sdk.runTransaction(fb.db, async (tx) => {
       const counterRef = sdk.doc(fb.db, 'counters', 'issue_counter');
       const counterSnap = await tx.get(counterRef);
@@ -1251,7 +1204,6 @@
 
       const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${issueRef.id}/activity`));
       const issueNo = buildIssueNo(nextNumber);
-      createdIssueNo = issueNo;
       const beforePhotos = Array.isArray(uploadedBeforePhotos) ? uploadedBeforePhotos : [];
       const beforeVideos = Array.isArray(uploadedBeforeVideos) ? uploadedBeforeVideos : [];
 
@@ -1302,14 +1254,6 @@
       });
     });
 
-    recordUsageLog({
-      category: 'issue',
-      action: 'create_issue',
-      title: payload.title,
-      text: `${state.currentUser.full_name} created ${createdIssueNo || issueRef.id}`,
-      issue_id: issueRef.id,
-      ref_no: createdIssueNo || issueRef.id,
-    });
     return issueRef.id;
   }
 
@@ -1317,25 +1261,31 @@
     if (!Array.isArray(beforePhotos) || beforePhotos.length === 0) return [];
     if (!isFirebaseLive()) return beforePhotos;
 
-    const first = beforePhotos[0] || {};
-    const fullDataUrl = first.url || '';
-    const thumbDataUrl = first.thumb_url || fullDataUrl;
-    if (!fullDataUrl) return [];
+    const uploadedPhotos = [];
+    for (const [index, photo] of beforePhotos.entries()) {
+      const fullDataUrl = photo?.url || '';
+      const thumbDataUrl = photo?.thumb_url || fullDataUrl;
+      if (!fullDataUrl) continue;
 
-    const uploaded = await uploadIssuePhotoSet({
-      issueId,
-      fullDataUrl,
-      thumbDataUrl,
-      mimeType: 'image/jpeg'
-    });
+      const uploaded = await uploadIssuePhotoSet({
+        issueId,
+        fullDataUrl,
+        thumbDataUrl,
+        mimeType: 'image/jpeg',
+        phase: 'before',
+        suffix: index + 1
+      });
 
-    return [{
-      url: uploaded.fullUrl,
-      thumb_url: uploaded.thumbUrl,
-      storage_path: uploaded.fullPath,
-      thumb_storage_path: uploaded.thumbPath,
-      uploaded_at: new Date().toISOString(),
-    }];
+      uploadedPhotos.push({
+        url: uploaded.fullUrl,
+        thumb_url: uploaded.thumbUrl,
+        storage_path: uploaded.fullPath,
+        thumb_storage_path: uploaded.thumbPath,
+        uploaded_at: new Date().toISOString(),
+      });
+    }
+
+    return uploadedPhotos;
   }
 
   async function prepareIssueVideosForFirebase(issueId, beforeVideos) {
@@ -1406,7 +1356,7 @@
     return { videoUrl, videoPath, posterUrl, posterPath, thumbUrl, thumbPath };
   }
 
-  async function uploadIssuePhotoSet({ issueId, fullDataUrl, thumbDataUrl, mimeType = 'image/jpeg', phase = 'before' }) {
+  async function uploadIssuePhotoSet({ issueId, fullDataUrl, thumbDataUrl, mimeType = 'image/jpeg', phase = 'before', suffix = '' }) {
     const fb = window.LAYA_FIREBASE;
     if (!fb?.ready || !fb.storage || !fb.sdk?.storageRef || !fb.sdk?.uploadString || !fb.sdk?.getDownloadURL) {
       throw new Error('storage_not_ready');
@@ -1416,8 +1366,9 @@
     if (!uid) throw new Error('not_signed_in');
 
     const ts = Date.now();
-    const fullPath = `issue_photos/${uid}/${issueId}/${phase}/full_${ts}.jpg`;
-    const thumbPath = `issue_photos/${uid}/${issueId}/${phase}/thumb_${ts}.jpg`;
+    const suffixPart = suffix ? `_${suffix}` : '';
+    const fullPath = `issue_photos/${uid}/${issueId}/${phase}/full_${ts}${suffixPart}.jpg`;
+    const thumbPath = `issue_photos/${uid}/${issueId}/${phase}/thumb_${ts}${suffixPart}.jpg`;
 
     const fullRef = fb.sdk.storageRef(fb.storage, fullPath);
     await fb.sdk.uploadString(fullRef, fullDataUrl, 'data_url', {
@@ -1671,14 +1622,6 @@
         text: `${state.currentUser.full_name} submitted ${run.run_no}${issueAnswers.length ? ` and created ${issueAnswers.length} issues` : ''}`,
         created_at: new Date().toISOString(),
       });
-      recordUsageLog({
-        category: 'checklist',
-        action: 'submit_checklist',
-        title: template.template_name,
-        text: `${state.currentUser.full_name} submitted ${run.run_no}${issueAnswers.length ? ` and created ${issueAnswers.length} issues` : ''}`,
-        checklist_run_id: run.id,
-        ref_no: run.run_no,
-      });
 
       persist();
       renderAll();
@@ -1723,14 +1666,6 @@
         localRun.updated_at = new Date().toISOString();
       }
       renderAll();
-      recordUsageLog({
-        category: 'checklist',
-        action: 'archive_checklist',
-        title: run.template_name || 'Checklist',
-        text: `${state.currentUser.full_name} moved ${run.run_no || run.id} to history`,
-        checklist_run_id: runId,
-        ref_no: run.run_no || runId,
-      });
       setAuthStatus('ย้าย checklist ออกจาก Board แล้ว', 'success');
     } catch (err) {
       console.error('archive checklist run failed', err);
@@ -1759,14 +1694,6 @@
         localRun.updated_at = new Date().toISOString();
       }
       renderAll();
-      recordUsageLog({
-        category: 'checklist',
-        action: 'reopen_checklist',
-        title: run.template_name || 'Checklist',
-        text: `${state.currentUser.full_name} reopened ${run.run_no || run.id}`,
-        checklist_run_id: runId,
-        ref_no: run.run_no || runId,
-      });
       setAuthStatus('นำ checklist กลับมาแสดงแล้ว', 'success');
     } catch (err) {
       console.error('unarchive checklist run failed', err);
@@ -2051,14 +1978,6 @@
       issue.updated_at = nowIso;
       issue.last_activity_at = nowIso;
       issue.activity_count = Number(issue.activity_count || 0) + 1;
-      recordUsageLogLocal({
-        category: 'evidence',
-        action: 'add_evidence_photo',
-        title: issue.title,
-        text: `${state.currentUser.full_name} added completion photo to ${issue.issue_no || issueId}`,
-        issue_id: issueId,
-        ref_no: issue.issue_no || issueId,
-      });
       persist();
       renderAll();
       return;
@@ -2105,14 +2024,6 @@
         created_at: sdk.serverTimestamp(),
       });
     });
-    recordUsageLog({
-      category: 'evidence',
-      action: 'add_evidence_photo',
-      title: issue.title,
-      text: `${state.currentUser.full_name} added completion photo to ${issue.issue_no || issueId}`,
-      issue_id: issueId,
-      ref_no: issue.issue_no || issueId,
-    });
   }
 
   async function addIssueEvidenceVideo(issueId, file) {
@@ -2139,14 +2050,6 @@
       issue.updated_at = nowIso;
       issue.last_activity_at = nowIso;
       issue.activity_count = Number(issue.activity_count || 0) + 1;
-      recordUsageLogLocal({
-        category: 'evidence',
-        action: 'add_evidence_video',
-        title: issue.title,
-        text: `${state.currentUser.full_name} added completion video to ${issue.issue_no || issueId}`,
-        issue_id: issueId,
-        ref_no: issue.issue_no || issueId,
-      });
       persist();
       renderAll();
       return;
@@ -2202,14 +2105,6 @@
         created_at: sdk.serverTimestamp(),
       });
     });
-    recordUsageLog({
-      category: 'evidence',
-      action: 'add_evidence_video',
-      title: issue.title,
-      text: `${state.currentUser.full_name} added completion video to ${issue.issue_no || issueId}`,
-      issue_id: issueId,
-      ref_no: issue.issue_no || issueId,
-    });
   }
 
   async function updateIssueStatus(issueId, toStatus) {
@@ -2242,14 +2137,6 @@
         created_at: new Date().toISOString(),
       });
 
-      recordUsageLogLocal({
-        category: 'issue',
-        action: toStatus === 'closed' ? 'close_issue' : (toStatus === 'open' && fromStatus === 'closed' ? 'reopen_issue' : 'change_status'),
-        title: issue.title,
-        text: `${state.currentUser.full_name} changed ${issue.issue_no || issueId} from ${labelize(fromStatus)} to ${labelize(toStatus)}`,
-        issue_id: issueId,
-        ref_no: issue.issue_no || issueId,
-      });
       persist();
       renderAll();
       if (state.ui.openIssueId === issueId) openIssueModal(issueId);
@@ -2331,14 +2218,6 @@
         created_at: now,
       });
 
-      recordUsageLogLocal({
-        category: 'comment',
-        action: 'add_comment',
-        title: issue.title,
-        text: `${state.currentUser.full_name}: ${message.slice(0, 120)}`,
-        issue_id: issueId,
-        ref_no: issue.issue_no || issueId,
-      });
       persist();
       renderBoard();
       renderActivity();
@@ -2383,14 +2262,6 @@
           last_activity_at: sdk.serverTimestamp(),
           updated_at: sdk.serverTimestamp(),
         });
-      });
-      recordUsageLog({
-        category: 'comment',
-        action: 'add_comment',
-        title: issue.title,
-        text: `${state.currentUser.full_name}: ${message.slice(0, 120)}`,
-        issue_id: issueId,
-        ref_no: issue.issue_no || issueId,
       });
     } catch (err) {
       console.error('add comment failed', err);
@@ -2621,202 +2492,6 @@
       department: 'MOD',
       is_active: true,
     }));
-  }
-
-
-  function stopUsageLogsSync() {
-    if (typeof state.firebaseUsageLogsUnsub === 'function') {
-      try { state.firebaseUsageLogsUnsub(); } catch (_) {}
-    }
-    state.firebaseUsageLogsUnsub = null;
-  }
-
-  function startUsageLogsSync() {
-    if (!state.currentUser) return;
-    if (!isFirebaseLive()) {
-      renderUsageLogs();
-      return;
-    }
-    stopUsageLogsSync();
-    const fb = window.LAYA_FIREBASE;
-    const sdk = fb.sdk;
-    const q = sdk.query(sdk.collection(fb.db, 'usage_logs'), sdk.orderBy('created_at', 'desc'));
-    state.firebaseUsageLogsUnsub = sdk.onSnapshot(q, (snap) => {
-      state.data.usageLogs = snap.docs.map(normalizeUsageLogDoc).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).slice(0, 400);
-      if (state.ui.activeView === 'logView') renderUsageLogs();
-    }, (err) => {
-      console.error('usage logs onSnapshot failed', err);
-    });
-  }
-
-  function normalizeUsageLogDoc(docSnap) {
-    const data = docSnap.data() || {};
-    return {
-      id: docSnap.id,
-      ...data,
-      created_at: normalizeDateValue(data.created_at),
-    };
-  }
-
-  function humanizeLogAction(action) {
-    const map = {
-      login: 'Signed in',
-      register: 'Created account',
-      create_issue: 'Created issue',
-      submit_checklist: 'Submitted checklist',
-      archive_checklist: 'Closed checklist card',
-      reopen_checklist: 'Reopened checklist card',
-      close_issue: 'Closed issue',
-      reopen_issue: 'Reopened issue',
-      change_status: 'Changed status',
-      add_comment: 'Added comment',
-      add_evidence_photo: 'Added evidence photo',
-      add_evidence_video: 'Added evidence video',
-    };
-    return map[action] || labelize(String(action || 'log').replace(/_/g, ' '));
-  }
-
-
-
-  function getFilteredUsageLogs() {
-    const search = state.ui.logSearch || '';
-    return [...(state.data.usageLogs || [])]
-      .filter(item => {
-        const hay = [item.title, item.text, item.user_name, item.ref_no, item.action, item.category].join(' ').toLowerCase();
-        return !search || hay.includes(search);
-      })
-      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-  }
-
-  function exportUsageLogsToExcel() {
-    const rows = getFilteredUsageLogs();
-    if (!rows.length) {
-      alert('ยังไม่มี usage log สำหรับ export');
-      return;
-    }
-
-    if (!window.XLSX) {
-      alert('ยังโหลดระบบ Export Excel ไม่สำเร็จ ลองรีเฟรชหน้าเว็บอีกครั้ง');
-      return;
-    }
-
-    const exportRows = rows.map((item, index) => ({
-      'No.': index + 1,
-      'Date Time': formatDateTime(item.created_at),
-      'Action': humanizeLogAction(item.action),
-      'Category': item.category || '',
-      'Title': item.title || humanizeLogAction(item.action),
-      'Detail': item.text || '',
-      'Reference No': item.ref_no || '',
-      'Issue ID': item.issue_id || '',
-      'Checklist Run ID': item.checklist_run_id || '',
-      'User': item.user_name || '',
-      'User UID': item.user_uid || '',
-      'Raw Timestamp': item.created_at || '',
-    }));
-
-    const ws = window.XLSX.utils.json_to_sheet(exportRows);
-    ws['!cols'] = [
-      { wch: 6 },
-      { wch: 22 },
-      { wch: 18 },
-      { wch: 16 },
-      { wch: 28 },
-      { wch: 48 },
-      { wch: 20 },
-      { wch: 24 },
-      { wch: 24 },
-      { wch: 22 },
-      { wch: 28 },
-      { wch: 24 },
-    ];
-    const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, 'Usage Log');
-    const stamp = new Date();
-    const y = stamp.getFullYear();
-    const m = String(stamp.getMonth() + 1).padStart(2, '0');
-    const d = String(stamp.getDate()).padStart(2, '0');
-    const hh = String(stamp.getHours()).padStart(2, '0');
-    const mm = String(stamp.getMinutes()).padStart(2, '0');
-    window.XLSX.writeFile(wb, `usage_logs_${y}${m}${d}_${hh}${mm}.xlsx`);
-  }
-
-
-  function renderUsageLogs() {
-    if (!el.usageLogList) return;
-    const items = getFilteredUsageLogs();
-
-    if (!items.length) {
-      el.usageLogList.innerHTML = `<div class="empty-state">ยังไม่มี usage log</div>`;
-      return;
-    }
-
-    el.usageLogList.innerHTML = items.map(item => `
-      <div class="activity-item">
-        <div class="comment-meta">${formatDateTime(item.created_at)} • ${escapeHtml(item.user_name || '-')} • ${escapeHtml(humanizeLogAction(item.action))}</div>
-        <div><strong>${escapeHtml(item.title || humanizeLogAction(item.action))}</strong></div>
-        <div>${escapeHtml(item.text || '')}</div>
-        <div class="muted">${escapeHtml([item.ref_no || '', item.category ? `• ${item.category}` : ''].filter(Boolean).join(' '))}</div>
-      </div>
-    `).join('');
-  }
-
-  function recordUsageLogLocal(entry = {}) {
-    const item = {
-      id: cryptoRandom(),
-      category: entry.category || 'general',
-      action: entry.action || 'event',
-      title: entry.title || humanizeLogAction(entry.action || 'event'),
-      text: entry.text || '',
-      issue_id: entry.issue_id || '',
-      checklist_run_id: entry.checklist_run_id || '',
-      ref_no: entry.ref_no || '',
-      user_uid: entry.user_uid || state.currentUser?.uid || '',
-      user_name: entry.user_name || state.currentUser?.full_name || '',
-      created_at: entry.created_at || new Date().toISOString(),
-    };
-    state.data.usageLogs = [item, ...(state.data.usageLogs || [])].slice(0, 500);
-    if (state.ui.activeView === 'logView') renderUsageLogs();
-    return item;
-  }
-
-  async function recordUsageLogFirebase(entry = {}) {
-    if (!isFirebaseLive()) return;
-    const fb = window.LAYA_FIREBASE;
-    const sdk = fb.sdk;
-    const ref = sdk.doc(sdk.collection(fb.db, 'usage_logs'));
-    try {
-      await sdk.setDoc(ref, {
-        category: entry.category || 'general',
-        action: entry.action || 'event',
-        title: entry.title || humanizeLogAction(entry.action || 'event'),
-        text: entry.text || '',
-        issue_id: entry.issue_id || '',
-        checklist_run_id: entry.checklist_run_id || '',
-        ref_no: entry.ref_no || '',
-        user_uid: entry.user_uid || state.currentUser?.uid || '',
-        user_name: entry.user_name || state.currentUser?.full_name || '',
-        created_at: sdk.serverTimestamp(),
-      });
-    } catch (err) {
-      console.warn('record usage log failed', err);
-    }
-  }
-
-  function recordUsageLog(entry = {}) {
-    if (isFirebaseLive()) return recordUsageLogFirebase(entry);
-    recordUsageLogLocal(entry);
-    return Promise.resolve();
-  }
-
-  function reloadUsageLogs() {
-    if (isFirebaseLive()) {
-      startUsageLogsSync();
-      setAuthStatus('โหลด usage log ล่าสุดแล้ว', 'success');
-      return;
-    }
-    renderUsageLogs();
-    setAuthStatus('โหลด usage log จากข้อมูลในเครื่องแล้ว', 'success');
   }
 
   function renderTeamMembers() {
