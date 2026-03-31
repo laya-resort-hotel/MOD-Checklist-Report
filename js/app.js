@@ -2651,6 +2651,8 @@
     state.firebaseUsageLogsUnsub = sdk.onSnapshot(q, (snap) => {
       state.data.usageLogs = snap.docs.map(normalizeUsageLogDoc).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).slice(0, 400);
       if (state.ui.activeView === 'logView') renderUsageLogs();
+    if (state.ui.activeView === 'activityView') renderActivity();
+      if (state.ui.activeView === 'activityView') renderActivity();
     }, (err) => {
       console.error('usage logs onSnapshot failed', err);
     });
@@ -2915,15 +2917,54 @@
     input.addEventListener('focus', refresh);
   }
 
+  function getActivityFeedItems() {
+    const localItems = Array.isArray(state.data.activity)
+      ? state.data.activity.map(item => ({
+          source: 'local',
+          id: item.id || '',
+          type: item.type || item.category || item.action || 'activity',
+          title: item.title || item.type || 'Activity',
+          text: item.text || '',
+          created_at: item.created_at || '',
+        }))
+      : [];
+
+    const usageItems = Array.isArray(state.data.usageLogs)
+      ? state.data.usageLogs
+          .filter(item => item && item.category !== 'auth')
+          .map(item => ({
+            source: 'usage_log',
+            id: item.id || '',
+            type: item.category || item.action || 'activity',
+            title: item.title || humanizeLogAction(item.action),
+            text: item.text || '',
+            created_at: item.created_at || '',
+          }))
+      : [];
+
+    const merged = [...usageItems, ...localItems]
+      .filter(item => item.created_at)
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+    const seen = new Set();
+    return merged.filter(item => {
+      const key = [item.title || '', item.text || '', item.created_at || ''].join('|');
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 200);
+  }
+
   function renderActivity() {
-    const items = [...state.data.activity].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    if (!el.activityList) return;
+    const items = getActivityFeedItems();
     if (!items.length) {
       el.activityList.innerHTML = `<div class="empty-state">ยังไม่มีกิจกรรม</div>`;
       return;
     }
     el.activityList.innerHTML = items.map(item => `
       <div class="activity-item">
-        <div class="comment-meta">${formatDateTime(item.created_at)}</div>
+        <div class="comment-meta">${formatDateTime(item.created_at)}${item.type ? ` • ${escapeHtml(labelize(String(item.type).replace(/_/g, ' ')))}` : ''}</div>
         <div><strong>${escapeHtml(item.title || item.type || 'Activity')}</strong></div>
         <div>${escapeHtml(item.text || '')}</div>
       </div>
