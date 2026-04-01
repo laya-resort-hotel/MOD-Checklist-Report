@@ -1690,3 +1690,29 @@ input {
 .btn-small{padding:10px 14px;min-height:auto;font-size:14px;}
 .lang-switch .btn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
 @media (max-width: 768px){.checklist-toolbar{width:100%;justify-content:flex-start;margin-top:8px;}}
+
+
+/* v28 mobile fix: non-sticky topbar + centered FAB */
+.fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  text-align: center;
+}
+
+@media (max-width: 860px) {
+  .topbar {
+    position: static !important;
+    top: auto !important;
+  }
+
+  .fab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+  }
+}
