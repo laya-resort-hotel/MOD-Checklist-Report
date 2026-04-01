@@ -57,6 +57,11 @@ service cloud.firestore {
              v == 'FO'  ||
              v == 'FB'  ||
              v == 'SEC' ||
+             v == 'HR'  ||
+             v == 'RSV' ||
+             v == 'SALES' ||
+             v == 'REC' ||
+             v == 'KIT' ||
              v == 'ADMIN';
     }
 

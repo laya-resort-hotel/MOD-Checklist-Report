@@ -21,7 +21,7 @@ import {
  *   uid: string,
  *   full_name: string,
  *   role: 'admin' | 'mod' | 'dept_user' | 'viewer',
- *   department: 'MOD' | 'ENG' | 'HK' | 'FO' | 'FB' | 'SEC' | 'ADMIN'
+ *   department: 'MOD' | 'ENG' | 'HK' | 'FO' | 'FB' | 'SEC' | 'HR' | 'RSV' | 'SALES' | 'REC' | 'KIT' | 'ADMIN'
  * }
  */
 
