@@ -676,11 +676,17 @@
 
   function mergeTemplates() {
     const map = new Map();
+    const baseCodes = new Set();
     (state.data.baseTemplates || []).forEach(t => {
-      if (t?.template_code) map.set(t.template_code, { ...t, _templateScope: 'base' });
+      if (t?.template_code) {
+        baseCodes.add(t.template_code);
+        map.set(t.template_code, { ...t, _templateScope: 'base' });
+      }
     });
     (state.data.customTemplates || []).forEach(t => {
-      if (t?.template_code) map.set(t.template_code, { ...t, _templateScope: 'custom' });
+      if (!t?.template_code) return;
+      if (baseCodes.has(t.template_code)) return;
+      map.set(t.template_code, { ...t, _templateScope: 'custom' });
     });
     state.data.templates = Array.from(map.values()).sort((a, b) => String(a.template_name || '').localeCompare(String(b.template_name || '')));
   }
