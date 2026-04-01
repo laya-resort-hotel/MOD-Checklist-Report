@@ -5,13 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Laya MOD Checklist Report</title>
   <meta name="theme-color" content="#24352C" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Laya MOD" />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icons/favicon-32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="assets/app-icons/favicon-16.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icons/icon-180.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -127,6 +120,7 @@
         <div class="panel glass form-panel">
           <div class="panel-header">
             <h3>New Issue</h3>
+            <p class="muted">แจ้งปัญหาใหม่แบบเร็ว เน้นถ่ายรูปและ assign แผนกให้ชัด</p>
           </div>
 
           <div class="photo-uploader" id="issuePhotoDrop">
@@ -206,6 +200,7 @@
           <div class="panel-header panel-header-split">
             <div>
               <h3>Checklist Module</h3>
+              <p class="muted">แยกจาก Board เพื่อให้หน้าบอร์ดสะอาด และเมื่อ submit แล้วจะขึ้นบน Board เพื่อบอกว่าตรวจแล้ว</p>
             </div>
             <button id="addChecklistTemplateBtn" class="btn btn-secondary">+ Add Checklist</button>
           </div>
@@ -220,6 +215,7 @@
         <div class="panel glass">
           <div class="panel-header">
             <h3>Activity</h3>
+            <p class="muted">ความเคลื่อนไหวล่าสุดของ issue และ checklist</p>
           </div>
           <div id="activityList" class="activity-list"></div>
         </div>
@@ -230,6 +226,7 @@
           <div class="panel-header panel-header-split">
             <div>
               <h3>Usage Log</h3>
+              <p class="muted">โหลดและดูข้อมูลการใช้งานล่าสุดของระบบ เช่น การสร้างงาน ปิดงาน คอมเมนต์ ส่ง checklist และอัปหลักฐาน</p>
             </div>
             <div class="header-actions inline-actions">
             <button id="reloadUsageLogBtn" class="btn btn-secondary" type="button">Load Latest</button>

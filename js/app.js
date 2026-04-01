@@ -1545,10 +1545,10 @@
                     ${PRIORITIES.map(p => `<option value="${p}" ${p === 'medium' ? 'selected' : ''}>${labelize(p)}</option>`).join('')}
                   </select>
                 </div>
-                <label class="check-row hidden" data-create-issue-row>
-                  <input type="checkbox" data-create-issue />
+                <button class="check-row issue-toggle hidden" type="button" data-create-issue-toggle aria-pressed="false">
+                  <span class="issue-toggle-box" aria-hidden="true"></span>
                   <span>Create issue if this item fails</span>
-                </label>
+                </button>
               </div>
             </div>
           `).join('')}
@@ -1566,14 +1566,27 @@
         const itemCard = group.closest('.item-card');
         itemCard.dataset.response = btn.dataset.response;
         const failExtra = qs('[data-fail-extra]', itemCard);
-        const createIssueRow = qs('[data-create-issue-row]', itemCard);
+        const createIssueRow = qs('[data-create-issue-toggle]', itemCard);
         const isFail = btn.dataset.response === 'fail';
         failExtra.classList.toggle('hidden', !isFail);
         createIssueRow.classList.toggle('hidden', !isFail);
         if (!isFail) {
-          const check = qs('[data-create-issue]', itemCard);
-          if (check) check.checked = false;
+          itemCard.dataset.createIssue = 'false';
+          if (createIssueRow) {
+            createIssueRow.classList.remove('active');
+            createIssueRow.setAttribute('aria-pressed', 'false');
+          }
         }
+      });
+    });
+
+    qsa('[data-create-issue-toggle]', host).forEach(toggle => {
+      toggle.addEventListener('click', () => {
+        const itemCard = toggle.closest('.item-card');
+        const next = !(itemCard.dataset.createIssue === 'true');
+        itemCard.dataset.createIssue = String(next);
+        toggle.classList.toggle('active', next);
+        toggle.setAttribute('aria-pressed', String(next));
       });
     });
   }
@@ -1593,7 +1606,7 @@
       const sectionTitle = qs('h4', sectionCard)?.textContent || '';
       const itemText = qs('.item-text', card)?.textContent || '';
       const note = qs('[data-note]', card)?.value.trim() || '';
-      const createIssue = !!qs('[data-create-issue]', card)?.checked;
+      const createIssue = card.dataset.createIssue === 'true';
       const failDept = qs('[data-fail-dept]', card)?.value || 'ENG';
       const failPriority = qs('[data-fail-priority]', card)?.value || 'medium';
       if (!response) return;
@@ -2651,8 +2664,6 @@
     state.firebaseUsageLogsUnsub = sdk.onSnapshot(q, (snap) => {
       state.data.usageLogs = snap.docs.map(normalizeUsageLogDoc).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).slice(0, 400);
       if (state.ui.activeView === 'logView') renderUsageLogs();
-    if (state.ui.activeView === 'activityView') renderActivity();
-      if (state.ui.activeView === 'activityView') renderActivity();
     }, (err) => {
       console.error('usage logs onSnapshot failed', err);
     });
@@ -2917,54 +2928,15 @@
     input.addEventListener('focus', refresh);
   }
 
-  function getActivityFeedItems() {
-    const localItems = Array.isArray(state.data.activity)
-      ? state.data.activity.map(item => ({
-          source: 'local',
-          id: item.id || '',
-          type: item.type || item.category || item.action || 'activity',
-          title: item.title || item.type || 'Activity',
-          text: item.text || '',
-          created_at: item.created_at || '',
-        }))
-      : [];
-
-    const usageItems = Array.isArray(state.data.usageLogs)
-      ? state.data.usageLogs
-          .filter(item => item && item.category !== 'auth')
-          .map(item => ({
-            source: 'usage_log',
-            id: item.id || '',
-            type: item.category || item.action || 'activity',
-            title: item.title || humanizeLogAction(item.action),
-            text: item.text || '',
-            created_at: item.created_at || '',
-          }))
-      : [];
-
-    const merged = [...usageItems, ...localItems]
-      .filter(item => item.created_at)
-      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-
-    const seen = new Set();
-    return merged.filter(item => {
-      const key = [item.title || '', item.text || '', item.created_at || ''].join('|');
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    }).slice(0, 200);
-  }
-
   function renderActivity() {
-    if (!el.activityList) return;
-    const items = getActivityFeedItems();
+    const items = [...state.data.activity].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     if (!items.length) {
       el.activityList.innerHTML = `<div class="empty-state">ยังไม่มีกิจกรรม</div>`;
       return;
     }
     el.activityList.innerHTML = items.map(item => `
       <div class="activity-item">
-        <div class="comment-meta">${formatDateTime(item.created_at)}${item.type ? ` • ${escapeHtml(labelize(String(item.type).replace(/_/g, ' ')))}` : ''}</div>
+        <div class="comment-meta">${formatDateTime(item.created_at)}</div>
         <div><strong>${escapeHtml(item.title || item.type || 'Activity')}</strong></div>
         <div>${escapeHtml(item.text || '')}</div>
       </div>
