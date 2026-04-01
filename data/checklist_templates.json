@@ -1,11 +1,11 @@
 {
   "app": "MOD Checklist Report",
-  "version": "v29-focused",
-  "source_file": "reduced 60 percent from v27",
+  "version": "v30-quick-check",
+  "source_file": "reduced quick-check from v29-focused",
   "templates": [
     {
       "template_code": "MOD_DAILY_CHECKLIST",
-      "template_name": "MOD Daily Checklist (Focused)",
+      "template_name": "MOD Daily Checklist (Quick Check)",
       "source_sheet": "MOD Checklist",
       "default_response_mode": "pass_fail_na",
       "default_fields": {
@@ -18,19 +18,9 @@
           "section_code": "MOD_01_MORNING_BRIEF_KEY_POINTS",
           "section_order": 1,
           "section_title": "Morning Brief Key Points",
-          "item_count": 3,
+          "item_count": 2,
           "item_type": "checklist",
           "items": [
-            {
-              "item_code": "MOD_01_01",
-              "item_order": 1,
-              "item_text": "Check whether items in yesterday's GEI/GSM log book require immediate follow-up.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "ตรวจสอบว่ามีรายการในสมุดบันทึก GEI/GSM ของเมื่อวานที่ต้องติดตามอย่างเร่งด่วนหรือไม่"
-            },
             {
               "item_code": "MOD_01_02",
               "item_order": 2,
@@ -58,7 +48,7 @@
           "section_code": "MOD_03_VIP_ARRIVAL",
           "section_order": 2,
           "section_title": "VIP Arrival",
-          "item_count": 2,
+          "item_count": 1,
           "item_type": "checklist",
           "items": [
             {
@@ -70,16 +60,6 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "ตรวจสอบรายชื่อแขก VIP ที่จะเดินทางมาถึง"
-            },
-            {
-              "item_code": "MOD_03_02",
-              "item_order": 2,
-              "item_text": "Greet VIPs with GSM and check whether messages have been sent to related management.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "ต้อนรับแขก VIP ร่วมกับ GSM และตรวจสอบว่ามีการส่งข้อความแจ้งผู้บริหารที่เกี่ยวข้องแล้วหรือไม่"
             }
           ],
           "section_title_th": "การมาถึงของแขก VIP"
@@ -88,7 +68,7 @@
           "section_code": "MOD_04_MEETING_EVENTS",
           "section_order": 3,
           "section_title": "Meeting & Events",
-          "item_count": 5,
+          "item_count": 2,
           "item_type": "checklist",
           "items": [
             {
@@ -110,16 +90,6 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "ตรวจสอบการจัดเตรียมงาน ระบบไฟชั่วคราว และใบอนุญาตการดำเนินงานของงาน"
-            },
-            {
-              "item_code": "MOD_04_05",
-              "item_order": 5,
-              "item_text": "Check whether the event check-in desk is arranged according to hotel standards and requirements.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "ตรวจสอบว่าจุดลงทะเบียน/เช็กอินของงานจัดตามมาตรฐานและข้อกำหนดของโรงแรม"
             }
           ],
           "section_title_th": "การประชุมและอีเวนต์"
@@ -128,7 +98,7 @@
           "section_code": "MOD_02_ARRIVAL_DEPARTURE_EXPERIENCE",
           "section_order": 4,
           "section_title": "Arrival & Departure Experience",
-          "item_count": 7,
+          "item_count": 4,
           "item_type": "checklist",
           "items": [
             {
@@ -178,7 +148,7 @@
           "section_code": "MOD_05_ARRIVAL_DEPARTURE_EXPERIENCE",
           "section_order": 5,
           "section_title": "Arrival & Departure Experience",
-          "item_count": 4,
+          "item_count": 2,
           "item_type": "checklist",
           "items": [
             {
@@ -208,7 +178,7 @@
           "section_code": "MOD_12_PUBLIC_AREAS",
           "section_order": 6,
           "section_title": "Public Areas",
-          "item_count": 6,
+          "item_count": 2,
           "item_type": "checklist",
           "items": [
             {
@@ -230,26 +200,6 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "กระจกแผงล็อบบี้และกระจกลิฟต์สะอาด"
-            },
-            {
-              "item_code": "MOD_12_05",
-              "item_order": 5,
-              "item_text": "Front Office reception desk and cashier desk are clean and tidy.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "เคาน์เตอร์รับแขก Front Office และเคาน์เตอร์แคชเชียร์สะอาดและเป็นระเบียบ"
-            },
-            {
-              "item_code": "MOD_12_06",
-              "item_order": 6,
-              "item_text": "Lobby ceiling and surrounding lights are in working condition.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "เพดานล็อบบี้และไฟส่องสว่างโดยรอบอยู่ในสภาพพร้อมใช้งาน"
             }
           ],
           "section_title_th": "พื้นที่ส่วนกลาง"
@@ -258,7 +208,7 @@
           "section_code": "MOD_11_FLOOR_CHECKING_INSPECT_AT_LEAST_3_GUEST_",
           "section_order": 7,
           "section_title": "Floor Checking – Inspect at least 3 guest Floors other than the floors where room checks were done.",
-          "item_count": 10,
+          "item_count": 3,
           "item_type": "checklist",
           "items": [
             {
@@ -290,26 +240,6 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "บันไดหนีไฟโล่งและไม่มีสิ่งกีดขวาง"
-            },
-            {
-              "item_code": "MOD_11_06",
-              "item_order": 6,
-              "item_text": "Fire exit doors are closed.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "ประตูทางหนีไฟปิดอยู่"
-            },
-            {
-              "item_code": "MOD_11_08",
-              "item_order": 8,
-              "item_text": "In-Room Dining trays are removed from the floor.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "มีการเก็บถาด In-Room Dining ออกจากพื้นเรียบร้อย"
             }
           ],
           "section_title_th": "Floor Checking – Inspect at least 3 guest Floors other than the floors where room checks were done."
@@ -318,7 +248,7 @@
           "section_code": "MOD_16_SECURITY_OPERATION",
           "section_order": 8,
           "section_title": "Security Operation",
-          "item_count": 3,
+          "item_count": 2,
           "item_type": "checklist",
           "items": [
             {
@@ -330,16 +260,6 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "มีการลงทะเบียนผู้ขายและผู้มาติดต่อที่จุดตรวจของ รปภ."
-            },
-            {
-              "item_code": "MOD_16_02",
-              "item_order": 2,
-              "item_text": "Staff are inspected in and out.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "มีการตรวจพนักงานขาเข้าและขาออก"
             },
             {
               "item_code": "MOD_16_03",
@@ -358,19 +278,9 @@
           "section_code": "MOD_17_PERIMETER_OF_HOTEL",
           "section_order": 9,
           "section_title": "Perimeter of Hotel",
-          "item_count": 4,
+          "item_count": 1,
           "item_type": "checklist",
           "items": [
-            {
-              "item_code": "MOD_17_01",
-              "item_order": 1,
-              "item_text": "Check whether signage is lit on the outside/top of the building.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "ตรวจสอบว่าป้ายสัญลักษณ์ภายนอก/บนอาคารมีไฟส่องสว่าง"
-            },
             {
               "item_code": "MOD_17_02",
               "item_order": 2,
@@ -408,19 +318,9 @@
           "section_code": "MOD_19_TMS_PPE_USING_SITUATION_AT_LEAST_3_POINT",
           "section_order": 11,
           "section_title": "TMs PPE using situation (At least 3 points)",
-          "item_count": 8,
+          "item_count": 1,
           "item_type": "checklist",
           "items": [
-            {
-              "item_code": "MOD_19_01",
-              "item_order": 1,
-              "item_text": "Are any guests injured?",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "มีแขกได้รับบาดเจ็บหรือไม่"
-            },
             {
               "item_code": "MOD_19_02",
               "item_order": 2,
@@ -430,26 +330,6 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "มีพนักงานได้รับบาดเจ็บหรือไม่"
-            },
-            {
-              "item_code": "MOD_19_07",
-              "item_order": 7,
-              "item_text": "Is any elevator out of order?",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "มีลิฟต์ตัวใดเสียหรือไม่"
-            },
-            {
-              "item_code": "MOD_19_08",
-              "item_order": 8,
-              "item_text": "Are there any potential facility safety hazards in the hotel?",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "มีอันตรายแฝงด้านความปลอดภัยจากสิ่งอำนวยความสะดวกภายในโรงแรมหรือไม่"
             }
           ],
           "section_title_th": "TMs PPE using situation (At least 3 points)"
@@ -458,7 +338,7 @@
           "section_code": "MOD_06_THE_TASTE_BREAKFAST_ONLY_FOR_WEEKEND_MOD",
           "section_order": 12,
           "section_title": "The Taste (Breakfast ) Only for weekend MOD",
-          "item_count": 13,
+          "item_count": 1,
           "item_type": "checklist",
           "items": [
             {
@@ -470,36 +350,6 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "พนักงานรับรู้และทักทายแขกเมื่อมาถึง"
-            },
-            {
-              "item_code": "MOD_06_03",
-              "item_order": 3,
-              "item_text": "Staff ask about guest satisfaction at least once, but not excessively.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "พนักงานสอบถามความพึงพอใจของแขกอย่างน้อยหนึ่งครั้งโดยไม่มากเกินไป"
-            },
-            {
-              "item_code": "MOD_06_06",
-              "item_order": 6,
-              "item_text": "Breakfast service is properly timed (beverages served, dishes cleared, etc.).",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "การบริการอาหารเช้าเป็นไปตามจังหวะเวลาที่เหมาะสม เช่น เสิร์ฟเครื่องดื่มและเก็บจานตามมาตรฐาน"
-            },
-            {
-              "item_code": "MOD_06_09",
-              "item_order": 9,
-              "item_text": "Overall, the breakfast buffet experience meets expectations.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "โดยรวม ประสบการณ์บุฟเฟต์อาหารเช้าเป็นไปตามความคาดหวัง"
             }
           ],
           "section_title_th": "The Taste (Breakfast 早餐) Only for weekend MOD"
@@ -508,7 +358,7 @@
           "section_code": "MOD_07_IN_ROOM_DINING_ONLY_FOR_WEEKEND_MOD",
           "section_order": 13,
           "section_title": "In Room Dining Only for weekend MOD",
-          "item_count": 14,
+          "item_count": 2,
           "item_type": "checklist",
           "items": [
             {
@@ -530,26 +380,6 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "พนักงานมีความรู้เกี่ยวกับเมนู"
-            },
-            {
-              "item_code": "MOD_07_06",
-              "item_order": 6,
-              "item_text": "Delivery is made within 35 minutes or within an acceptable time based on business level.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "ส่งอาหารภายใน 35 นาที หรือภายในเวลาที่เหมาะสมตามระดับความหนาแน่นของงาน"
-            },
-            {
-              "item_code": "MOD_07_08",
-              "item_order": 8,
-              "item_text": "Staff provide service according to brand standards.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "พนักงานให้บริการตามมาตรฐานแบรนด์"
             }
           ],
           "section_title_th": "In Room Dining 送餐服务 Only for weekend MOD"
@@ -558,7 +388,7 @@
           "section_code": "MOD_09_HEALTH_CLUB",
           "section_order": 14,
           "section_title": "Health Club",
-          "item_count": 7,
+          "item_count": 1,
           "item_type": "checklist",
           "items": [
             {
@@ -570,26 +400,6 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "ห้องล็อกเกอร์ชายและหญิงสะอาด"
-            },
-            {
-              "item_code": "MOD_09_04",
-              "item_order": 4,
-              "item_text": "All facilities are in good condition.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "สิ่งอำนวยความสะดวกทั้งหมดอยู่ในสภาพดี"
-            },
-            {
-              "item_code": "MOD_09_07",
-              "item_order": 7,
-              "item_text": "Pool water visibility and temperature are appropriate.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "ความใสและอุณหภูมิน้ำในสระเหมาะสม"
             }
           ],
           "section_title_th": "เฮลท์คลับ"
@@ -598,30 +408,9 @@
           "section_code": "MOD_10_F_B_SERVICES_BANQUET",
           "section_order": 15,
           "section_title": "F&B Services – BANQUET",
-          "item_count": 5,
+          "item_count": 0,
           "item_type": "checklist",
-          "items": [
-            {
-              "item_code": "MOD_10_02",
-              "item_order": 2,
-              "item_text": "Toilets are clean, neat, and smell good.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "ห้องน้ำสะอาด เป็นระเบียบ และมีกลิ่นดี"
-            },
-            {
-              "item_code": "MOD_10_03",
-              "item_order": 3,
-              "item_text": "Guests are greeted upon arrival to the function.",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "มีการทักทายแขกเมื่อมาถึงงาน"
-            }
-          ],
+          "items": [],
           "section_title_th": "F&B Services – BANQUET 宴会厅"
         },
         {
@@ -703,11 +492,12 @@
           "form_name_th": "ตรวจความรู้พนักงาน (3 คน)"
         }
       ],
-      "template_name_th": "เช็กลิสต์ MOD ประจำวัน (ฉบับย่อ)"
+      "template_name_th": "เช็กลิสต์ MOD ประจำวัน (ฉบับย่อ) (ฉบับตรวจเร็ว)",
+      "total_item_count": 25
     },
     {
       "template_code": "ROOM_CHECK_STANDARD",
-      "template_name": "Daily Room Checklist (Focused)",
+      "template_name": "Daily Room Checklist (Quick Check)",
       "source_sheet": "Room Check",
       "default_response_mode": "pass_fail_na",
       "default_fields": {
@@ -720,7 +510,7 @@
           "section_code": "ROOM_01_ENTRANCE",
           "section_order": 1,
           "section_title": "ENTRANCE",
-          "item_count": 5,
+          "item_count": 3,
           "items": [
             {
               "item_code": "ROOM_01_01",
@@ -759,36 +549,15 @@
           "section_code": "ROOM_02_CLOSET",
           "section_order": 2,
           "section_title": "CLOSET",
-          "item_count": 8,
-          "items": [
-            {
-              "item_code": "ROOM_02_07",
-              "item_order": 7,
-              "item_text": "Bathrobe / slippers - clean / correct",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "เสื้อคลุมอาบน้ำ / รองเท้าแตะ สะอาดและถูกต้องครบถ้วน"
-            },
-            {
-              "item_code": "ROOM_02_08",
-              "item_order": 8,
-              "item_text": "Safety box - functioning / clean",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "ตู้เซฟใช้งานได้ปกติและสะอาด"
-            }
-          ],
+          "item_count": 0,
+          "items": [],
           "section_title_th": "ตู้เสื้อผ้า"
         },
         {
           "section_code": "ROOM_03_MINI_BAR",
           "section_order": 3,
           "section_title": "MINI-BAR",
-          "item_count": 8,
+          "item_count": 1,
           "items": [
             {
               "item_code": "ROOM_03_01",
@@ -799,16 +568,6 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "ของในตู้เย็นครบถ้วน"
-            },
-            {
-              "item_code": "ROOM_03_07",
-              "item_order": 7,
-              "item_text": "Kettle / coffee machine - clean / in working order",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "กาต้มน้ำ / เครื่องชงกาแฟ สะอาดและใช้งานได้ปกติ"
             }
           ],
           "section_title_th": "มินิบาร์"
@@ -817,7 +576,7 @@
           "section_code": "ROOM_04_TV_AREA",
           "section_order": 4,
           "section_title": "TV Area",
-          "item_count": 4,
+          "item_count": 1,
           "items": [
             {
               "item_code": "ROOM_04_01",
@@ -828,16 +587,6 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "ทีวีสะอาด ใช้งานได้ และสายไฟเป็นระเบียบ"
-            },
-            {
-              "item_code": "ROOM_04_03",
-              "item_order": 3,
-              "item_text": "Remote control - functioning / clean",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "รีโมตคอนโทรลใช้งานได้และสะอาด"
             }
           ],
           "section_title_th": "พื้นที่ทีวี"
@@ -846,18 +595,8 @@
           "section_code": "ROOM_05_BATHROOM",
           "section_order": 5,
           "section_title": "BATHROOM",
-          "item_count": 16,
+          "item_count": 3,
           "items": [
-            {
-              "item_code": "ROOM_05_02",
-              "item_order": 2,
-              "item_text": "Toilet - functioning / clean",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "ชักโครกใช้งานได้ปกติและสะอาด"
-            },
             {
               "item_code": "ROOM_05_04",
               "item_order": 4,
@@ -887,36 +626,6 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "ก๊อกน้ำ / โลหะ สะอาด เงางาม และจัดวางถูกต้อง"
-            },
-            {
-              "item_code": "ROOM_05_08",
-              "item_order": 8,
-              "item_text": "Basin - clean / no hairs stuck in the drainage",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "อ่างล้างหน้า สะอาด ไม่มีเส้นผมติดที่ท่อระบายน้ำ"
-            },
-            {
-              "item_code": "ROOM_05_09",
-              "item_order": 9,
-              "item_text": "Amenities / towels - clean / supplied correctly",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "Amenity / ผ้าเช็ดตัว สะอาดและจัดวางถูกต้องครบถ้วน"
-            },
-            {
-              "item_code": "ROOM_05_16",
-              "item_order": 16,
-              "item_text": "Marble floor / corners - dust free",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "พื้นหินอ่อน / มุมต่าง ๆ ปราศจากฝุ่น"
             }
           ],
           "section_title_th": "ห้องน้ำ"
@@ -925,26 +634,15 @@
           "section_code": "ROOM_06_WRITING_DESK",
           "section_order": 6,
           "section_title": "WRITING DESK",
-          "item_count": 8,
-          "items": [
-            {
-              "item_code": "ROOM_06_07",
-              "item_order": 7,
-              "item_text": "Telephone - functioning / clean",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "โทรศัพท์ใช้งานได้ปกติและสะอาด"
-            }
-          ],
+          "item_count": 0,
+          "items": [],
           "section_title_th": "WRITING DESK"
         },
         {
           "section_code": "ROOM_07_WINDOW_AREA",
           "section_order": 7,
           "section_title": "WINDOW AREA",
-          "item_count": 3,
+          "item_count": 1,
           "items": [
             {
               "item_code": "ROOM_07_01",
@@ -955,16 +653,6 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "กระจกหน้าต่างสะอาด ไร้คราบ"
-            },
-            {
-              "item_code": "ROOM_07_03",
-              "item_order": 3,
-              "item_text": "Sheer / blind / drape curtains - dust free / clean / ironed / functioning",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "ผ้าม่านโปร่ง / ม่าน / ผ้าม่านทึบ ปราศจากฝุ่น สะอาด รีดเรียบ และใช้งานได้ปกติ"
             }
           ],
           "section_title_th": "WINDOW AREA"
@@ -973,26 +661,15 @@
           "section_code": "ROOM_08_TABLE_AND_SOFA",
           "section_order": 8,
           "section_title": "TABLE AND SOFA",
-          "item_count": 3,
-          "items": [
-            {
-              "item_code": "ROOM_08_02",
-              "item_order": 2,
-              "item_text": "Sofa / massage chair - clean / in working order",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "โซฟา / เก้าอี้นวด สะอาดและใช้งานได้ปกติ"
-            }
-          ],
+          "item_count": 0,
+          "items": [],
           "section_title_th": "TABLE AND SOFA"
         },
         {
           "section_code": "ROOM_09_BED_BEDSIDE_TABLES",
           "section_order": 9,
           "section_title": "BED & BEDSIDE TABLES",
-          "item_count": 9,
+          "item_count": 2,
           "items": [
             {
               "item_code": "ROOM_09_01",
@@ -1013,26 +690,6 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "หัวเตียง / ผนังหนัง / รูปภาพ ปราศจากฝุ่น"
-            },
-            {
-              "item_code": "ROOM_09_05",
-              "item_order": 5,
-              "item_text": "Bedside tables top / side / back - dust free",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "โต๊ะข้างเตียงด้านบน / ด้านข้าง / ด้านหลัง ปราศจากฝุ่น"
-            },
-            {
-              "item_code": "ROOM_09_06",
-              "item_order": 6,
-              "item_text": "Alarm clock / bedside lamp / reading light / speaker - functioning / clean",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "นาฬิกาปลุก / โคมไฟข้างเตียง / ไฟอ่านหนังสือ / ลำโพง ใช้งานได้และสะอาด"
             }
           ],
           "section_title_th": "BED & BEDSIDE TABLES"
@@ -1060,7 +717,7 @@
           "section_code": "ROOM_11_BATHROOM",
           "section_order": 11,
           "section_title": "BATHROOM",
-          "item_count": 6,
+          "item_count": 1,
           "items": [
             {
               "item_code": "ROOM_11_01",
@@ -1071,16 +728,6 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "อ่างอาบน้ำสะอาด ไม่มีเส้นผม"
-            },
-            {
-              "item_code": "ROOM_11_06",
-              "item_order": 6,
-              "item_text": "Drain - clean / without hairs",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "ท่อระบายน้ำสะอาด ไม่มีเส้นผม"
             }
           ],
           "section_title_th": "ห้องน้ำ"
@@ -1089,7 +736,7 @@
           "section_code": "ROOM_12_OVERALL",
           "section_order": 12,
           "section_title": "Overall",
-          "item_count": 7,
+          "item_count": 1,
           "items": [
             {
               "item_code": "ROOM_12_03",
@@ -1100,42 +747,13 @@
               "allow_photo": true,
               "create_issue_on_fail": true,
               "item_text_th": "กลิ่นห้องไม่มีสิ่งรบกวนหรือกลิ่นไม่พึงประสงค์"
-            },
-            {
-              "item_code": "ROOM_12_04",
-              "item_order": 4,
-              "item_text": "Maintenance work",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "งานซ่อมบำรุง"
-            },
-            {
-              "item_code": "ROOM_12_05",
-              "item_order": 5,
-              "item_text": "Wall / wallpaper - clean without stain / mould",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "ผนัง / วอลเปเปอร์ สะอาด ไม่มีคราบหรือเชื้อรา"
-            },
-            {
-              "item_code": "ROOM_12_07",
-              "item_order": 7,
-              "item_text": "Carpet - free of dust",
-              "response_mode": "pass_fail_na",
-              "allow_note": true,
-              "allow_photo": true,
-              "create_issue_on_fail": true,
-              "item_text_th": "พรมปราศจากฝุ่น"
             }
           ],
           "section_title_th": "ภาพรวม"
         }
       ],
-      "template_name_th": "เช็กลิสต์ตรวจห้องประจำวัน (ฉบับย่อ)"
+      "template_name_th": "เช็กลิสต์ตรวจห้องประจำวัน (ฉบับย่อ) (ฉบับตรวจเร็ว)",
+      "total_item_count": 14
     }
   ]
 }
