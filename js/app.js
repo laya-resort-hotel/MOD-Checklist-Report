@@ -44,6 +44,38 @@
     return currentLang() === 'en' ? en : th;
   }
 
+  function localizedValue(obj, enKey, thKey) {
+    if (!obj || typeof obj !== 'object') return '';
+    const enVal = obj[enKey];
+    const thVal = obj[thKey];
+    if (currentLang() === 'th') return thVal || enVal || '';
+    return enVal || thVal || '';
+  }
+
+  function templateLabel(template) {
+    return localizedValue(template, 'template_name', 'template_name_th');
+  }
+
+  function sectionLabel(section) {
+    return localizedValue(section, 'section_title', 'section_title_th');
+  }
+
+  function itemLabel(item) {
+    return localizedValue(item, 'item_text', 'item_text_th');
+  }
+
+  function runTemplateLabel(run) {
+    return localizedValue(run, 'template_name', 'template_name_th') || txt('เช็กลิสต์', 'Checklist');
+  }
+
+  function runSectionLabel(entry) {
+    return localizedValue(entry, 'section_title', 'section_title_th');
+  }
+
+  function runItemLabel(entry) {
+    return localizedValue(entry, 'item_text', 'item_text_th');
+  }
+
   const DEPARTMENTS = [
     { code: 'ENG', name: 'Engineering', name_th: 'วิศวกรรม' },
     { code: 'HK', name: 'Housekeeping', name_th: 'แม่บ้าน' },
@@ -109,7 +141,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v40-checklist-loader-fix';
+  const APP_VERSION = 'v41-checklist-th-render-fix';
 
   function safeClone(value) {
     try {
@@ -1765,7 +1797,7 @@
             <div>
               <div class="issue-title-row">
                 <div>
-                  <div class="issue-title">${txt('ส่งเช็กลิสต์แล้ว:', 'Checklist submitted:')} ${escapeHtml(item.template_name || txt('เช็กลิสต์', 'Checklist'))}</div>
+                  <div class="issue-title">${txt('ส่งเช็กลิสต์แล้ว:', 'Checklist submitted:')} ${escapeHtml(runTemplateLabel(item))}</div>
                   <div class="meta-row">
                     <span>${escapeHtml(item.location_text || '-')}</span>
                     <span>•</span>
@@ -1777,7 +1809,7 @@
                   <div class="priority-pill priority-low">${txt('เช็กลิสต์', 'Checklist')}</div>
                 </div>
               </div>
-              <div class="issue-desc">${escapeHtml(`${item.template_name} • ${item.pass_count || 0} ${txt('ผ่าน', 'pass')} • ${item.fail_count || 0} ${txt('ไม่ผ่าน', 'fail')} • ${item.na_count || 0} N/A${item.issue_count ? ` • ${item.issue_count} ${txt('รายการ', 'issue')}` : ''}`)}</div>
+              <div class="issue-desc">${escapeHtml(`${runTemplateLabel(item)} • ${item.pass_count || 0} ${txt('ผ่าน', 'pass')} • ${item.fail_count || 0} ${txt('ไม่ผ่าน', 'fail')} • ${item.na_count || 0} N/A${item.issue_count ? ` • ${item.issue_count} ${txt('รายการ', 'issue')}` : ''}`)}</div>
               <div class="meta-row">
                 <span>${escapeHtml(item.run_no || item.id)}</span>
                 <span>•</span>
@@ -1929,14 +1961,14 @@
   function renderChecklistBoardCard(run) {
     const failCount = run.fail_count || 0;
     const issueCount = run.issue_count || 0;
-    const desc = `${run.template_name} • ${run.pass_count || 0} ${txt('ผ่าน', 'pass')} • ${failCount} ${txt('ไม่ผ่าน', 'fail')} • ${run.na_count || 0} N/A${issueCount ? ` • ${issueCount} ${txt('รายการ', 'issue')}` : ''}`;
+    const desc = `${runTemplateLabel(run)} • ${run.pass_count || 0} ${txt('ผ่าน', 'pass')} • ${failCount} ${txt('ไม่ผ่าน', 'fail')} • ${run.na_count || 0} N/A${issueCount ? ` • ${issueCount} ${txt('รายการ', 'issue')}` : ''}`;
     return `
       <article class="issue-card issue-tone-closed checklist-board-card">
         <div class="issue-thumb placeholder checklist-placeholder">DONE</div>
         <div>
           <div class="issue-title-row">
             <div>
-              <div class="issue-title">${txt('ส่งเช็กลิสต์แล้ว:', 'Checklist submitted:')} ${escapeHtml(run.template_name || txt('เช็กลิสต์', 'Checklist'))}</div>
+              <div class="issue-title">${txt('ส่งเช็กลิสต์แล้ว:', 'Checklist submitted:')} ${escapeHtml(runTemplateLabel(run))}</div>
               <div class="meta-row">
                 <span>${escapeHtml(run.location_text || '-')}</span>
                 <span>•</span>
@@ -1979,7 +2011,7 @@
       runs = runs.filter(run => (run.inspector_department || 'MOD') === state.currentUser.department);
     }
     if (search) {
-      runs = runs.filter(run => [run.template_name, run.location_text, run.run_no, run.inspector_name].join(' ').toLowerCase().includes(search));
+      runs = runs.filter(run => [run.template_name, run.template_name_th, run.location_text, run.run_no, run.inspector_name].join(' ').toLowerCase().includes(search));
     }
     return runs.map(run => ({ ...run, board_type: 'checklist_run' }));
   }
@@ -1995,15 +2027,15 @@
     if (!run) return;
     const answerHtml = (run.answers || []).map(ans => `
       <div class="comment-item">
-        <div class="comment-meta">${escapeHtml(ans.section_title || '')}</div>
-        <div><strong>${escapeHtml(ans.item_text || '')}</strong></div>
+        <div class="comment-meta">${escapeHtml(runSectionLabel(ans) || '')}</div>
+        <div><strong>${escapeHtml(runItemLabel(ans) || '')}</strong></div>
         <div class="meta-row"><span>${escapeHtml((ans.response || '').toUpperCase())}</span>${ans.create_issue ? `<span>•</span><span>${txt('สร้าง Issue แล้ว', 'Issue created')}</span>` : ''}</div>
         ${ans.note ? `<div>${escapeHtml(ans.note)}</div>` : ''}
       </div>
     `).join('');
     const specialFormHtml = (run.special_form_entries || []).map(entry => `
       <div class="comment-item">
-        <div class="comment-meta">${escapeHtml(entry.section_title || '')}</div>
+        <div class="comment-meta">${escapeHtml(runSectionLabel(entry) || '')}</div>
         <div>${escapeHtml(entry.value || '')}</div>
       </div>
     `).join('');
@@ -2011,7 +2043,7 @@
       <div class="issue-detail-grid">
         <div>
           <div class="panel glass inner-panel">
-            <div class="panel-header"><h3>${escapeHtml(run.template_name || txt('เช็กลิสต์', 'Checklist'))}</h3></div>
+            <div class="panel-header"><h3>${escapeHtml(runTemplateLabel(run))}</h3></div>
             <div class="detail-meta">
               <div><strong>${txt('เลขที่รอบตรวจ', 'Run No')}:</strong> ${escapeHtml(run.run_no || run.id)}</div>
               <div><strong>${txt('ผู้ตรวจ', 'Inspector')}:</strong> ${escapeHtml(run.inspector_name || '-')}</div>
@@ -2534,7 +2566,7 @@
           <article class="template-card">
             <div>
               <div class="eyebrow">${txt('เทมเพลตเช็กลิสต์', 'CHECKLIST TEMPLATE')}</div>
-              <h4>${escapeHtml(template.template_name)}</h4>
+              <h4>${escapeHtml(templateLabel(template))}</h4>
               <div class="template-meta">${template.sections?.length || 0} ${txt('ส่วน', 'sections')} • ${itemCount} ${txt('ข้อ', 'items')}</div>
             </div>
             <div class="muted">${escapeHtml(template.source_sheet || '')}</div>
@@ -2561,7 +2593,7 @@
             ${hiddenTemplates.map(template => `
               <div class="hidden-template-item">
                 <div>
-                  <strong>${escapeHtml(template.template_name || '')}</strong>
+                  <strong>${escapeHtml(templateLabel(template))}</strong>
                   <div class="muted">${escapeHtml(template.source_sheet || '')}</div>
                 </div>
                 <button class="btn btn-ghost" data-template-unhide="${template.template_code}">${txt('แสดงกลับ', 'Restore')}</button>
@@ -2580,7 +2612,7 @@
   async function hideBaseTemplate(templateCode) {
     const template = state.data.templates.find(t => t.template_code === templateCode);
     if (!template || !isBaseTemplate(template)) return;
-    if (!confirm(txt(`ซ่อนเช็กลิสต์ "${template.template_name}" ใช่ไหม?`, `Hide checklist "${template.template_name}"?`))) return;
+    if (!confirm(txt(`ซ่อนเช็กลิสต์ "${templateLabel(template)}" ใช่ไหม?`, `Hide checklist "${templateLabel(template)}"?`))) return;
     setTemplateHidden(templateCode, true);
     if (state.ui.selectedTemplateCode === templateCode) {
       el.checklistRunPanel.classList.add('hidden');
@@ -2606,7 +2638,7 @@
   async function deleteCustomTemplate(templateCode) {
     const template = state.data.templates.find(t => t.template_code === templateCode);
     if (!template || !isCustomTemplate(template) || !canDeleteCustomTemplate(template)) return;
-    if (!confirm(txt(`ลบเช็กลิสต์ที่สร้างเอง "${template.template_name}" ใช่ไหม?`, `Delete custom checklist "${template.template_name}"?`))) return;
+    if (!confirm(txt(`ลบเช็กลิสต์ที่สร้างเอง "${templateLabel(template)}" ใช่ไหม?`, `Delete custom checklist "${templateLabel(template)}"?`))) return;
 
     try {
       if (isFirebaseLive()) {
@@ -2618,7 +2650,7 @@
         persist();
         renderTemplateCards();
       }
-      addActivity({ type: 'checklist_template_delete', title: template.template_name, text: txt(`${state.currentUser?.full_name || 'User'} ลบ checklist template`, `${state.currentUser?.full_name || 'User'} deleted a checklist template`), created_at: new Date().toISOString() });
+      addActivity({ type: 'checklist_template_delete', title: templateLabel(template), text: txt(`${state.currentUser?.full_name || 'User'} ลบ checklist template`, `${state.currentUser?.full_name || 'User'} deleted a checklist template`), created_at: new Date().toISOString() });
       setAuthStatus(txt('ลบ checklist แล้ว', 'Checklist deleted'), 'success');
     } catch (err) {
       console.error('delete checklist template failed', err);
@@ -2634,7 +2666,7 @@
     const runId = `draft_${cryptoRandom()}`;
     const html = `
       <div class="panel-header">
-        <h3>${escapeHtml(template.template_name)}</h3>
+        <h3>${escapeHtml(templateLabel(template))}</h3>
         <p class="muted">${txt('บันทึกผลตรวจ แล้วสร้าง issue เฉพาะข้อที่ไม่ผ่านและต้อง follow up', 'Record the inspection result and create issues only for failed items that need follow-up.')}</p>
       </div>
       <div class="checklist-run-head">
@@ -2669,7 +2701,7 @@
       return `
         <section class="section-card section-card-special" data-section-code="${escapeHtml(section.section_code || '')}">
           <div class="section-head">
-            <h4>${escapeHtml(section.section_title)}</h4>
+            <h4>${escapeHtml(sectionLabel(section))}</h4>
             <span class="muted">${txt('ฟอร์มพิเศษ', 'Special form')}</span>
           </div>
           <div class="section-body">
@@ -2682,13 +2714,13 @@
     return `
       <section class="section-card" data-section-code="${section.section_code}">
         <div class="section-head">
-          <h4>${escapeHtml(section.section_title)}</h4>
+          <h4>${escapeHtml(sectionLabel(section))}</h4>
           <span class="muted">${items.length} ${txt('ข้อ', 'items')}</span>
         </div>
         <div class="section-body">
           ${items.map(item => `
             <div class="item-card" data-item-code="${item.item_code}">
-              <div class="item-text">${escapeHtml(item.item_text)}</div>
+              <div class="item-text">${escapeHtml(itemLabel(item))}</div>
               <div class="item-controls">
                 <div class="inline-options" data-response-group>
                   <button class="option-btn pass" type="button" data-response="pass">${txt('ผ่าน', 'Pass')}</button>
@@ -2754,11 +2786,15 @@
       const failDept = qs('[data-fail-dept]', card)?.value || 'ENG';
       const failPriority = qs('[data-fail-priority]', card)?.value || 'medium';
       if (!response) return;
+      const templateSection = (template.sections || []).find(sec => sec.section_code === sectionCode) || null;
+      const templateItem = (templateSection?.items || []).find(it => it.item_code === itemCode) || null;
       answers.push({
         item_code: itemCode,
         section_code: sectionCode,
-        section_title: sectionTitle,
-        item_text: itemText,
+        section_title: templateSection?.section_title || sectionTitle,
+        section_title_th: templateSection?.section_title_th || templateSection?.section_title || sectionTitle,
+        item_text: templateItem?.item_text || itemText,
+        item_text_th: templateItem?.item_text_th || templateItem?.item_text || itemText,
         response,
         note,
         create_issue: createIssue && response === 'fail',
@@ -2771,9 +2807,12 @@
       const value = input.value.trim();
       if (!value) return;
       const sectionCard = input.closest('.section-card');
+      const sectionCode = sectionCard?.dataset.sectionCode || '';
+      const templateSection = (template.sections || []).find(sec => sec.section_code === sectionCode) || null;
       specialFormEntries.push({
-        section_code: sectionCard?.dataset.sectionCode || '',
-        section_title: qs('h4', sectionCard)?.textContent || '',
+        section_code: sectionCode,
+        section_title: templateSection?.section_title || qs('h4', sectionCard)?.textContent || '',
+        section_title_th: templateSection?.section_title_th || templateSection?.section_title || qs('h4', sectionCard)?.textContent || '',
         value,
       });
     });
@@ -2785,6 +2824,7 @@
       run_no: buildChecklistRunNo((state.data.counters.checklist || 0) + 1, inspectionDate),
       template_code: template.template_code,
       template_name: template.template_name,
+      template_name_th: template.template_name_th || template.template_name,
       inspector_uid: state.currentUser.uid,
       inspector_name: state.currentUser.full_name,
       inspector_department: state.currentUser.department,
@@ -2825,20 +2865,20 @@
           issue_type: 'other',
           priority: a.fail_priority,
           assigned_department: a.fail_department,
-          location_text: location || template.template_name,
+          location_text: location || templateLabel(template),
           before_photos: [],
         });
       }
       addActivity({
         type: 'checklist',
-        title: template.template_name,
+        title: templateLabel(template),
         text: txt(`${state.currentUser.full_name} ส่ง ${run.run_no}${issueAnswers.length ? ` และสร้าง ${issueAnswers.length} issue` : ''}`, `${state.currentUser.full_name} submitted ${run.run_no}${issueAnswers.length ? ` and created ${issueAnswers.length} issues` : ''}`),
         created_at: new Date().toISOString(),
       });
       recordUsageLog({
         category: 'checklist',
         action: 'submit_checklist',
-        title: template.template_name,
+        title: templateLabel(template),
         text: txt(`${state.currentUser.full_name} ส่ง ${run.run_no}${issueAnswers.length ? ` และสร้าง ${issueAnswers.length} issue` : ''}`, `${state.currentUser.full_name} submitted ${run.run_no}${issueAnswers.length ? ` and created ${issueAnswers.length} issues` : ''}`),
         checklist_run_id: run.id,
         ref_no: run.run_no,
