@@ -55,7 +55,3 @@
 - Publish ไฟล์ `storage.rules` ใน Firebase Storage Rules
 - เวอร์ชันนี้อัปภาพ issue ไปที่ `issue_photos/{uid}/{issueId}/before/...`
 - Firestore จะเก็บเฉพาะ URL และ path ของรูป ไม่เก็บ base64 ลง issue document
-
-
-## PWA / Add to Home Screen
-This build includes a manifest, service worker, and home-screen icons.
