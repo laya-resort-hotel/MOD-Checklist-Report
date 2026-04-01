@@ -1681,3 +1681,42 @@ input:not([type="checkbox"]):not([type="radio"]) {
   color: #ffffff;
   border-color: #24352C;
 }
+
+
+.template-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.template-actions .btn {
+  flex: 1 1 180px;
+}
+.btn-soft-danger {
+  background: rgba(181,77,66,0.10);
+  color: var(--danger);
+}
+.hidden-templates-box {
+  border: 1px dashed rgba(134,110,75,0.32);
+  border-radius: 22px;
+  padding: 16px;
+  background: rgba(255,255,255,0.55);
+}
+.hidden-template-list {
+  display: grid;
+  gap: 10px;
+}
+.hidden-template-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(36,53,44,0.05);
+}
+@media (max-width: 720px) {
+  .hidden-template-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

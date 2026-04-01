@@ -489,7 +489,7 @@ service cloud.firestore {
     match /checklist_templates/{templateId} {
       allow read: if signedIn();
       allow create, update: if isAdmin() || isMod();
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (isMod() && resource.data.created_by_uid == request.auth.uid);
     }
 
     /* =========================

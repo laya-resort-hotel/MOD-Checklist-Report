@@ -3,6 +3,7 @@
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 
   const LANG_KEY = 'laya_mod_lang_v1';
+  const HIDDEN_TEMPLATE_KEY = 'laya_mod_hidden_templates_v1';
 
   function getSavedLanguage() {
     try {
@@ -16,6 +17,22 @@
   function saveLanguagePreference(lang) {
     try {
       localStorage.setItem(LANG_KEY, lang === 'en' ? 'en' : 'th');
+    } catch (_) {}
+  }
+
+  function getHiddenTemplateCodes() {
+    try {
+      const raw = localStorage.getItem(HIDDEN_TEMPLATE_KEY);
+      const parsed = JSON.parse(raw || '[]');
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveHiddenTemplateCodes(codes) {
+    try {
+      localStorage.setItem(HIDDEN_TEMPLATE_KEY, JSON.stringify(Array.from(new Set((codes || []).filter(Boolean)))));
     } catch (_) {}
   }
 
@@ -76,6 +93,7 @@
       pendingEvidenceBusy: false,
       checklistBuilderSections: [],
       language: getSavedLanguage(),
+      hiddenTemplateCodes: getHiddenTemplateCodes(),
     },
     data: {
       issues: [],
@@ -659,12 +677,45 @@
   function mergeTemplates() {
     const map = new Map();
     (state.data.baseTemplates || []).forEach(t => {
-      if (t?.template_code) map.set(t.template_code, t);
+      if (t?.template_code) map.set(t.template_code, { ...t, _templateScope: 'base' });
     });
     (state.data.customTemplates || []).forEach(t => {
-      if (t?.template_code) map.set(t.template_code, t);
+      if (t?.template_code) map.set(t.template_code, { ...t, _templateScope: 'custom' });
     });
     state.data.templates = Array.from(map.values()).sort((a, b) => String(a.template_name || '').localeCompare(String(b.template_name || '')));
+  }
+
+  function isTemplateHidden(templateCode) {
+    return (state.ui.hiddenTemplateCodes || []).includes(templateCode);
+  }
+
+  function isBaseTemplate(template) {
+    return template?._templateScope === 'base';
+  }
+
+  function isCustomTemplate(template) {
+    return template?._templateScope === 'custom';
+  }
+
+  function canDeleteCustomTemplate(template) {
+    if (!isCustomTemplate(template) || !state.currentUser) return false;
+    return state.currentUser.role === 'admin' || template.created_by_uid === state.currentUser.uid;
+  }
+
+  function setTemplateHidden(templateCode, hidden) {
+    const current = new Set(state.ui.hiddenTemplateCodes || []);
+    if (hidden) current.add(templateCode);
+    else current.delete(templateCode);
+    state.ui.hiddenTemplateCodes = Array.from(current);
+    saveHiddenTemplateCodes(state.ui.hiddenTemplateCodes);
+  }
+
+  function getVisibleTemplates() {
+    return (state.data.templates || []).filter(template => !isTemplateHidden(template.template_code));
+  }
+
+  function getHiddenTemplates() {
+    return (state.data.templates || []).filter(template => isTemplateHidden(template.template_code));
   }
 
   function hydrateFromStorage() {
@@ -1687,26 +1738,108 @@
   }
 
   function renderTemplateCards() {
-    if (!state.data.templates.length) {
-      el.templateCards.innerHTML = `<div class="empty-state">${txt('ยังไม่พบ checklist template', 'No checklist template found')}</div>`;
-      return;
+    const visibleTemplates = getVisibleTemplates();
+    const hiddenTemplates = getHiddenTemplates();
+
+    if (!visibleTemplates.length) {
+      el.templateCards.innerHTML = `
+        <div class="empty-state">
+          ${txt('ยังไม่พบ checklist template', 'No checklist template found')}
+          ${hiddenTemplates.length ? `<div class="muted" style="margin-top:8px;">${txt(`มีเช็กลิสต์ที่ซ่อนอยู่ ${hiddenTemplates.length} รายการด้านล่าง`, `${hiddenTemplates.length} hidden checklist(s) listed below`)}</div>` : ''}
+        </div>`;
+    } else {
+      el.templateCards.innerHTML = visibleTemplates.map(template => {
+        const itemCount = template.sections?.reduce((sum, sec) => sum + (sec.item_count || sec.items?.length || 0), 0) || 0;
+        const actionBtn = isCustomTemplate(template) && canDeleteCustomTemplate(template)
+          ? `<button class="btn btn-ghost btn-soft-danger" data-template-delete="${template.template_code}">${txt('ลบ', 'Delete')}</button>`
+          : isBaseTemplate(template)
+            ? `<button class="btn btn-ghost" data-template-hide="${template.template_code}">${txt('ซ่อน', 'Hide')}</button>`
+            : '';
+        return `
+          <article class="template-card">
+            <div>
+              <div class="eyebrow">${txt('เทมเพลตเช็กลิสต์', 'CHECKLIST TEMPLATE')}</div>
+              <h4>${escapeHtml(template.template_name)}</h4>
+              <div class="template-meta">${template.sections?.length || 0} ${txt('ส่วน', 'sections')} • ${itemCount} ${txt('ข้อ', 'items')}</div>
+            </div>
+            <div class="muted">${escapeHtml(template.source_sheet || '')}</div>
+            <div class="template-actions">
+              <button class="btn btn-primary" data-template-open="${template.template_code}">${txt('เปิดเช็กลิสต์', 'Open Checklist')}</button>
+              ${actionBtn}
+            </div>
+          </article>
+        `;
+      }).join('');
     }
-    el.templateCards.innerHTML = state.data.templates.map(template => {
-      const itemCount = template.sections?.reduce((sum, sec) => sum + (sec.item_count || sec.items?.length || 0), 0) || 0;
-      return `
-        <article class="template-card">
-          <div>
-            <div class="eyebrow">${txt('เทมเพลตเช็กลิสต์', 'CHECKLIST TEMPLATE')}</div>
-            <h4>${escapeHtml(template.template_name)}</h4>
-            <div class="template-meta">${template.sections?.length || 0} ${txt('ส่วน', 'sections')} • ${itemCount} ${txt('ข้อ', 'items')}</div>
+
+    if (hiddenTemplates.length) {
+      el.templateCards.innerHTML += `
+        <section class="hidden-templates-box">
+          <div class="panel-header panel-header-split">
+            <div>
+              <h3>${txt('เช็กลิสต์ที่ซ่อน', 'Hidden Checklists')}</h3>
+              <p class="muted">${txt('เทมเพลตหลักที่ซ่อนจะยังอยู่ในระบบ และกดแสดงกลับได้', 'Hidden base templates remain in the system and can be restored anytime.')}</p>
+            </div>
           </div>
-          <div class="muted">${escapeHtml(template.source_sheet || '')}</div>
-          <button class="btn btn-primary" data-template-open="${template.template_code}">${txt('เปิดเช็กลิสต์', 'Open Checklist')}</button>
-        </article>
-      `;
-    }).join('');
+          <div class="hidden-template-list">
+            ${hiddenTemplates.map(template => `
+              <div class="hidden-template-item">
+                <div>
+                  <strong>${escapeHtml(template.template_name || '')}</strong>
+                  <div class="muted">${escapeHtml(template.source_sheet || '')}</div>
+                </div>
+                <button class="btn btn-ghost" data-template-unhide="${template.template_code}">${txt('แสดงกลับ', 'Restore')}</button>
+              </div>`).join('')}
+          </div>
+        </section>`;
+    }
 
     qsa('[data-template-open]', el.templateCards).forEach(btn => btn.addEventListener('click', () => openChecklistRun(btn.dataset.templateOpen)));
+    qsa('[data-template-hide]', el.templateCards).forEach(btn => btn.addEventListener('click', () => hideBaseTemplate(btn.dataset.templateHide)));
+    qsa('[data-template-unhide]', el.templateCards).forEach(btn => btn.addEventListener('click', () => restoreHiddenTemplate(btn.dataset.templateUnhide)));
+    qsa('[data-template-delete]', el.templateCards).forEach(btn => btn.addEventListener('click', () => deleteCustomTemplate(btn.dataset.templateDelete)));
+  }
+
+  async function hideBaseTemplate(templateCode) {
+    const template = state.data.templates.find(t => t.template_code === templateCode);
+    if (!template || !isBaseTemplate(template)) return;
+    if (!confirm(txt(`ซ่อนเช็กลิสต์ "${template.template_name}" ใช่ไหม?`, `Hide checklist "${template.template_name}"?`))) return;
+    setTemplateHidden(templateCode, true);
+    if (state.ui.selectedTemplateCode === templateCode) {
+      el.checklistRunPanel.classList.add('hidden');
+      state.ui.selectedTemplateCode = null;
+    }
+    renderTemplateCards();
+    setAuthStatus(txt('ซ่อน checklist แล้ว', 'Checklist hidden'), 'success');
+  }
+
+  function restoreHiddenTemplate(templateCode) {
+    setTemplateHidden(templateCode, false);
+    renderTemplateCards();
+    setAuthStatus(txt('แสดง checklist กลับแล้ว', 'Checklist restored'), 'success');
+  }
+
+  async function deleteCustomTemplate(templateCode) {
+    const template = state.data.templates.find(t => t.template_code === templateCode);
+    if (!template || !isCustomTemplate(template) || !canDeleteCustomTemplate(template)) return;
+    if (!confirm(txt(`ลบเช็กลิสต์ที่สร้างเอง "${template.template_name}" ใช่ไหม?`, `Delete custom checklist "${template.template_name}"?`))) return;
+
+    try {
+      if (isFirebaseLive()) {
+        const fb = window.LAYA_FIREBASE;
+        await fb.sdk.deleteDoc(fb.sdk.doc(fb.db, 'checklist_templates', templateCode));
+      } else {
+        state.data.customTemplates = (state.data.customTemplates || []).filter(t => t.template_code !== templateCode);
+        mergeTemplates();
+        persist();
+        renderTemplateCards();
+      }
+      addActivity({ type: 'checklist_template_delete', title: template.template_name, text: txt(`${state.currentUser?.full_name || 'User'} ลบ checklist template`, `${state.currentUser?.full_name || 'User'} deleted a checklist template`), created_at: new Date().toISOString() });
+      setAuthStatus(txt('ลบ checklist แล้ว', 'Checklist deleted'), 'success');
+    } catch (err) {
+      console.error('delete checklist template failed', err);
+      alert(friendlyIssueError(err));
+    }
   }
 
   function openChecklistRun(templateCode) {
