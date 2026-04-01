@@ -141,7 +141,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v41-checklist-th-render-fix';
+  const APP_VERSION = 'v42-activity-live-feed';
 
   function safeClone(value) {
     try {
@@ -3848,6 +3848,7 @@
     state.firebaseUsageLogsUnsub = sdk.onSnapshot(q, (snap) => {
       state.data.usageLogs = snap.docs.map(normalizeUsageLogDoc).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).slice(0, 400);
       if (state.ui.activeView === 'logView') renderUsageLogs();
+      if (state.ui.activeView === 'activityView') renderActivity();
     }, (err) => {
       console.error('usage logs onSnapshot failed', err);
     });
@@ -3982,6 +3983,7 @@ function humanizeLogAction(action) {
     };
     state.data.usageLogs = [item, ...(state.data.usageLogs || [])].slice(0, 500);
     if (state.ui.activeView === 'logView') renderUsageLogs();
+    if (state.ui.activeView === 'activityView') renderActivity();
     return item;
   }
 
@@ -4113,8 +4115,35 @@ function humanizeLogAction(action) {
     input.addEventListener('focus', refresh);
   }
 
+  function getActivityFeedItems() {
+    const localItems = Array.isArray(state.data.activity) ? state.data.activity : [];
+    const usageItems = Array.isArray(state.data.usageLogs)
+      ? state.data.usageLogs.map(item => ({
+          id: item.id || cryptoRandom(),
+          title: item.title || humanizeLogAction(item.action || 'event'),
+          text: [item.text || '', [item.user_name || '', item.ref_no || ''].filter(Boolean).join(' • ')].filter(Boolean).join(' • '),
+          created_at: item.created_at || '',
+          source: 'usage_log',
+          action: item.action || 'event',
+          category: item.category || 'general',
+        }))
+      : [];
+
+    const merged = [...usageItems, ...localItems]
+      .filter(item => item && (item.title || item.text || item.created_at))
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+    const seen = new Set();
+    return merged.filter(item => {
+      const key = [item.source || 'local', item.created_at || '', item.title || '', item.text || ''].join('|');
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 200);
+  }
+
   function renderActivity() {
-    const items = [...state.data.activity].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const items = getActivityFeedItems();
     if (!items.length) {
       el.activityList.innerHTML = `<div class="empty-state">${txt('ยังไม่มีกิจกรรม', 'No activity yet')}</div>`;
       return;
