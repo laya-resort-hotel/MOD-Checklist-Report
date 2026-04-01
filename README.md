@@ -57,3 +57,9 @@
 - Publish ไฟล์ `storage.rules` ใน Firebase Storage Rules
 - เวอร์ชันนี้อัปภาพ issue ไปที่ `issue_photos/{uid}/{issueId}/before/...`
 - Firestore จะเก็บเฉพาะ URL และ path ของรูป ไม่เก็บ base64 ลง issue document
+
+
+## v33 dropdown fix
+- แยก WORK departments ออกจาก system departments ชัดเจน
+- Dropdown สำหรับ Create Issue / Checklist fail issue / Register (Department User) ใช้เฉพาะ: ENG, HK, FO, FB, SEC, HR, RSV, SALES, REC, KIT
+- MOD และ Admin ยังอยู่ในระบบ แต่จะไม่โผล่ใน dropdown ที่ใช้ assign งานหรือสมัคร Department User

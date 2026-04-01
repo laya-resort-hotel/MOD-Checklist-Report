@@ -41,6 +41,8 @@
     { code: 'MOD', name: 'MOD', name_th: 'MOD' },
     { code: 'ADMIN', name: 'Admin', name_th: 'ผู้ดูแลระบบ' },
   ];
+  const WORK_DEPARTMENT_CODES = ['ENG', 'HK', 'FO', 'FB', 'SEC', 'HR', 'RSV', 'SALES', 'REC', 'KIT'];
+  const ALL_DEPARTMENT_CODES = DEPARTMENTS.map(dept => dept.code);
 
   const PRIORITIES = ['low', 'medium', 'high', 'critical'];
   const STATUS_ORDER = { open: 1, in_progress: 2, waiting: 3, closed: 4 };
@@ -361,7 +363,7 @@
       return;
     }
 
-    const deptCodes = ['ENG', 'HK', 'FO', 'FB', 'SEC', 'HR', 'RSV', 'SALES', 'REC', 'KIT'];
+    const deptCodes = WORK_DEPARTMENT_CODES;
     el.registerDepartment.innerHTML = renderDepartmentOptions(deptCodes);
     if (!deptCodes.includes(el.registerDepartment.value)) {
       el.registerDepartment.value = 'ENG';
@@ -3387,8 +3389,9 @@ function humanizeLogAction(action) {
     syncRegisterRoleDepartment();
   }
 
-  function renderDepartmentOptions(allowedCodes = null) {
-    const list = allowedCodes ? DEPARTMENTS.filter(dept => allowedCodes.includes(dept.code)) : DEPARTMENTS;
+  function renderDepartmentOptions(allowedCodes = WORK_DEPARTMENT_CODES) {
+    const codes = Array.isArray(allowedCodes) && allowedCodes.length ? allowedCodes : WORK_DEPARTMENT_CODES;
+    const list = DEPARTMENTS.filter(dept => codes.includes(dept.code));
     return list.map(dept => `<option value="${dept.code}">${departmentLabel(dept)}</option>`).join('');
   }
 
