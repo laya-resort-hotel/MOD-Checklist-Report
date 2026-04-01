@@ -2,6 +2,31 @@
   const APP_KEY = 'laya_mod_checklist_v1';
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 
+  const LANG_KEY = 'laya_mod_lang_v1';
+
+  function getSavedLanguage() {
+    try {
+      const raw = localStorage.getItem(LANG_KEY);
+      return raw === 'en' ? 'en' : 'th';
+    } catch (_) {
+      return 'th';
+    }
+  }
+
+  function saveLanguagePreference(lang) {
+    try {
+      localStorage.setItem(LANG_KEY, lang === 'en' ? 'en' : 'th');
+    } catch (_) {}
+  }
+
+  function currentLang() {
+    return state?.ui?.language === 'en' ? 'en' : 'th';
+  }
+
+  function txt(th, en) {
+    return currentLang() === 'en' ? en : th;
+  }
+
   const DEPARTMENTS = [
     { code: 'ENG', name: 'Engineering', name_th: 'วิศวกรรม' },
     { code: 'HK', name: 'Housekeeping', name_th: 'แม่บ้าน' },
@@ -22,7 +47,7 @@
 
   function departmentLabel(dept) {
     if (!dept) return '';
-    return dept.name_th && dept.name_th !== dept.name ? `${dept.name} / ${dept.name_th}` : dept.name;
+    return currentLang() === 'en' ? (dept.name || dept.code || '') : (dept.name_th || dept.name || dept.code || '');
   }
 
   const state = {
@@ -48,6 +73,7 @@
       pendingIssueVideo: null,
       pendingEvidenceBusy: false,
       checklistBuilderSections: [],
+      language: getSavedLanguage(),
     },
     data: {
       issues: [],
@@ -70,6 +96,7 @@
     cacheEls();
     bindEvents();
     bindFirebaseEvents();
+    applyLanguageToStaticUI();
     showAuthTab('signin');
     applyRuntimeMode();
     await loadTemplates();
@@ -92,9 +119,9 @@
   function applyRuntimeMode() {
     const fb = window.LAYA_FIREBASE;
     if (fb?.ready) {
-      if (el.modeBanner) el.modeBanner.textContent = `Firebase Auth Ready • ${fb.projectId || 'connected'}`;
+      if (el.modeBanner) el.modeBanner.textContent = txt('Firebase Auth พร้อมใช้งาน', 'Firebase Auth Ready') + ` • ${fb.projectId || txt('เชื่อมแล้ว', 'connected')}`;
       if (el.connectionBadge) {
-        el.connectionBadge.textContent = 'Firebase Live';
+        el.connectionBadge.textContent = txt('เชื่อม Firebase แล้ว', 'Firebase Live');
         el.connectionBadge.classList.remove('warning');
         el.connectionBadge.classList.add('success');
       }
@@ -104,9 +131,9 @@
     }
 
     if (window.LAYA_FIREBASE_CONFIG_PRESENT) {
-      if (el.modeBanner) el.modeBanner.textContent = 'Firebase Config Added • Waiting for Auth / fallback to Local Demo';
+      if (el.modeBanner) el.modeBanner.textContent = txt('เพิ่ม Firebase Config แล้ว • รอ Auth / fallback เป็นเดโมในเครื่อง', 'Firebase Config Added • Waiting for Auth / fallback to Local Demo');
       if (el.connectionBadge) {
-        el.connectionBadge.textContent = 'Demo Data';
+        el.connectionBadge.textContent = txt('ข้อมูลเดโม', 'Demo Data');
         el.connectionBadge.classList.remove('success');
         el.connectionBadge.classList.add('warning');
       }
@@ -114,9 +141,9 @@
       return;
     }
 
-    if (el.modeBanner) el.modeBanner.textContent = 'Local Demo Mode';
+    if (el.modeBanner) el.modeBanner.textContent = txt('โหมดเดโมในเครื่อง', 'Local Demo Mode');
     if (el.connectionBadge) {
-      el.connectionBadge.textContent = 'Ready';
+      el.connectionBadge.textContent = txt('พร้อมใช้งาน', 'Ready');
       el.connectionBadge.classList.remove('warning');
       el.connectionBadge.classList.add('success');
     }
@@ -141,6 +168,187 @@
     }
     el.authStatus.textContent = message;
     el.authStatus.className = `auth-status ${type}`;
+  }
+
+
+  function setNodeText(selector, th, en, root = document) {
+    const node = qs(selector, root);
+    if (node) node.textContent = txt(th, en);
+  }
+
+  function setNodePlaceholder(selector, th, en, root = document) {
+    const node = qs(selector, root);
+    if (node) node.placeholder = txt(th, en);
+  }
+
+  function applyLanguageToStaticUI() {
+    document.documentElement.lang = currentLang();
+
+    qsa('[data-lang-btn]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.langBtn === currentLang());
+    });
+
+    setNodeText('.brand-subtitle', 'MOD Checklist Report', 'MOD Checklist Report');
+    setNodeText('#loginScreen h1', 'ระบบตรวจโรงแรมและบอร์ดติดตามงาน', 'Hotel Inspection & Issue Board');
+    setNodeText('#showSignInTab', 'เข้าสู่ระบบ', 'Sign In');
+    setNodeText('#showRegisterTab', 'สมัครสมาชิก', 'Register');
+    setNodeText('#loginBtn', 'เข้าสู่ระบบ', 'Sign In');
+    setNodeText('#registerBtn', 'สร้างบัญชี', 'Create Account');
+    setNodeText('#demoBox .demo-title', 'บัญชีเดโม', 'Demo Accounts');
+
+    const signInLabels = qsa('#signInPane label');
+    if (signInLabels[0]) signInLabels[0].textContent = txt('รหัสพนักงาน', 'Employee ID');
+    if (signInLabels[1]) signInLabels[1].textContent = txt('รหัสผ่าน', 'Password');
+
+    const registerLabels = qsa('#registerPane label');
+    const registerTexts = [
+      txt('รหัสพนักงาน', 'Employee ID'),
+      txt('ชื่อ-นามสกุล', 'Full Name'),
+      txt('ประเภทการเข้าใช้งาน', 'Access Type'),
+      txt('แผนก', 'Department'),
+      txt('รหัสผ่าน', 'Password'),
+      txt('ยืนยันรหัสผ่าน', 'Confirm Password'),
+    ];
+    registerLabels.forEach((label, index) => {
+      if (registerTexts[index]) label.textContent = registerTexts[index];
+    });
+
+    setNodePlaceholder('#loginEmployeeId', 'เช่น 9901', 'e.g. 9901');
+    setNodePlaceholder('#loginPassword', 'รหัสผ่าน', 'Password');
+    setNodePlaceholder('#registerEmployeeId', 'เช่น 5521', 'e.g. 5521');
+    setNodePlaceholder('#registerFullName', 'ชื่อ-นามสกุล', 'Full name');
+    setNodePlaceholder('#registerPassword', 'อย่างน้อย 6 ตัวอักษร', 'At least 6 characters');
+    setNodePlaceholder('#registerConfirmPassword', 'ยืนยันรหัสผ่าน', 'Confirm password');
+
+    if (el.registerRole) {
+      const modOpt = qs('option[value="mod"]', el.registerRole);
+      const deptOpt = qs('option[value="dept_user"]', el.registerRole);
+      if (modOpt) modOpt.textContent = 'MOD';
+      if (deptOpt) deptOpt.textContent = txt('ผู้ใช้แผนก', 'Department User');
+    }
+
+    const sidebarLabels = {
+      boardView: txt('บอร์ด', 'Board'),
+      newIssueView: txt('แจ้งปัญหาใหม่', 'New Issue'),
+      checklistView: txt('เช็กลิสต์', 'Checklist'),
+      activityView: txt('กิจกรรม', 'Activity'),
+      logView: txt('บันทึกการใช้งาน', 'Log'),
+      closedView: txt('งานที่ปิดแล้ว', 'Closed Jobs'),
+    };
+    qsa('.sidebar-nav .nav-link, .bottom-nav .nav-link').forEach(btn => {
+      const label = sidebarLabels[btn.dataset.view];
+      if (label) btn.textContent = label;
+    });
+
+    setNodeText('.topbar .eyebrow', 'LAYA RESORT PHUKET', 'LAYA RESORT PHUKET');
+    setNodeText('.topbar-title', 'MOD Checklist Report', 'MOD Checklist Report');
+    setNodeText('#logoutBtn', 'ออกจากระบบ', 'Logout');
+    if (!state.currentUser) setNodeText('#welcomeText', 'ยินดีต้อนรับ', 'Welcome');
+
+    setNodePlaceholder('#boardSearch', 'ค้นหา issue, location, department', 'Search issue, location, department');
+    setNodeText('#openClosedJobsBtn', 'งานที่ปิดแล้ว', 'Closed Jobs');
+
+    const chips = {
+      all: txt('ทั้งหมด', 'All'),
+      open: txt('เปิดอยู่', 'Open'),
+      in_progress: txt('กำลังดำเนินการ', 'In Progress'),
+      waiting: txt('รอ', 'Waiting'),
+    };
+    qsa('#boardFilterChips .chip').forEach(btn => {
+      const label = chips[btn.dataset.filter];
+      if (label) btn.textContent = label;
+    });
+
+    setNodeText('#newIssueView .panel-header h3', 'แจ้งปัญหาใหม่', 'New Issue');
+    setNodeText('#newIssueView .panel-header p', 'แจ้งปัญหาใหม่แบบเร็ว เน้นถ่ายรูปและ assign แผนกให้ชัด', 'Quick issue report with clear photos and department assignment.');
+    setNodeText('label[for="issuePhotoInput"]', 'เพิ่มรูป / ถ่ายรูป', 'Add Photo / Take Photo');
+    setNodeText('label[for="issueVideoInput"]', 'เพิ่มวิดีโอ / ถ่ายวิดีโอ', 'Add Video / Record Video');
+    setNodeText('#issuePhotoHint', 'แนะนำรูปไม่เกิน 10 MB ต่อรูป • เลือกได้หลายรูป • ระบบจะย่อรูปให้อัตโนมัติก่อนบันทึก', 'Recommended max 10 MB per image • Multiple images allowed • Images will be compressed automatically before save');
+    setNodeText('#issueVideoHint', 'รองรับวิดีโอไม่เกิน 25 MB • แนะนำ MP4/MOV • ระบบจะสร้าง poster ให้ใช้อัตโนมัติ', 'Video up to 25 MB • Recommended MP4/MOV • Poster image will be generated automatically');
+
+    const issueLabels = qsa('#newIssueView .form-grid label');
+    const issueLabelTexts = [
+      txt('หัวข้อ', 'Title'),
+      txt('ประเภทปัญหา', 'Issue Type'),
+      txt('รายละเอียด', 'Description'),
+      txt('ตำแหน่ง', 'Location'),
+      txt('มอบหมายแผนก', 'Assign Department'),
+    ];
+    issueLabels.forEach((label, index) => {
+      if (issueLabelTexts[index]) label.textContent = issueLabelTexts[index];
+    });
+    setNodePlaceholder('#issueTitle', 'เช่น น้ำรั่วบริเวณทางเข้าล็อบบี้', 'e.g. Water leak at lobby entrance');
+    setNodePlaceholder('#issueDescription', 'รายละเอียดเพิ่มเติม', 'Additional details');
+    setNodePlaceholder('#issueLocation', 'เช่น Lobby entrance near main corridor', 'e.g. Lobby entrance near main corridor');
+    const issueTypeMap = {
+      water_leak: txt('น้ำรั่ว', 'Water Leak'),
+      light_issue: txt('ไฟมีปัญหา', 'Light Issue'),
+      dirty_area: txt('พื้นที่สกปรก', 'Dirty Area'),
+      broken_furniture: txt('เฟอร์นิเจอร์ชำรุด', 'Broken Furniture'),
+      safety_concern: txt('จุดเสี่ยงด้านความปลอดภัย', 'Safety Concern'),
+      guest_area_defect: txt('พื้นที่แขกมีปัญหา', 'Guest Area Defect'),
+      ac_issue: txt('แอร์มีปัญหา', 'AC Issue'),
+      pest_issue: txt('ปัญหาแมลง/สัตว์รบกวน', 'Pest Issue'),
+      other: txt('อื่นๆ', 'Other'),
+    };
+    qsa('#issueType option').forEach(opt => {
+      opt.textContent = issueTypeMap[opt.value] || opt.textContent;
+    });
+    const priorityLabel = qsa('#newIssueView > .panel glass label');
+    setNodeText('#newIssueView > .panel > div:nth-last-of-type(2) > label', 'ระดับความสำคัญ', 'Priority');
+    qsa('#prioritySegment .segment').forEach(btn => {
+      btn.textContent = translatePriority(btn.dataset.value);
+    });
+    setNodeText('#saveIssueBtn', 'บันทึก Issue', 'Save Issue');
+    setNodeText('#clearIssueBtn', 'ล้างข้อมูล', 'Clear');
+
+    setNodeText('#checklistView .panel-header h3', 'โมดูลเช็กลิสต์', 'Checklist Module');
+    setNodeText('#checklistView .panel-header p', 'แยกจาก Board เพื่อให้หน้าบอร์ดสะอาด และเมื่อ submit แล้วจะขึ้นบน Board เพื่อบอกว่าตรวจแล้ว', 'Separated from the board to keep it clean. Submitted checklist cards will appear on the board to show inspection is completed.');
+    setNodeText('#addChecklistTemplateBtn', '+ เพิ่มเช็กลิสต์', '+ Add Checklist');
+
+    setNodeText('#activityView .panel-header h3', 'กิจกรรม', 'Activity');
+    setNodeText('#activityView .panel-header p', 'ความเคลื่อนไหวล่าสุดของ issue และ checklist', 'Latest issue and checklist activity');
+
+    setNodeText('#logView .panel-header h3', 'บันทึกการใช้งาน', 'Usage Log');
+    setNodeText('#logView .panel-header p', 'โหลดและดูข้อมูลการใช้งานล่าสุดของระบบ เช่น การสร้างงาน ปิดงาน คอมเมนต์ ส่ง checklist และอัปหลักฐาน', 'View recent system activity such as issue creation, closing jobs, comments, checklist submissions, and evidence uploads.');
+    setNodeText('#reloadUsageLogBtn', 'โหลดล่าสุด', 'Load Latest');
+    setNodeText('#exportUsageLogExcelBtn', 'ส่งออก Excel', 'Export Excel');
+    setNodePlaceholder('#logSearch', 'ค้นหา log, ผู้ใช้, issue no, checklist no', 'Search log, user, issue no, checklist no');
+
+    setNodeText('#closedView .panel-header h3', 'งานที่ปิดแล้วและประวัติเช็กลิสต์', 'Closed Jobs & Checklist History');
+    setNodeText('#closedView .panel-header p', 'งานที่ปิดแล้วและ checklist ที่ซ่อนจาก Board จะถูกเก็บไว้ที่นี่ เพื่อไม่ให้ปนกับงานที่ยังต้องติดตาม', 'Closed jobs and checklist cards hidden from the board are kept here so they do not mix with active follow-up items.');
+    setNodeText('#backToBoardBtn', 'กลับไปบอร์ด', 'Back to Board');
+    setNodePlaceholder('#closedSearch', 'ค้นหางานที่ปิดแล้ว, checklist, location, issue no', 'Search closed jobs, checklist, location, issue no');
+
+    setNodeText('#moreView .panel-header h3', 'ทีมและเครื่องมือ', 'Team & Tools');
+    setNodeText('#openClosedJobsFromMore', 'เปิดงานที่ปิดแล้ว', 'Open Closed Jobs');
+    setNodeText('#openUsageLogFromMore', 'เปิด Usage Log', 'Open Usage Log');
+    setNodeText('#exportJsonBtn', 'ส่งออก Local JSON', 'Export Local JSON');
+    const importLabel = qs('#moreView .upload-btn');
+    if (importLabel && importLabel.childNodes[0]) importLabel.childNodes[0].textContent = txt('นำเข้า Local JSON', 'Import Local JSON');
+    setNodeText('#seedDemoBtn', 'รีเซ็ตข้อมูลเดโม', 'Reset Demo Data');
+    setNodeText('#moreView .more-grid .panel:nth-of-type(2) .panel-header h3', 'สมาชิกทีม', 'Team Members');
+    setNodeText('#moreView .more-grid .panel:nth-of-type(2) .panel-header p', 'ผู้ใช้ทั้งหมดของระบบนี้', 'All users in this system');
+
+    if (el.fabNewIssue) {
+      el.fabNewIssue.title = txt('แจ้งปัญหาใหม่', 'New Issue');
+    }
+
+    populateDepartmentSelects();
+    syncRegisterRoleDepartment();
+    applyRuntimeMode();
+  }
+
+  function setLanguage(lang) {
+    const next = lang === 'en' ? 'en' : 'th';
+    state.ui.language = next;
+    saveLanguagePreference(next);
+    applyLanguageToStaticUI();
+    renderAll();
+    if (state.ui.openIssueId) {
+      const issue = state.data.issues.find(i => i.id === state.ui.openIssueId);
+      if (issue) renderIssueModalContent(issue);
+    }
   }
 
   function syncRegisterRoleDepartment() {
@@ -372,6 +580,7 @@
     el.showSignInTab.addEventListener('click', () => showAuthTab('signin'));
     el.showRegisterTab.addEventListener('click', () => showAuthTab('register'));
     if (el.registerRole) el.registerRole.addEventListener('change', syncRegisterRoleDepartment);
+    qsa('[data-lang-btn]').forEach(btn => btn.addEventListener('click', () => setLanguage(btn.dataset.langBtn)));
     qsa('.demo-user').forEach(btn => btn.addEventListener('click', () => {
       el.loginEmployeeId.value = btn.dataset.id;
       el.loginPassword.value = btn.dataset.pass;
@@ -522,7 +731,7 @@
     const employeeId = el.loginEmployeeId.value.trim();
     const password = el.loginPassword.value.trim();
     if (!employeeId || !password) {
-      setAuthStatus('กรุณาใส่ Employee ID และ Password', 'error');
+      setAuthStatus(txt('กรุณาใส่ Employee ID และ Password', 'Please enter Employee ID and Password'), 'error');
       return;
     }
 
@@ -533,14 +742,14 @@
         await fb.sdk.signInWithEmailAndPassword(fb.auth, employeeIdToEmail(employeeId), password);
       } catch (err) {
         console.error(err);
-        setAuthStatus('Employee ID หรือ Password ไม่ถูกต้อง', 'error');
+        setAuthStatus(txt('Employee ID หรือ Password ไม่ถูกต้อง', 'Employee ID or Password is incorrect'), 'error');
       }
       return;
     }
 
     const user = DEMO_USERS.find(u => u.employee_id === employeeId && u.password === password);
     if (!user) {
-      alert('Employee ID หรือ Password ไม่ถูกต้อง');
+      alert(txt('Employee ID หรือ Password ไม่ถูกต้อง', 'Employee ID or Password is incorrect'));
       return;
     }
     state.currentUser = { ...user };
@@ -577,15 +786,15 @@
       return;
     }
     if (role === 'dept_user' && !department) {
-      setAuthStatus('กรุณาเลือกแผนกสำหรับ Department User', 'error');
+      setAuthStatus(txt('กรุณาเลือกแผนกสำหรับ Department User', 'Please choose a department for Department User'), 'error');
       return;
     }
     if (password.length < 6) {
-      setAuthStatus('รหัสผ่านต้องอย่างน้อย 6 ตัวอักษร', 'error');
+      setAuthStatus(txt('รหัสผ่านต้องอย่างน้อย 6 ตัวอักษร', 'Password must be at least 6 characters'), 'error');
       return;
     }
     if (password !== confirmPassword) {
-      setAuthStatus('Confirm Password ไม่ตรงกัน', 'error');
+      setAuthStatus(txt('Confirm Password ไม่ตรงกัน', 'Confirm Password does not match'), 'error');
       return;
     }
 
@@ -658,7 +867,8 @@
     el.loginScreen.classList.toggle('hidden', loggedIn);
     el.appShell.classList.toggle('hidden', !loggedIn);
     if (!loggedIn) return;
-    el.welcomeText.textContent = `${state.currentUser.full_name} • MOD Team`;
+    const teamName = state.currentUser.department ? getDepartmentName(state.currentUser.department) : 'MOD';
+    el.welcomeText.textContent = `${state.currentUser.full_name} • ${teamName} ${txt('ทีม', 'Team')}`;
     renderTeamMembers();
   }
 
@@ -698,10 +908,10 @@
     const closedTodayCount = visibleIssues.filter(i => i.status === 'closed' && isToday(i.closed_at || i.updated_at)).length;
 
     const cards = [
-      { label: 'Open Today', value: openCount, hint: 'ยังต้องตามต่อ' },
-      { label: 'In Progress', value: progressCount, hint: 'กำลังดำเนินการ' },
-      { label: 'Critical', value: criticalCount, hint: 'ต้องเร่งตรวจ' },
-      { label: 'Closed Today', value: closedTodayCount, hint: 'ปิดงานวันนี้' },
+      { label: txt('เปิดวันนี้', 'Open Today'), value: openCount, hint: txt('ยังต้องตามต่อ', 'Still needs follow-up') },
+      { label: txt('กำลังดำเนินการ', 'In Progress'), value: progressCount, hint: txt('กำลังดำเนินการ', 'Work in progress') },
+      { label: txt('เร่งด่วนมาก', 'Critical'), value: criticalCount, hint: txt('ต้องเร่งตรวจ', 'Needs urgent attention') },
+      { label: txt('ปิดวันนี้', 'Closed Today'), value: closedTodayCount, hint: txt('ปิดงานวันนี้', 'Closed today') },
     ];
 
     el.summaryGrid.innerHTML = cards.map(card => `
@@ -718,20 +928,20 @@
     const closedItems = getClosedBoardItemsForCurrentUser();
 
     if (!closedItems.length) {
-      el.closedList.innerHTML = `<div class="empty-state">ยังไม่มีงานหรือ checklist ที่ย้ายมาเก็บแล้ว</div>`;
+      el.closedList.innerHTML = `<div class="empty-state">${txt('ยังไม่มีงานหรือเช็กลิสต์ที่ย้ายมาเก็บแล้ว', 'No closed jobs or archived checklist cards yet')}</div>`;
       return;
     }
 
     el.closedList.innerHTML = closedItems.map(item => {
       if (item.closed_type === 'checklist_run') {
-        const hiddenLabel = item.status === 'archived' ? 'Closed' : 'Auto moved';
+        const hiddenLabel = item.status === 'archived' ? txt('ปิดแล้ว', 'Closed') : txt('ย้ายอัตโนมัติ', 'Auto moved');
         return `
           <article class="issue-card issue-tone-closed checklist-board-card">
             <div class="issue-thumb placeholder checklist-placeholder">DONE</div>
             <div>
               <div class="issue-title-row">
                 <div>
-                  <div class="issue-title">Checklist submitted: ${escapeHtml(item.template_name || 'Checklist')}</div>
+                  <div class="issue-title">${txt('ส่งเช็กลิสต์แล้ว:', 'Checklist submitted:')} ${escapeHtml(item.template_name || txt('เช็กลิสต์', 'Checklist'))}</div>
                   <div class="meta-row">
                     <span>${escapeHtml(item.location_text || '-')}</span>
                     <span>•</span>
@@ -740,18 +950,18 @@
                 </div>
                 <div class="issue-badges">
                   <div class="status-pill status-closed">${hiddenLabel}</div>
-                  <div class="priority-pill priority-low">Checklist</div>
+                  <div class="priority-pill priority-low">${txt('เช็กลิสต์', 'Checklist')}</div>
                 </div>
               </div>
-              <div class="issue-desc">${escapeHtml(`${item.template_name} • ${item.pass_count || 0} pass • ${item.fail_count || 0} fail • ${item.na_count || 0} N/A${item.issue_count ? ` • ${item.issue_count} issue` : ''}`)}</div>
+              <div class="issue-desc">${escapeHtml(`${item.template_name} • ${item.pass_count || 0} ${txt('ผ่าน', 'pass')} • ${item.fail_count || 0} ${txt('ไม่ผ่าน', 'fail')} • ${item.na_count || 0} N/A${item.issue_count ? ` • ${item.issue_count} ${txt('รายการ', 'issue')}` : ''}`)}</div>
               <div class="meta-row">
                 <span>${escapeHtml(item.run_no || item.id)}</span>
                 <span>•</span>
-                <span>Inspector ${escapeHtml(item.inspector_name || '-')}</span>
+                <span>${txt('ผู้ตรวจ', 'Inspector')} ${escapeHtml(item.inspector_name || '-')}</span>
               </div>
               <div class="issue-actions">
-                <button class="mini-btn" data-open-checklist-run="${item.id}">Open Summary</button>
-                <button class="mini-btn" data-unarchive-checklist-run="${item.id}">Reopen</button>
+                <button class="mini-btn" data-open-checklist-run="${item.id}">${txt('เปิดสรุป', 'Open Summary')}</button>
+                <button class="mini-btn" data-unarchive-checklist-run="${item.id}">${txt('เปิดกลับ', 'Reopen')}</button>
               </div>
             </div>
           </article>
@@ -765,7 +975,7 @@
       const thumbHtml = thumb
         ? `<div class="issue-thumb-wrap">${thumb ? `<img class="issue-thumb" src="${thumb}" alt="Closed issue media" />` : ''}${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div>`
         : `<div class="issue-thumb placeholder">DONE</div>`;
-      const closedMeta = issue.closed_at ? `<span>•</span><span>Closed ${formatDateTime(issue.closed_at)}</span>` : '';
+      const closedMeta = issue.closed_at ? `<span>•</span><span>${txt('ปิดเมื่อ', 'Closed')} ${formatDateTime(issue.closed_at)}</span>` : '';
       return `
         <article class="issue-card issue-tone-closed">
           ${thumbHtml}
@@ -781,18 +991,18 @@
                 </div>
               </div>
               <div class="issue-badges">
-                <div class="status-pill status-closed">Closed</div>
+                <div class="status-pill status-closed">${txt('ปิดแล้ว', 'Closed')}</div>
               </div>
             </div>
             <div class="issue-desc">${escapeHtml(issue.description || '')}</div>
             <div class="meta-row">
               <span>${escapeHtml(issue.issue_no || issue.id)}</span>
               <span>•</span>
-              <span>Closed by ${escapeHtml(issue.closed_by_name || '-')}</span>
+              <span>${txt('ปิดโดย', 'Closed by')} ${escapeHtml(issue.closed_by_name || '-')}</span>
             </div>
             <div class="issue-actions">
-              <button class="mini-btn" data-open-issue="${issue.id}">Open Detail</button>
-              ${canWorkIssue(issue) ? `<button class="mini-btn" data-status-action="open" data-issue-id="${issue.id}">Reopen</button>` : ''}
+              <button class="mini-btn" data-open-issue="${issue.id}">${txt('เปิดรายละเอียด', 'Open Detail')}</button>
+              ${canWorkIssue(issue) ? `<button class="mini-btn" data-status-action="open" data-issue-id="${issue.id}">${txt('เปิดกลับ', 'Reopen')}</button>` : ''}
             </div>
           </div>
         </article>
@@ -812,7 +1022,7 @@
     const boardItems = getBoardFeedItems();
 
     if (!boardItems.length) {
-      el.boardList.innerHTML = `<div class="empty-state">ยังไม่มีรายการในมุมมองนี้</div>`;
+      el.boardList.innerHTML = `<div class="empty-state">${txt('ยังไม่มีรายการในมุมมองนี้', 'No items in this view')}</div>`;
       return;
     }
 
@@ -824,7 +1034,7 @@
       const deptName = getDepartmentName(issue.assigned_department);
       const thumb = issue.cover_thumb_url || issue.cover_photo_url || issue.before_videos?.[0]?.thumb_url || issue.before_videos?.[0]?.poster_url || '';
       const hasVideo = Array.isArray(issue.before_videos) && issue.before_videos.length > 0;
-      const mediaNote = hasVideo ? `<span>•</span><span>${issue.before_videos.length} video${issue.before_videos.length > 1 ? 's' : ''}</span>` : '';
+      const mediaNote = hasVideo ? `<span>•</span><span>${issue.before_videos.length} ${txt('วิดีโอ', `video${issue.before_videos.length > 1 ? 's' : ''}`)}</span>` : '';
       const thumbHtml = thumb
         ? `<div class="issue-thumb-wrap">${issue.cover_photo_url || issue.cover_thumb_url ? `<img class="issue-thumb" src="${thumb}" alt="Issue photo" />` : `<img class="issue-thumb" src="${thumb}" alt="Issue media poster" />`} ${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div>`
         : `<div class="issue-thumb placeholder">${hasVideo ? 'VIDEO' : (issue.issue_type === 'checklist_submission' ? 'CHECKLIST' : 'NO PHOTO')}</div>`;
@@ -850,15 +1060,15 @@
             </div>
             <div class="issue-desc">${escapeHtml(issue.description || '')}</div>
             <div class="meta-row">
-              <span>${issue.comment_count || 0} comments</span>
+              <span>${issue.comment_count || 0} ${txt('คอมเมนต์', 'comments')}</span>
               ${mediaNote}
               <span>•</span>
               <span>${escapeHtml(issue.issue_no || issue.id)}</span>
               <span>•</span>
-              <span>Reported by ${escapeHtml(issue.reported_by_name || '-')}</span>
+              <span>${txt('แจ้งโดย', 'Reported by')} ${escapeHtml(issue.reported_by_name || '-')}</span>
             </div>
             <div class="issue-actions">
-              <button class="mini-btn" data-open-issue="${issue.id}">Open Detail</button>
+              <button class="mini-btn" data-open-issue="${issue.id}">${txt('เปิดรายละเอียด', 'Open Detail')}</button>
               ${renderQuickStatusButtons(issue)}
             </div>
           </div>
@@ -886,23 +1096,23 @@
   function renderQuickStatusButtons(issue) {
     if (!canWorkIssue(issue) || issue.issue_type === 'checklist_submission') return '';
     const buttons = [];
-    if (issue.status === 'open') buttons.push(`<button class="mini-btn" data-status-action="in_progress" data-issue-id="${issue.id}">Start Work</button>`);
-    if (issue.status !== 'closed') buttons.push(`<button class="mini-btn" data-status-action="closed" data-issue-id="${issue.id}">Close</button>`);
-    if (issue.status === 'closed') buttons.push(`<button class="mini-btn" data-status-action="open" data-issue-id="${issue.id}">Reopen</button>`);
+    if (issue.status === 'open') buttons.push(`<button class="mini-btn" data-status-action="in_progress" data-issue-id="${issue.id}">${txt('เริ่มงาน', 'Start Work')}</button>`);
+    if (issue.status !== 'closed') buttons.push(`<button class="mini-btn" data-status-action="closed" data-issue-id="${issue.id}">${txt('ปิดงาน', 'Close')}</button>`);
+    if (issue.status === 'closed') buttons.push(`<button class="mini-btn" data-status-action="open" data-issue-id="${issue.id}">${txt('เปิดกลับ', 'Reopen')}</button>`);
     return buttons.join('');
   }
 
   function renderChecklistBoardCard(run) {
     const failCount = run.fail_count || 0;
     const issueCount = run.issue_count || 0;
-    const desc = `${run.template_name} • ${run.pass_count || 0} pass • ${failCount} fail • ${run.na_count || 0} N/A${issueCount ? ` • ${issueCount} issue` : ''}`;
+    const desc = `${run.template_name} • ${run.pass_count || 0} ${txt('ผ่าน', 'pass')} • ${failCount} ${txt('ไม่ผ่าน', 'fail')} • ${run.na_count || 0} N/A${issueCount ? ` • ${issueCount} ${txt('รายการ', 'issue')}` : ''}`;
     return `
       <article class="issue-card issue-tone-closed checklist-board-card">
         <div class="issue-thumb placeholder checklist-placeholder">DONE</div>
         <div>
           <div class="issue-title-row">
             <div>
-              <div class="issue-title">Checklist submitted: ${escapeHtml(run.template_name || 'Checklist')}</div>
+              <div class="issue-title">${txt('ส่งเช็กลิสต์แล้ว:', 'Checklist submitted:')} ${escapeHtml(run.template_name || txt('เช็กลิสต์', 'Checklist'))}</div>
               <div class="meta-row">
                 <span>${escapeHtml(run.location_text || '-')}</span>
                 <span>•</span>
@@ -911,18 +1121,18 @@
             </div>
             <div class="issue-badges">
               <div class="status-pill status-closed">Submitted</div>
-              <div class="priority-pill priority-low">Checklist</div>
+              <div class="priority-pill priority-low">${txt('เช็กลิสต์', 'Checklist')}</div>
             </div>
           </div>
           <div class="issue-desc">${escapeHtml(desc)}</div>
           <div class="meta-row">
             <span>${escapeHtml(run.run_no || run.id)}</span>
             <span>•</span>
-            <span>Inspector ${escapeHtml(run.inspector_name || '-')}</span>
+            <span>${txt('ผู้ตรวจ', 'Inspector')} ${escapeHtml(run.inspector_name || '-')}</span>
           </div>
           <div class="issue-actions">
-            <button class="mini-btn" data-open-checklist-run="${run.id}">Open Summary</button>
-            <button class="mini-btn" data-archive-checklist-run="${run.id}">Close</button>
+            <button class="mini-btn" data-open-checklist-run="${run.id}">${txt('เปิดสรุป', 'Open Summary')}</button>
+            <button class="mini-btn" data-archive-checklist-run="${run.id}">${txt('ปิดการ์ด', 'Close')}</button>
           </div>
         </div>
       </article>
@@ -963,7 +1173,7 @@
       <div class="comment-item">
         <div class="comment-meta">${escapeHtml(ans.section_title || '')}</div>
         <div><strong>${escapeHtml(ans.item_text || '')}</strong></div>
-        <div class="meta-row"><span>${escapeHtml((ans.response || '').toUpperCase())}</span>${ans.create_issue ? '<span>•</span><span>Issue created</span>' : ''}</div>
+        <div class="meta-row"><span>${escapeHtml((ans.response || '').toUpperCase())}</span>${ans.create_issue ? `<span>•</span><span>${txt('สร้าง Issue แล้ว', 'Issue created')}</span>` : ''}</div>
         ${ans.note ? `<div>${escapeHtml(ans.note)}</div>` : ''}
       </div>
     `).join('');
@@ -977,24 +1187,24 @@
       <div class="issue-detail-grid">
         <div>
           <div class="panel glass inner-panel">
-            <div class="panel-header"><h3>${escapeHtml(run.template_name || 'Checklist')}</h3></div>
+            <div class="panel-header"><h3>${escapeHtml(run.template_name || txt('เช็กลิสต์', 'Checklist'))}</h3></div>
             <div class="detail-meta">
-              <div><strong>Run No:</strong> ${escapeHtml(run.run_no || run.id)}</div>
-              <div><strong>Inspector:</strong> ${escapeHtml(run.inspector_name || '-')}</div>
-              <div><strong>Location:</strong> ${escapeHtml(run.location_text || '-')}</div>
-              <div><strong>Date:</strong> ${formatDateTime(run.submitted_at || run.created_at)}</div>
-              <div><strong>Result:</strong> ${run.pass_count || 0} pass • ${run.fail_count || 0} fail • ${run.na_count || 0} N/A</div>
+              <div><strong>${txt('เลขที่รอบตรวจ', 'Run No')}:</strong> ${escapeHtml(run.run_no || run.id)}</div>
+              <div><strong>${txt('ผู้ตรวจ', 'Inspector')}:</strong> ${escapeHtml(run.inspector_name || '-')}</div>
+              <div><strong>${txt('ตำแหน่ง', 'Location')}:</strong> ${escapeHtml(run.location_text || '-')}</div>
+              <div><strong>${txt('วันที่', 'Date')}:</strong> ${formatDateTime(run.submitted_at || run.created_at)}</div>
+              <div><strong>${txt('ผลลัพธ์', 'Result')}:</strong> ${run.pass_count || 0} ${txt('ผ่าน', 'pass')} • ${run.fail_count || 0} ${txt('ไม่ผ่าน', 'fail')} • ${run.na_count || 0} N/A</div>
             </div>
           </div>
         </div>
         <div>
           <div class="panel glass inner-panel">
-            <div class="panel-header"><h3>Checklist Answers</h3></div>
-            <div class="comments-list">${answerHtml || '<div class="empty-state">No answers</div>'}</div>
+            <div class="panel-header"><h3>${txt('คำตอบเช็กลิสต์', 'Checklist Answers')}</h3></div>
+            <div class="comments-list">${answerHtml || `<div class="empty-state">${txt('ยังไม่มีคำตอบ', 'No answers')}</div>`}</div>
           </div>
           <div class="panel glass inner-panel" style="margin-top:12px;">
-            <div class="panel-header"><h3>Special Forms</h3></div>
-            <div class="comments-list">${specialFormHtml || '<div class="empty-state">No special form entries</div>'}</div>
+            <div class="panel-header"><h3>${txt('ฟอร์มพิเศษ', 'Special Forms')}</h3></div>
+            <div class="comments-list">${specialFormHtml || `<div class="empty-state">${txt('ยังไม่มีข้อมูลฟอร์มพิเศษ', 'No special form entries')}</div>`}</div>
           </div>
         </div>
       </div>
@@ -1476,7 +1686,7 @@
 
   function renderTemplateCards() {
     if (!state.data.templates.length) {
-      el.templateCards.innerHTML = `<div class="empty-state">ยังไม่พบ checklist template</div>`;
+      el.templateCards.innerHTML = `<div class="empty-state">${txt('ยังไม่พบ checklist template', 'No checklist template found')}</div>`;
       return;
     }
     el.templateCards.innerHTML = state.data.templates.map(template => {
@@ -1484,12 +1694,12 @@
       return `
         <article class="template-card">
           <div>
-            <div class="eyebrow">CHECKLIST TEMPLATE</div>
+            <div class="eyebrow">${txt('เทมเพลตเช็กลิสต์', 'CHECKLIST TEMPLATE')}</div>
             <h4>${escapeHtml(template.template_name)}</h4>
-            <div class="template-meta">${template.sections?.length || 0} sections • ${itemCount} items</div>
+            <div class="template-meta">${template.sections?.length || 0} ${txt('ส่วน', 'sections')} • ${itemCount} ${txt('ข้อ', 'items')}</div>
           </div>
           <div class="muted">${escapeHtml(template.source_sheet || '')}</div>
-          <button class="btn btn-primary" data-template-open="${template.template_code}">Open Checklist</button>
+          <button class="btn btn-primary" data-template-open="${template.template_code}">${txt('เปิดเช็กลิสต์', 'Open Checklist')}</button>
         </article>
       `;
     }).join('');
@@ -1506,22 +1716,22 @@
     const html = `
       <div class="panel-header">
         <h3>${escapeHtml(template.template_name)}</h3>
-        <p class="muted">บันทึกผลตรวจ แล้วสร้าง issue เฉพาะข้อที่ fail และต้อง follow up</p>
+        <p class="muted">${txt('บันทึกผลตรวจ แล้วสร้าง issue เฉพาะข้อที่ไม่ผ่านและต้อง follow up', 'Record the inspection result and create issues only for failed items that need follow-up.')}</p>
       </div>
       <div class="checklist-run-head">
         <div>
-          <label>Location</label>
-          <input id="runLocation" type="text" placeholder="เช่น Main Resort / Public Area" />
+          <label>${txt('ตำแหน่ง', 'Location')}</label>
+          <input id="runLocation" type="text" placeholder="${txt('เช่น Main Resort / Public Area', 'e.g. Main Resort / Public Area')}" />
         </div>
         <div>
-          <label>Date</label>
+          <label>${txt('วันที่', 'Date')}</label>
           <input id="runDate" type="date" value="${todayInputValue()}" />
         </div>
       </div>
       <div id="checklistSections"></div>
       <div class="sticky-actions">
-        <button class="btn btn-primary" id="submitChecklistBtn">Submit Checklist</button>
-        <button class="btn btn-ghost" id="hideChecklistBtn">Hide</button>
+        <button class="btn btn-primary" id="submitChecklistBtn">${txt('ส่งเช็กลิสต์', 'Submit Checklist')}</button>
+        <button class="btn btn-ghost" id="hideChecklistBtn">${txt('ซ่อน', 'Hide')}</button>
       </div>
     `;
     el.checklistRunPanel.innerHTML = html;
@@ -1541,11 +1751,11 @@
         <section class="section-card section-card-special" data-section-code="${escapeHtml(section.section_code || '')}">
           <div class="section-head">
             <h4>${escapeHtml(section.section_title)}</h4>
-            <span class="muted">Special form</span>
+            <span class="muted">${txt('ฟอร์มพิเศษ', 'Special form')}</span>
           </div>
           <div class="section-body">
-            <label class="special-form-label">รายละเอียด</label>
-            <textarea class="special-form-textarea" data-special-form-input rows="5" placeholder="พิมพ์ข้อมูลในส่วนนี้ได้เลย"></textarea>
+            <label class="special-form-label">${txt('รายละเอียด', 'Details')}</label>
+            <textarea class="special-form-textarea" data-special-form-input rows="5" placeholder="${txt('พิมพ์ข้อมูลในส่วนนี้ได้เลย', 'Type details here')}"></textarea>
           </div>
         </section>
       `;
@@ -1554,7 +1764,7 @@
       <section class="section-card" data-section-code="${section.section_code}">
         <div class="section-head">
           <h4>${escapeHtml(section.section_title)}</h4>
-          <span class="muted">${items.length} items</span>
+          <span class="muted">${items.length} ${txt('ข้อ', 'items')}</span>
         </div>
         <div class="section-body">
           ${items.map(item => `
@@ -1562,11 +1772,11 @@
               <div class="item-text">${escapeHtml(item.item_text)}</div>
               <div class="item-controls">
                 <div class="inline-options" data-response-group>
-                  <button class="option-btn pass" type="button" data-response="pass">ผ่าน</button>
-                  <button class="option-btn fail" type="button" data-response="fail">ไม่ผ่าน</button>
+                  <button class="option-btn pass" type="button" data-response="pass">${txt('ผ่าน', 'Pass')}</button>
+                  <button class="option-btn fail" type="button" data-response="fail">${txt('ไม่ผ่าน', 'Fail')}</button>
                   <button class="option-btn na" type="button" data-response="na">N/A</button>
                 </div>
-                <textarea data-note rows="2" placeholder="หมายเหตุ (ไม่บังคับ)"></textarea>
+                <textarea data-note rows="2" placeholder="${txt('หมายเหตุ (ไม่บังคับ)', 'Note (optional)')}"></textarea>
                 <div class="fail-extra hidden" data-fail-extra>
                   <select data-fail-dept>${renderDepartmentOptions()}</select>
                   <select data-fail-priority>
@@ -1575,7 +1785,7 @@
                 </div>
                 <label class="check-row hidden" data-create-issue-row>
                   <input type="checkbox" data-create-issue />
-                  <span>สร้าง Issue หากข้อนี้ไม่ผ่าน</span>
+                  <span>${txt('สร้าง Issue หากข้อนี้ไม่ผ่าน', 'Create issue if this item fails')}</span>
                 </label>
               </div>
             </div>
@@ -1649,7 +1859,7 @@
       });
     });
 
-    if (!answers.length && !specialFormEntries.length) return alert('กรุณากรอก checklist หรือ special form อย่างน้อย 1 ส่วน');
+    if (!answers.length && !specialFormEntries.length) return alert(txt('กรุณากรอก checklist หรือ special form อย่างน้อย 1 ส่วน', 'Please fill in at least one checklist answer or special form section'));
 
     const baseRun = {
       id: runId,
@@ -1692,7 +1902,7 @@
           source_checklist_run_id: run.id,
           source_checklist_answer_id: a.item_code,
           title: a.item_text,
-          description: a.note || `Created from checklist fail: ${a.item_text}`,
+          description: a.note || txt(`สร้างจากข้อที่ไม่ผ่าน: ${a.item_text}`, `Created from checklist fail: ${a.item_text}`),
           issue_type: 'other',
           priority: a.fail_priority,
           assigned_department: a.fail_department,
@@ -1703,14 +1913,14 @@
       addActivity({
         type: 'checklist',
         title: template.template_name,
-        text: `${state.currentUser.full_name} submitted ${run.run_no}${issueAnswers.length ? ` and created ${issueAnswers.length} issues` : ''}`,
+        text: txt(`${state.currentUser.full_name} ส่ง ${run.run_no}${issueAnswers.length ? ` และสร้าง ${issueAnswers.length} issue` : ''}`, `${state.currentUser.full_name} submitted ${run.run_no}${issueAnswers.length ? ` and created ${issueAnswers.length} issues` : ''}`),
         created_at: new Date().toISOString(),
       });
       recordUsageLog({
         category: 'checklist',
         action: 'submit_checklist',
         title: template.template_name,
-        text: `${state.currentUser.full_name} submitted ${run.run_no}${issueAnswers.length ? ` and created ${issueAnswers.length} issues` : ''}`,
+        text: txt(`${state.currentUser.full_name} ส่ง ${run.run_no}${issueAnswers.length ? ` และสร้าง ${issueAnswers.length} issue` : ''}`, `${state.currentUser.full_name} submitted ${run.run_no}${issueAnswers.length ? ` and created ${issueAnswers.length} issues` : ''}`),
         checklist_run_id: run.id,
         ref_no: run.run_no,
       });
@@ -1719,7 +1929,7 @@
       renderAll();
       el.checklistRunPanel.classList.add('hidden');
       switchView('boardView');
-      setAuthStatus('Submit checklist แล้ว และขึ้นบน Board แล้ว', 'success');
+      setAuthStatus(txt('ส่ง checklist แล้ว และขึ้นบน Board แล้ว', 'Checklist submitted and posted to the board'), 'success');
     } catch (err) {
       console.error('submit checklist failed', err);
       alert(friendlyIssueError(err));
@@ -1766,7 +1976,7 @@
         checklist_run_id: runId,
         ref_no: run.run_no || runId,
       });
-      setAuthStatus('ย้าย checklist ออกจาก Board แล้ว', 'success');
+      setAuthStatus(txt('ย้าย checklist ออกจาก Board แล้ว', 'Checklist card moved out of the board'), 'success');
     } catch (err) {
       console.error('archive checklist run failed', err);
       alert('ปิด checklist ไม่สำเร็จ');
@@ -1889,43 +2099,43 @@
             </div>
           </div>
           <div class="detail-meta">
-            <div><strong>Location:</strong> ${escapeHtml(issue.location_text || '-')}</div>
-            <div><strong>Issue No:</strong> ${escapeHtml(issue.issue_no || issue.id)}</div>
-            <div><strong>Reported by:</strong> ${escapeHtml(issue.reported_by_name || '-')}</div>
-            <div><strong>Created:</strong> ${formatDateTime(issue.created_at)}</div>
-            <div><strong>Media:</strong> ${(issue.before_photos?.length || 0)} photo / ${(issue.before_videos?.length || 0)} video</div>
-            <div><strong>Evidence:</strong> ${afterPhotoCount} photo / ${afterVideoCount} video</div>
+            <div><strong>${txt('ตำแหน่ง', 'Location')}:</strong> ${escapeHtml(issue.location_text || '-')}</div>
+            <div><strong>${txt('เลขที่ Issue', 'Issue No')}:</strong> ${escapeHtml(issue.issue_no || issue.id)}</div>
+            <div><strong>${txt('แจ้งโดย', 'Reported by')}:</strong> ${escapeHtml(issue.reported_by_name || '-')}</div>
+            <div><strong>${txt('สร้างเมื่อ', 'Created')}:</strong> ${formatDateTime(issue.created_at)}</div>
+            <div><strong>${txt('สื่อที่แนบ', 'Media')}:</strong> ${(issue.before_photos?.length || 0)} ${txt('รูป', 'photo')} / ${(issue.before_videos?.length || 0)} ${txt('วิดีโอ', 'video')}</div>
+            <div><strong>${txt('หลักฐานส่งงาน', 'Evidence')}:</strong> ${afterPhotoCount} ${txt('รูป', 'photo')} / ${afterVideoCount} ${txt('วิดีโอ', 'video')}</div>
           </div>
           <div class="muted">${escapeHtml(issue.description || '')}</div>
 
           <div class="action-row">
-            ${canWorkIssue(issue) && issue.status === 'open' ? `<button class="btn btn-secondary" data-detail-status="in_progress">Start Work</button>` : ''}
-            ${canWorkIssue(issue) && issue.status !== 'closed' ? `<button class="btn btn-primary" data-detail-status="closed">Close Job</button>` : ''}
-            ${canWorkIssue(issue) && issue.status === 'closed' ? `<button class="btn btn-secondary" data-detail-status="open">Reopen</button>` : ''}
-            ${canWorkIssue(issue) && issue.status !== 'waiting' && issue.status !== 'closed' ? `<button class="btn btn-ghost" data-detail-status="waiting">Waiting</button>` : ''}
-            ${canWorkIssue(issue) && issue.status === 'waiting' ? `<button class="btn btn-ghost" data-detail-status="in_progress">Resume</button>` : ''}
+            ${canWorkIssue(issue) && issue.status === 'open' ? `<button class="btn btn-secondary" data-detail-status="in_progress">${txt('เริ่มงาน', 'Start Work')}</button>` : ''}
+            ${canWorkIssue(issue) && issue.status !== 'closed' ? `<button class="btn btn-primary" data-detail-status="closed">${txt('ปิดงาน', 'Close Job')}</button>` : ''}
+            ${canWorkIssue(issue) && issue.status === 'closed' ? `<button class="btn btn-secondary" data-detail-status="open">${txt('เปิดกลับ', 'Reopen')}</button>` : ''}
+            ${canWorkIssue(issue) && issue.status !== 'waiting' && issue.status !== 'closed' ? `<button class="btn btn-ghost" data-detail-status="waiting">${txt('รอ', 'Waiting')}</button>` : ''}
+            ${canWorkIssue(issue) && issue.status === 'waiting' ? `<button class="btn btn-ghost" data-detail-status="in_progress">${txt('ทำต่อ', 'Resume')}</button>` : ''}
           </div>
 
           ${canWorkIssue(issue) ? `
             <div class="evidence-box">
               <div class="evidence-box-head">
-                <strong>หลักฐานส่งงาน</strong>
-                <span class="muted">เพิ่มรูปหรือวิดีโอก่อนปิดงานได้</span>
+                <strong>${txt('หลักฐานส่งงาน', 'Completion evidence')}</strong>
+                <span class="muted">${txt('เพิ่มรูปหรือวิดีโอก่อนปิดงานได้', 'Add photos or videos before closing the job')}</span>
               </div>
               <input id="detailEvidencePhotoInput" type="file" accept="image/*" multiple class="visually-hidden-file" />
               <input id="detailEvidenceVideoInput" type="file" accept="video/*" class="visually-hidden-file" />
               <div class="action-row compact-wrap evidence-actions">
-                <label for="detailEvidencePhotoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">เพิ่มรูป / ถ่ายรูป</label>
-                <label for="detailEvidenceVideoInput" class="btn btn-ghost photo-pick-label" role="button" tabindex="0">เพิ่มวิดีโอ / ถ่ายวิดีโอ</label>
+                <label for="detailEvidencePhotoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">${txt('เพิ่มรูป / ถ่ายรูป', 'Add Photo / Take Photo')}</label>
+                <label for="detailEvidenceVideoInput" class="btn btn-ghost photo-pick-label" role="button" tabindex="0">${txt('เพิ่มวิดีโอ / ถ่ายวิดีโอ', 'Add Video / Record Video')}</label>
               </div>
-              <div id="detailEvidenceStatus" class="detail-evidence-status muted">หลักฐานที่อัปแล้วจะแสดงด้านซ้ายทันที • เลือกรูปได้หลายรูป</div>
+              <div id="detailEvidenceStatus" class="detail-evidence-status muted">${txt('หลักฐานที่อัปแล้วจะแสดงด้านซ้ายทันที • เลือกรูปได้หลายรูป', 'Uploaded evidence will appear on the left immediately • Multiple images allowed')}</div>
             </div>
             <div class="comment-box">
-              <textarea id="detailCommentText" rows="3" placeholder="พิมพ์คอมเมนต์ หรือพิมพ์ @ ตามด้วยชื่อเพื่อสั่งงาน"></textarea>
+              <textarea id="detailCommentText" rows="3" placeholder="${txt('พิมพ์คอมเมนต์ หรือพิมพ์ @ ตามด้วยชื่อเพื่อสั่งงาน', 'Type a comment, or use @name to mention a team member')}"></textarea>
               <div id="detailMentionBox" class="mention-box hidden"></div>
-              <div class="muted mention-hint">พิมพ์ @ แล้วระบบจะแนะนำชื่อ Team member ให้</div>
+              <div class="muted mention-hint">${txt('พิมพ์ @ แล้วระบบจะแนะนำชื่อสมาชิกทีมให้', 'Type @ and the system will suggest team members')}</div>
               <div class="action-row">
-                <button class="btn btn-secondary" id="addCommentBtn">Add Comment</button>
+                <button class="btn btn-secondary" id="addCommentBtn">${txt('เพิ่มคอมเมนต์', 'Add Comment')}</button>
               </div>
             </div>
           ` : ''}
@@ -1936,7 +2146,7 @@
                 <div class="comment-meta">${escapeHtml(comment.by_name || comment.type || 'System')} • ${formatDateTime(comment.created_at)}</div>
                 <div>${escapeHtml(comment.message || '')}</div>
               </div>
-            `).join('') : '<div class="empty-state">ยังไม่มี comment</div>'}
+            `).join('') : `<div class="empty-state">${txt('ยังไม่มีคอมเมนต์', 'No comments yet')}</div>`}
           </div>
         </div>
       </div>
@@ -1988,7 +2198,7 @@
       if (videos.length) {
         cards.push(...videos.map((video, index) => `
           <div class="issue-media-card">
-            <div class="issue-media-label">Video ${index + 1}</div>
+            <div class="issue-media-label">${txt('วิดีโอ', 'Video')} ${index + 1}</div>
             <video class="issue-video" src="${video.url || ''}" ${video.poster_url ? `poster="${video.poster_url}"` : ''} controls playsinline preload="metadata"></video>
           </div>
         `));
@@ -2000,14 +2210,14 @@
     const afterCards = renderMediaCards(afterPhotos, afterVideos);
 
     if (!beforeCards.length && !afterCards.length) {
-      return `<div class="issue-hero placeholder issue-thumb">NO MEDIA</div>`;
+      return `<div class="issue-hero placeholder issue-thumb">${txt('ไม่มีสื่อ', 'NO MEDIA')}</div>`;
     }
 
     const sections = [];
     if (beforeCards.length) {
       sections.push(`
         <div class="issue-media-section">
-          <div class="issue-media-section-title">Reported media</div>
+          <div class="issue-media-section-title">${txt('สื่อที่แนบตอนแจ้ง', 'Reported media')}</div>
           <div class="issue-media-stack">${beforeCards.join('')}</div>
         </div>
       `);
@@ -2015,7 +2225,7 @@
     if (afterCards.length) {
       sections.push(`
         <div class="issue-media-section">
-          <div class="issue-media-section-title success">Completion evidence</div>
+          <div class="issue-media-section-title success">${txt('หลักฐานส่งงาน', 'Completion evidence')}</div>
           <div class="issue-media-stack">${afterCards.join('')}</div>
         </div>
       `);
@@ -2269,11 +2479,11 @@
         issue.closed_by_name = '';
       }
 
-      addSystemComment(issue, `Status changed from ${labelize(fromStatus)} to ${labelize(toStatus)}`);
+      addSystemComment(issue, txt(`เปลี่ยนสถานะจาก ${labelize(fromStatus)} เป็น ${labelize(toStatus)}`, `Status changed from ${labelize(fromStatus)} to ${labelize(toStatus)}`));
       addActivity({
         type: 'issue',
         title: issue.title,
-        text: `${state.currentUser.full_name} changed status to ${labelize(toStatus)}`,
+        text: txt(`${state.currentUser.full_name} เปลี่ยนสถานะเป็น ${labelize(toStatus)}`, `${state.currentUser.full_name} changed status to ${labelize(toStatus)}`),
         created_at: new Date().toISOString(),
       });
 
@@ -2281,7 +2491,7 @@
         category: 'issue',
         action: toStatus === 'closed' ? 'close_issue' : (toStatus === 'open' && fromStatus === 'closed' ? 'reopen_issue' : 'change_status'),
         title: issue.title,
-        text: `${state.currentUser.full_name} changed ${issue.issue_no || issueId} from ${labelize(fromStatus)} to ${labelize(toStatus)}`,
+        text: txt(`${state.currentUser.full_name} เปลี่ยน ${issue.issue_no || issueId} จาก ${labelize(fromStatus)} เป็น ${labelize(toStatus)}`, `${state.currentUser.full_name} changed ${issue.issue_no || issueId} from ${labelize(fromStatus)} to ${labelize(toStatus)}`),
         issue_id: issueId,
         ref_no: issue.issue_no || issueId,
       });
@@ -2439,7 +2649,7 @@
     issue.comments.push({
       id: cryptoRandom(),
       type: 'system',
-      by_name: 'System',
+      by_name: txt('ระบบ', 'System'),
       created_at: now,
       message,
     });
@@ -2693,23 +2903,24 @@
     };
   }
 
-  function humanizeLogAction(action) {
-    const map = {
-      login: 'Signed in',
-      register: 'Created account',
-      create_issue: 'Created issue',
-      submit_checklist: 'Submitted checklist',
-      archive_checklist: 'Closed checklist card',
-      reopen_checklist: 'Reopened checklist card',
-      close_issue: 'Closed issue',
-      reopen_issue: 'Reopened issue',
-      change_status: 'Changed status',
-      add_comment: 'Added comment',
-      add_evidence_photo: 'Added evidence photo',
-      add_evidence_video: 'Added evidence video',
-    };
-    return map[action] || labelize(String(action || 'log').replace(/_/g, ' '));
-  }
+  
+function humanizeLogAction(action) {
+  const map = {
+    login: txt('เข้าสู่ระบบ', 'Signed in'),
+    register: txt('สร้างบัญชี', 'Created account'),
+    create_issue: txt('สร้าง issue', 'Created issue'),
+    submit_checklist: txt('ส่งเช็กลิสต์', 'Submitted checklist'),
+    archive_checklist: txt('ปิดการ์ดเช็กลิสต์', 'Closed checklist card'),
+    reopen_checklist: txt('เปิดการ์ดเช็กลิสต์กลับ', 'Reopened checklist card'),
+    close_issue: txt('ปิด issue', 'Closed issue'),
+    reopen_issue: txt('เปิด issue กลับ', 'Reopened issue'),
+    change_status: txt('เปลี่ยนสถานะ', 'Changed status'),
+    add_comment: txt('เพิ่มคอมเมนต์', 'Added comment'),
+    add_evidence_photo: txt('เพิ่มรูปหลักฐาน', 'Added evidence photo'),
+    add_evidence_video: txt('เพิ่มวิดีโอหลักฐาน', 'Added evidence video'),
+  };
+  return map[action] || labelize(String(action || 'log').replace(/_/g, ' '));
+}
 
 
 
@@ -2726,28 +2937,28 @@
   function exportUsageLogsToExcel() {
     const rows = getFilteredUsageLogs();
     if (!rows.length) {
-      alert('ยังไม่มี usage log สำหรับ export');
+      alert(txt('ยังไม่มี usage log สำหรับ export', 'No usage log available for export'));
       return;
     }
 
     if (!window.XLSX) {
-      alert('ยังโหลดระบบ Export Excel ไม่สำเร็จ ลองรีเฟรชหน้าเว็บอีกครั้ง');
+      alert(txt('ยังโหลดระบบ Export Excel ไม่สำเร็จ ลองรีเฟรชหน้าเว็บอีกครั้ง', 'Excel export is not ready yet. Please refresh the page and try again.'));
       return;
     }
 
     const exportRows = rows.map((item, index) => ({
-      'No.': index + 1,
-      'Date Time': formatDateTime(item.created_at),
-      'Action': humanizeLogAction(item.action),
-      'Category': item.category || '',
-      'Title': item.title || humanizeLogAction(item.action),
-      'Detail': item.text || '',
-      'Reference No': item.ref_no || '',
-      'Issue ID': item.issue_id || '',
-      'Checklist Run ID': item.checklist_run_id || '',
-      'User': item.user_name || '',
-      'User UID': item.user_uid || '',
-      'Raw Timestamp': item.created_at || '',
+      [txt('ลำดับ', 'No.')]: index + 1,
+      [txt('วันเวลา', 'Date Time')]: formatDateTime(item.created_at),
+      [txt('การกระทำ', 'Action')]: humanizeLogAction(item.action),
+      [txt('หมวด', 'Category')]: item.category || '',
+      [txt('หัวข้อ', 'Title')]: item.title || humanizeLogAction(item.action),
+      [txt('รายละเอียด', 'Detail')]: item.text || '',
+      [txt('เลขอ้างอิง', 'Reference No')]: item.ref_no || '',
+      [txt('Issue ID', 'Issue ID')]: item.issue_id || '',
+      [txt('Checklist Run ID', 'Checklist Run ID')]: item.checklist_run_id || '',
+      [txt('ผู้ใช้', 'User')]: item.user_name || '',
+      [txt('User UID', 'User UID')]: item.user_uid || '',
+      [txt('เวลาแบบดิบ', 'Raw Timestamp')]: item.created_at || '',
     }));
 
     const ws = window.XLSX.utils.json_to_sheet(exportRows);
@@ -2766,7 +2977,7 @@
       { wch: 24 },
     ];
     const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, 'Usage Log');
+    window.XLSX.utils.book_append_sheet(wb, ws, txt('บันทึกการใช้งาน', 'Usage Log'));
     const stamp = new Date();
     const y = stamp.getFullYear();
     const m = String(stamp.getMonth() + 1).padStart(2, '0');
@@ -2782,7 +2993,7 @@
     const items = getFilteredUsageLogs();
 
     if (!items.length) {
-      el.usageLogList.innerHTML = `<div class="empty-state">ยังไม่มี usage log</div>`;
+      el.usageLogList.innerHTML = `<div class="empty-state">${txt('ยังไม่มี usage log', 'No usage logs yet')}</div>`;
       return;
     }
 
@@ -2847,18 +3058,18 @@
   function reloadUsageLogs() {
     if (isFirebaseLive()) {
       startUsageLogsSync();
-      setAuthStatus('โหลด usage log ล่าสุดแล้ว', 'success');
+      setAuthStatus(txt('โหลด usage log ล่าสุดแล้ว', 'Latest usage logs loaded'), 'success');
       return;
     }
     renderUsageLogs();
-    setAuthStatus('โหลด usage log จากข้อมูลในเครื่องแล้ว', 'success');
+    setAuthStatus(txt('โหลด usage log จากข้อมูลในเครื่องแล้ว', 'Loaded usage logs from local data'), 'success');
   }
 
   function renderTeamMembers() {
     if (!el.teamMembersList) return;
     const members = getTeamMembers();
     if (!members.length) {
-      el.teamMembersList.innerHTML = '<div class="empty-state">ยังไม่มีรายชื่อผู้ใช้</div>';
+      el.teamMembersList.innerHTML = `<div class="empty-state">${txt('ยังไม่มีรายชื่อผู้ใช้', 'No team members yet')}</div>`;
       return;
     }
     el.teamMembersList.innerHTML = members.map(member => `
@@ -2866,7 +3077,7 @@
         <div class="team-member-avatar">${escapeHtml((member.full_name || '?').trim().charAt(0).toUpperCase())}</div>
         <div>
           <div class="team-member-name">${escapeHtml(member.full_name || '-')}</div>
-          <div class="team-member-meta">MOD • ${escapeHtml(member.employee_id || '')}</div>
+          <div class="team-member-meta">${escapeHtml(getDepartmentName(member.department || 'MOD'))} • ${escapeHtml(member.employee_id || '')}</div>
         </div>
       </div>
     `).join('');
@@ -2946,13 +3157,13 @@
   function renderActivity() {
     const items = [...state.data.activity].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     if (!items.length) {
-      el.activityList.innerHTML = `<div class="empty-state">ยังไม่มีกิจกรรม</div>`;
+      el.activityList.innerHTML = `<div class="empty-state">${txt('ยังไม่มีกิจกรรม', 'No activity yet')}</div>`;
       return;
     }
     el.activityList.innerHTML = items.map(item => `
       <div class="activity-item">
         <div class="comment-meta">${formatDateTime(item.created_at)}</div>
-        <div><strong>${escapeHtml(item.title || item.type || 'Activity')}</strong></div>
+        <div><strong>${escapeHtml(item.title || item.type || txt('กิจกรรม', 'Activity'))}</strong></div>
         <div>${escapeHtml(item.text || '')}</div>
       </div>
     `).join('');
@@ -3161,7 +3372,7 @@
         persist();
         renderTemplateCards();
       }
-      addActivity({ type: 'checklist_template', title: templateName, text: `${state.currentUser.full_name} added checklist template`, created_at: new Date().toISOString() });
+      addActivity({ type: 'checklist_template', title: templateName, text: txt(`${state.currentUser.full_name} เพิ่ม checklist template`, `${state.currentUser.full_name} added checklist template`), created_at: new Date().toISOString() });
       el.checklistTemplateBuilder.classList.add('hidden');
       setAuthStatus('บันทึก checklist template แล้ว', 'success');
     } catch (err) {
@@ -3251,7 +3462,7 @@
           {
             id: cryptoRandom(),
             type: 'system',
-            by_name: 'System',
+            by_name: txt('ระบบ', 'System'),
             created_at: createdAt,
             message: 'Issue created',
           }
@@ -3267,7 +3478,7 @@
         closed_by_name: '',
       };
       state.data.issues.push(issue);
-      addActivity({ type: 'seed', title: issue.title, text: `${reporter.full_name} created ${issue.issue_no}`, created_at: createdAt });
+      addActivity({ type: 'seed', title: issue.title, text: txt(`${reporter.full_name} สร้าง ${issue.issue_no}`, `${reporter.full_name} created ${issue.issue_no}`), created_at: createdAt });
     });
   }
 
@@ -3293,10 +3504,10 @@
           state.currentUser = parsed.currentUser || state.currentUser;
           persist();
           renderAll();
-          alert('Import complete');
+          alert(txt('นำเข้าข้อมูลเรียบร้อย', 'Import complete'));
         }
       } catch (err) {
-        alert('ไฟล์ JSON ไม่ถูกต้อง');
+        alert(txt('ไฟล์ JSON ไม่ถูกต้อง', 'Invalid JSON file'));
       }
     };
     reader.readAsText(file);
