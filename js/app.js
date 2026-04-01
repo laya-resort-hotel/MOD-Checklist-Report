@@ -109,7 +109,14 @@
   };
 
   const el = {};
+  const APP_VERSION = 'v40-checklist-loader-fix';
 
+  function safeClone(value) {
+    try {
+      if (typeof structuredClone === 'function') return structuredClone(value);
+    } catch (_) {}
+    return JSON.parse(JSON.stringify(value));
+  }
 
   const FALLBACK_CHECKLIST_TEMPLATES = [
   {
@@ -1399,7 +1406,8 @@
   async function loadTemplates() {
     let loadedTemplates = [];
     try {
-      const res = await fetch(`./data/checklist_templates.json?v=${encodeURIComponent(APP_VERSION || '1')}`, { cache: 'no-store' });
+      const versionKey = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1';
+      const res = await fetch(`./data/checklist_templates.json?v=${encodeURIComponent(versionKey)}`, { cache: 'no-store' });
       if (!res.ok) throw new Error(`template_fetch_failed_${res.status}`);
       const data = await res.json();
       loadedTemplates = Array.isArray(data?.templates) ? data.templates : [];
@@ -1409,11 +1417,15 @@
 
     if (!Array.isArray(loadedTemplates) || !loadedTemplates.length) {
       console.warn('Using embedded fallback checklist templates');
-      loadedTemplates = Array.isArray(FALLBACK_CHECKLIST_TEMPLATES) ? structuredClone(FALLBACK_CHECKLIST_TEMPLATES) : [];
+      loadedTemplates = Array.isArray(FALLBACK_CHECKLIST_TEMPLATES) ? safeClone(FALLBACK_CHECKLIST_TEMPLATES) : [];
     }
 
-    state.data.baseTemplates = loadedTemplates;
+    state.data.baseTemplates = Array.isArray(loadedTemplates) ? loadedTemplates : [];
     mergeTemplates();
+    if (!Array.isArray(state.data.templates) || !state.data.templates.length) {
+      state.data.baseTemplates = Array.isArray(FALLBACK_CHECKLIST_TEMPLATES) ? safeClone(FALLBACK_CHECKLIST_TEMPLATES) : [];
+      mergeTemplates();
+    }
   }
 
   function mergeTemplates() {
@@ -2497,6 +2509,10 @@
   }
 
   function renderTemplateCards() {
+    if ((!state.data.templates || !state.data.templates.length) && Array.isArray(FALLBACK_CHECKLIST_TEMPLATES) && FALLBACK_CHECKLIST_TEMPLATES.length) {
+      state.data.baseTemplates = safeClone(FALLBACK_CHECKLIST_TEMPLATES);
+      mergeTemplates();
+    }
     const visibleTemplates = getVisibleTemplates();
     const hiddenTemplates = getHiddenTemplates();
 
