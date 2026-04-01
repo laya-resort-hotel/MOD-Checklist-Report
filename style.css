@@ -1683,3 +1683,10 @@ input {
 
 .inline-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;align-items:center;}
 @media (max-width: 768px){.inline-actions{width:100%;justify-content:flex-start;}}
+
+
+.checklist-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+.lang-switch{display:flex;gap:8px;align-items:center;}
+.btn-small{padding:10px 14px;min-height:auto;font-size:14px;}
+.lang-switch .btn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+@media (max-width: 768px){.checklist-toolbar{width:100%;justify-content:flex-start;margin-top:8px;}}

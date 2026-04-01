@@ -38,6 +38,7 @@
       pendingIssueVideo: null,
       pendingEvidenceBusy: false,
       checklistBuilderSections: [],
+      checklistLanguage: 'th',
     },
     data: {
       issues: [],
@@ -319,6 +320,8 @@
       prioritySegment: qs('#prioritySegment'),
       templateCards: qs('#templateCards'),
       addChecklistTemplateBtn: qs('#addChecklistTemplateBtn'),
+      checklistLangThBtn: qs('#checklistLangThBtn'),
+      checklistLangEnBtn: qs('#checklistLangEnBtn'),
       checklistTemplateBuilder: qs('#checklistTemplateBuilder'),
       checklistRunPanel: qs('#checklistRunPanel'),
       activityList: qs('#activityList'),
@@ -406,6 +409,9 @@
     });
     if (el.addChecklistTemplateBtn) {
       el.addChecklistTemplateBtn.addEventListener('click', openChecklistTemplateBuilder);
+    if (el.checklistLangThBtn) el.checklistLangThBtn.addEventListener('click', () => { state.ui.checklistLanguage = 'th'; updateChecklistLangButtons(); renderTemplateCards(); if (!el.checklistRunPanel.classList.contains('hidden') && state.ui.selectedTemplateCode) openChecklistRun(state.ui.selectedTemplateCode); });
+    if (el.checklistLangEnBtn) el.checklistLangEnBtn.addEventListener('click', () => { state.ui.checklistLanguage = 'en'; updateChecklistLangButtons(); renderTemplateCards(); if (!el.checklistRunPanel.classList.contains('hidden') && state.ui.selectedTemplateCode) openChecklistRun(state.ui.selectedTemplateCode); });
+    updateChecklistLangButtons();
     }
   }
 
@@ -703,7 +709,7 @@
             <div>
               <div class="issue-title-row">
                 <div>
-                  <div class="issue-title">Checklist submitted: ${escapeHtml(item.template_name || 'Checklist')}</div>
+                  <div class="issue-title">${escapeHtml(tChecklist('Checklist submitted:','ส่งเช็กลิสต์แล้ว:'))} ${escapeHtml(tChecklist(item.template_name || 'Checklist', item.template_name_th || item.template_name || 'Checklist'))}</div>
                   <div class="meta-row">
                     <span>${escapeHtml(item.location_text || '-')}</span>
                     <span>•</span>
@@ -715,14 +721,14 @@
                   <div class="priority-pill priority-low">Checklist</div>
                 </div>
               </div>
-              <div class="issue-desc">${escapeHtml(`${item.template_name} • ${item.pass_count || 0} pass • ${item.fail_count || 0} fail • ${item.na_count || 0} N/A${item.issue_count ? ` • ${item.issue_count} issue` : ''}`)}</div>
+              <div class="issue-desc">${escapeHtml(`${tChecklist(item.template_name || 'Checklist', item.template_name_th || item.template_name || 'Checklist')} • ${item.pass_count || 0} ${tChecklist('pass','ผ่าน')} • ${item.fail_count || 0} ${tChecklist('fail','ไม่ผ่าน')} • ${item.na_count || 0} ${tChecklist('N/A','N/A')}${item.issue_count ? ` • ${item.issue_count} ${tChecklist('issue','issue')}` : ''}`)}</div>
               <div class="meta-row">
                 <span>${escapeHtml(item.run_no || item.id)}</span>
                 <span>•</span>
-                <span>Inspector ${escapeHtml(item.inspector_name || '-')}</span>
+                <span>${escapeHtml(tChecklist('Inspector','ผู้ตรวจ'))} ${escapeHtml(item.inspector_name || '-')}</span>
               </div>
               <div class="issue-actions">
-                <button class="mini-btn" data-open-checklist-run="${item.id}">Open Summary</button>
+                <button class="mini-btn" data-open-checklist-run="${item.id}">${escapeHtml(tChecklist('Open Summary','เปิดสรุปผล'))}</button>
                 <button class="mini-btn" data-unarchive-checklist-run="${item.id}">Reopen</button>
               </div>
             </div>
@@ -867,14 +873,15 @@
   function renderChecklistBoardCard(run) {
     const failCount = run.fail_count || 0;
     const issueCount = run.issue_count || 0;
-    const desc = `${run.template_name} • ${run.pass_count || 0} pass • ${failCount} fail • ${run.na_count || 0} N/A${issueCount ? ` • ${issueCount} issue` : ''}`;
+    const displayName = tChecklist(run.template_name || 'Checklist', run.template_name_th || run.template_name || 'Checklist');
+    const desc = `${displayName} • ${run.pass_count || 0} ${tChecklist('pass','ผ่าน')} • ${failCount} ${tChecklist('fail','ไม่ผ่าน')} • ${run.na_count || 0} ${tChecklist('N/A','N/A')}${issueCount ? ` • ${issueCount} ${tChecklist('issue','issue')}` : ''}`;
     return `
       <article class="issue-card issue-tone-closed checklist-board-card">
         <div class="issue-thumb placeholder checklist-placeholder">DONE</div>
         <div>
           <div class="issue-title-row">
             <div>
-              <div class="issue-title">Checklist submitted: ${escapeHtml(run.template_name || 'Checklist')}</div>
+              <div class="issue-title">${escapeHtml(tChecklist('Checklist submitted:','ส่งเช็กลิสต์แล้ว:'))} ${escapeHtml(tChecklist(run.template_name || 'Checklist', run.template_name_th || run.template_name || 'Checklist'))}</div>
               <div class="meta-row">
                 <span>${escapeHtml(run.location_text || '-')}</span>
                 <span>•</span>
@@ -890,10 +897,10 @@
           <div class="meta-row">
             <span>${escapeHtml(run.run_no || run.id)}</span>
             <span>•</span>
-            <span>Inspector ${escapeHtml(run.inspector_name || '-')}</span>
+            <span>${escapeHtml(tChecklist('Inspector','ผู้ตรวจ'))} ${escapeHtml(run.inspector_name || '-')}</span>
           </div>
           <div class="issue-actions">
-            <button class="mini-btn" data-open-checklist-run="${run.id}">Open Summary</button>
+            <button class="mini-btn" data-open-checklist-run="${run.id}">${escapeHtml(tChecklist('Open Summary','เปิดสรุปผล'))}</button>
             <button class="mini-btn" data-archive-checklist-run="${run.id}">Close</button>
           </div>
         </div>
@@ -933,15 +940,15 @@
     if (!run) return;
     const answerHtml = (run.answers || []).map(ans => `
       <div class="comment-item">
-        <div class="comment-meta">${escapeHtml(ans.section_title || '')}</div>
-        <div><strong>${escapeHtml(ans.item_text || '')}</strong></div>
+        <div class="comment-meta">${escapeHtml(tChecklist(ans.section_title || '', ans.section_title_th || ans.section_title || ''))}</div>
+        <div><strong>${escapeHtml(tChecklist(ans.item_text || '', ans.item_text_th || ans.item_text || ''))}</strong></div>
         <div class="meta-row"><span>${escapeHtml((ans.response || '').toUpperCase())}</span>${ans.create_issue ? '<span>•</span><span>Issue created</span>' : ''}</div>
         ${ans.note ? `<div>${escapeHtml(ans.note)}</div>` : ''}
       </div>
     `).join('');
     const specialFormHtml = (run.special_form_entries || []).map(entry => `
       <div class="comment-item">
-        <div class="comment-meta">${escapeHtml(entry.section_title || '')}</div>
+        <div class="comment-meta">${escapeHtml(tChecklist(entry.section_title || '', entry.section_title_th || entry.section_title || ''))}</div>
         <div>${escapeHtml(entry.value || '')}</div>
       </div>
     `).join('');
@@ -949,24 +956,24 @@
       <div class="issue-detail-grid">
         <div>
           <div class="panel glass inner-panel">
-            <div class="panel-header"><h3>${escapeHtml(run.template_name || 'Checklist')}</h3></div>
+            <div class="panel-header"><h3>${escapeHtml(tChecklist(run.template_name || 'Checklist', run.template_name_th || run.template_name || 'Checklist'))}</h3></div>
             <div class="detail-meta">
-              <div><strong>Run No:</strong> ${escapeHtml(run.run_no || run.id)}</div>
-              <div><strong>Inspector:</strong> ${escapeHtml(run.inspector_name || '-')}</div>
-              <div><strong>Location:</strong> ${escapeHtml(run.location_text || '-')}</div>
-              <div><strong>Date:</strong> ${formatDateTime(run.submitted_at || run.created_at)}</div>
-              <div><strong>Result:</strong> ${run.pass_count || 0} pass • ${run.fail_count || 0} fail • ${run.na_count || 0} N/A</div>
+              <div><strong>${escapeHtml(tChecklist('Run No','เลขที่'))}:</strong> ${escapeHtml(run.run_no || run.id)}</div>
+              <div><strong>${escapeHtml(tChecklist('Inspector','ผู้ตรวจ'))}:</strong> ${escapeHtml(run.inspector_name || '-')}</div>
+              <div><strong>${escapeHtml(tChecklist('Location','สถานที่'))}:</strong> ${escapeHtml(run.location_text || '-')}</div>
+              <div><strong>${escapeHtml(tChecklist('Date','วันที่'))}:</strong> ${formatDateTime(run.submitted_at || run.created_at)}</div>
+              <div><strong>${escapeHtml(tChecklist('Result','ผลการตรวจ'))}:</strong> ${run.pass_count || 0} ${tChecklist('pass','ผ่าน')} • ${run.fail_count || 0} ${tChecklist('fail','ไม่ผ่าน')} • ${run.na_count || 0} ${tChecklist('N/A','N/A')}</div>
             </div>
           </div>
         </div>
         <div>
           <div class="panel glass inner-panel">
-            <div class="panel-header"><h3>Checklist Answers</h3></div>
-            <div class="comments-list">${answerHtml || '<div class="empty-state">No answers</div>'}</div>
+            <div class="panel-header"><h3>${escapeHtml(tChecklist('Checklist Answers','คำตอบเช็กลิสต์'))}</h3></div>
+            <div class="comments-list">${answerHtml || `<div class="empty-state">${escapeHtml(tChecklist('No answers','ยังไม่มีคำตอบ'))}</div>`}</div>
           </div>
           <div class="panel glass inner-panel" style="margin-top:12px;">
-            <div class="panel-header"><h3>Special Forms</h3></div>
-            <div class="comments-list">${specialFormHtml || '<div class="empty-state">No special form entries</div>'}</div>
+            <div class="panel-header"><h3>${escapeHtml(tChecklist('Special Forms','ฟอร์มพิเศษ'))}</h3></div>
+            <div class="comments-list">${specialFormHtml || `<div class="empty-state">${escapeHtml(tChecklist('No special form entries','ยังไม่มีข้อมูลฟอร์มพิเศษ'))}</div>`}</div>
           </div>
         </div>
       </div>
@@ -1457,11 +1464,11 @@
         <article class="template-card">
           <div>
             <div class="eyebrow">CHECKLIST TEMPLATE</div>
-            <h4>${escapeHtml(template.template_name)}</h4>
+            <h4>${escapeHtml(getTemplateDisplayName(template))}</h4>
             <div class="template-meta">${template.sections?.length || 0} sections • ${itemCount} items</div>
           </div>
           <div class="muted">${escapeHtml(template.source_sheet || '')}</div>
-          <button class="btn btn-primary" data-template-open="${template.template_code}">Open Checklist</button>
+          <button class="btn btn-primary" data-template-open="${template.template_code}">${escapeHtml(tChecklist('Open Checklist','เปิดเช็กลิสต์'))}</button>
         </article>
       `;
     }).join('');
@@ -1477,23 +1484,23 @@
     const runId = `draft_${cryptoRandom()}`;
     const html = `
       <div class="panel-header">
-        <h3>${escapeHtml(template.template_name)}</h3>
-        <p class="muted">บันทึกผลตรวจ แล้วสร้าง issue เฉพาะข้อที่ fail และต้อง follow up</p>
+        <h3>${escapeHtml(getTemplateDisplayName(template))}</h3>
+        <p class="muted">${escapeHtml(tChecklist('Record the inspection and create issues only for failed items that need follow-up','บันทึกผลตรวจ แล้วสร้าง issue เฉพาะข้อที่ fail และต้อง follow up'))}</p>
       </div>
       <div class="checklist-run-head">
         <div>
-          <label>Location</label>
-          <input id="runLocation" type="text" placeholder="เช่น Main Resort / Public Area" />
+          <label>${escapeHtml(tChecklist('Location','สถานที่'))}</label>
+          <input id="runLocation" type="text" placeholder="${escapeHtml(tChecklist('e.g. Main Resort / Public Area','เช่น Main Resort / Public Area'))}" />
         </div>
         <div>
-          <label>Date</label>
+          <label>${escapeHtml(tChecklist('Date','วันที่'))}</label>
           <input id="runDate" type="date" value="${todayInputValue()}" />
         </div>
       </div>
       <div id="checklistSections"></div>
       <div class="sticky-actions">
-        <button class="btn btn-primary" id="submitChecklistBtn">Submit Checklist</button>
-        <button class="btn btn-ghost" id="hideChecklistBtn">Hide</button>
+        <button class="btn btn-primary" id="submitChecklistBtn">${escapeHtml(tChecklist('Submit Checklist','ส่งเช็กลิสต์'))}</button>
+        <button class="btn btn-ghost" id="hideChecklistBtn">${escapeHtml(tChecklist('Hide','ซ่อน'))}</button>
       </div>
     `;
     el.checklistRunPanel.innerHTML = html;
@@ -1512,12 +1519,12 @@
       return `
         <section class="section-card section-card-special" data-section-code="${escapeHtml(section.section_code || '')}">
           <div class="section-head">
-            <h4>${escapeHtml(section.section_title)}</h4>
-            <span class="muted">Special form</span>
+            <h4>${escapeHtml(getSectionDisplayTitle(section))}</h4>
+            <span class="muted">${escapeHtml(tChecklist('Special form','ฟอร์มพิเศษ'))}</span>
           </div>
           <div class="section-body">
-            <label class="special-form-label">รายละเอียด</label>
-            <textarea class="special-form-textarea" data-special-form-input rows="5" placeholder="พิมพ์ข้อมูลในส่วนนี้ได้เลย"></textarea>
+            <label class="special-form-label">${escapeHtml(tChecklist('Details','รายละเอียด'))}</label>
+            <textarea class="special-form-textarea" data-special-form-input rows="5" placeholder="${escapeHtml(tChecklist('Type here','พิมพ์ข้อมูลในส่วนนี้ได้เลย'))}"></textarea>
           </div>
         </section>
       `;
@@ -1525,20 +1532,20 @@
     return `
       <section class="section-card" data-section-code="${section.section_code}">
         <div class="section-head">
-          <h4>${escapeHtml(section.section_title)}</h4>
-          <span class="muted">${items.length} items</span>
+          <h4>${escapeHtml(getSectionDisplayTitle(section))}</h4>
+          <span class="muted">${items.length} ${escapeHtml(tChecklist('items','ข้อ'))}</span>
         </div>
         <div class="section-body">
           ${items.map(item => `
             <div class="item-card" data-item-code="${item.item_code}">
-              <div class="item-text">${escapeHtml(item.item_text)}</div>
+              <div class="item-text">${escapeHtml(getItemDisplayText(item))}</div>
               <div class="item-controls">
                 <div class="inline-options" data-response-group>
-                  <button class="option-btn pass" type="button" data-response="pass">Pass</button>
-                  <button class="option-btn fail" type="button" data-response="fail">Fail</button>
-                  <button class="option-btn na" type="button" data-response="na">N/A</button>
+                  <button class="option-btn pass" type="button" data-response="pass">${escapeHtml(tChecklist('Pass','ผ่าน'))}</button>
+                  <button class="option-btn fail" type="button" data-response="fail">${escapeHtml(tChecklist('Fail','ไม่ผ่าน'))}</button>
+                  <button class="option-btn na" type="button" data-response="na">${escapeHtml(tChecklist('N/A','ไม่เกี่ยวข้อง'))}</button>
                 </div>
-                <textarea data-note rows="2" placeholder="Note (optional)"></textarea>
+                <textarea data-note rows="2" placeholder="${escapeHtml(tChecklist('Note (optional)','หมายเหตุ (ถ้ามี)'))}"></textarea>
                 <div class="fail-extra hidden" data-fail-extra>
                   <select data-fail-dept>${renderDepartmentOptions()}</select>
                   <select data-fail-priority>
@@ -1547,7 +1554,7 @@
                 </div>
                 <button class="check-row issue-toggle hidden" type="button" data-create-issue-toggle aria-pressed="false">
                   <span class="issue-toggle-box" aria-hidden="true"></span>
-                  <span>Create issue if this item fails</span>
+                  <span>${escapeHtml(tChecklist('Create issue if this item fails','สร้าง issue หากข้อนี้ไม่ผ่าน'))}</span>
                 </button>
               </div>
             </div>
@@ -1641,6 +1648,7 @@
       run_no: buildChecklistRunNo((state.data.counters.checklist || 0) + 1, inspectionDate),
       template_code: template.template_code,
       template_name: template.template_name,
+      template_name_th: template.template_name_th || template.template_name,
       inspector_uid: state.currentUser.uid,
       inspector_name: state.currentUser.full_name,
       inspector_department: state.currentUser.department,
@@ -1813,6 +1821,7 @@
         run_no: buildChecklistRunNo(runNumber, run.inspection_date),
         template_code: run.template_code,
         template_name: run.template_name,
+        template_name_th: run.template_name_th || run.template_name,
         template_version: 1,
         status: 'submitted',
         inspector_uid: run.inspector_uid,
@@ -1874,7 +1883,7 @@
             </div>
           </div>
           <div class="detail-meta">
-            <div><strong>Location:</strong> ${escapeHtml(issue.location_text || '-')}</div>
+            <div><strong>${escapeHtml(tChecklist('Location','สถานที่'))}:</strong> ${escapeHtml(issue.location_text || '-')}</div>
             <div><strong>Issue No:</strong> ${escapeHtml(issue.issue_no || issue.id)}</div>
             <div><strong>Reported by:</strong> ${escapeHtml(issue.reported_by_name || '-')}</div>
             <div><strong>Created:</strong> ${formatDateTime(issue.created_at)}</div>
@@ -3521,6 +3530,35 @@
   function labelize(value) {
     if (!value) return '-';
     return String(value).replaceAll('_', ' ').replace(/\b\w/g, ch => ch.toUpperCase());
+  }
+
+
+  function checklistLang() {
+    return state.ui.checklistLanguage || 'th';
+  }
+
+  function tChecklist(en, th) {
+    return checklistLang() === 'th' ? (th || en || '') : (en || th || '');
+  }
+
+  function getTemplateDisplayName(template) {
+    if (!template) return 'Checklist';
+    return tChecklist(template.template_name, template.template_name_th || template.template_name);
+  }
+
+  function getSectionDisplayTitle(section) {
+    if (!section) return '';
+    return tChecklist(section.section_title, section.section_title_th || section.section_title);
+  }
+
+  function getItemDisplayText(item) {
+    if (!item) return '';
+    return tChecklist(item.item_text, item.item_text_th || item.item_text);
+  }
+
+  function updateChecklistLangButtons() {
+    if (el.checklistLangThBtn) el.checklistLangThBtn.classList.toggle('active', checklistLang() === 'th');
+    if (el.checklistLangEnBtn) el.checklistLangEnBtn.classList.toggle('active', checklistLang() === 'en');
   }
 
   function qs(selector, root = document) {

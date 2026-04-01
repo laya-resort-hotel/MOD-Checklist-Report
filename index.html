@@ -202,7 +202,13 @@
               <h3>Checklist Module</h3>
               <p class="muted">แยกจาก Board เพื่อให้หน้าบอร์ดสะอาด และเมื่อ submit แล้วจะขึ้นบน Board เพื่อบอกว่าตรวจแล้ว</p>
             </div>
-            <button id="addChecklistTemplateBtn" class="btn btn-secondary">+ Add Checklist</button>
+            <div class="checklist-toolbar">
+              <div class="lang-switch" id="checklistLangSwitch">
+                <button id="checklistLangThBtn" class="btn btn-secondary btn-small">ไทย</button>
+                <button id="checklistLangEnBtn" class="btn btn-ghost btn-small">English</button>
+              </div>
+              <button id="addChecklistTemplateBtn" class="btn btn-secondary">+ Add Checklist</button>
+            </div>
           </div>
           <div id="templateCards" class="template-grid"></div>
         </div>
