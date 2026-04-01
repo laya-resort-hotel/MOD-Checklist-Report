@@ -3,22 +3,27 @@
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 
   const DEPARTMENTS = [
-    { code: 'ENG', name: 'Engineering' },
-    { code: 'HK', name: 'Housekeeping' },
-    { code: 'FO', name: 'Front Office' },
-    { code: 'FB', name: 'Food & Beverage' },
-    { code: 'SEC', name: 'Security' },
-    { code: 'HR', name: 'HR' },
-    { code: 'RSV', name: 'Reservation' },
-    { code: 'SALES', name: 'Sales' },
-    { code: 'REC', name: 'Recreation' },
-    { code: 'KIT', name: 'Kitchen' },
-    { code: 'MOD', name: 'MOD' },
-    { code: 'ADMIN', name: 'Admin' },
+    { code: 'ENG', name: 'Engineering', name_th: 'วิศวกรรม' },
+    { code: 'HK', name: 'Housekeeping', name_th: 'แม่บ้าน' },
+    { code: 'FO', name: 'Front Office', name_th: 'ฟร้อนท์ออฟฟิศ' },
+    { code: 'FB', name: 'Food & Beverage', name_th: 'อาหารและเครื่องดื่ม' },
+    { code: 'SEC', name: 'Security', name_th: 'รักษาความปลอดภัย' },
+    { code: 'HR', name: 'HR', name_th: 'ทรัพยากรบุคคล' },
+    { code: 'RSV', name: 'Reservation', name_th: 'สำรองห้องพัก' },
+    { code: 'SALES', name: 'Sales', name_th: 'ฝ่ายขาย' },
+    { code: 'REC', name: 'Recreation', name_th: 'สันทนาการ' },
+    { code: 'KIT', name: 'Kitchen', name_th: 'ครัว' },
+    { code: 'MOD', name: 'MOD', name_th: 'MOD' },
+    { code: 'ADMIN', name: 'Admin', name_th: 'ผู้ดูแลระบบ' },
   ];
 
   const PRIORITIES = ['low', 'medium', 'high', 'critical'];
   const STATUS_ORDER = { open: 1, in_progress: 2, waiting: 3, closed: 4 };
+
+  function departmentLabel(dept) {
+    if (!dept) return '';
+    return dept.name_th && dept.name_th !== dept.name ? `${dept.name} / ${dept.name_th}` : dept.name;
+  }
 
   const state = {
     currentUser: null,
@@ -139,7 +144,21 @@
   }
 
   function syncRegisterRoleDepartment() {
-    return;
+    if (!el.registerDepartment) return;
+    const role = el.registerRole?.value || 'mod';
+    if (role === 'mod') {
+      el.registerDepartment.innerHTML = '<option value="MOD">MOD</option>';
+      el.registerDepartment.value = 'MOD';
+      el.registerDepartment.disabled = true;
+      return;
+    }
+
+    const deptCodes = ['ENG', 'HK', 'FO', 'FB', 'SEC', 'HR', 'RSV', 'SALES', 'REC', 'KIT'];
+    el.registerDepartment.innerHTML = renderDepartmentOptions(deptCodes);
+    if (!deptCodes.includes(el.registerDepartment.value)) {
+      el.registerDepartment.value = 'ENG';
+    }
+    el.registerDepartment.disabled = false;
   }
 
   function employeeIdToEmail(employeeId) {
@@ -547,14 +566,18 @@
 
     const employeeId = el.registerEmployeeId.value.trim();
     const fullName = el.registerFullName.value.trim();
-    const role = 'mod';
-    const department = 'MOD';
-    const position = '';
+    const role = el.registerRole?.value === 'dept_user' ? 'dept_user' : 'mod';
+    const department = role === 'mod' ? 'MOD' : (el.registerDepartment?.value || 'ENG');
+    const position = role === 'mod' ? 'MOD' : 'Department User';
     const password = el.registerPassword.value.trim();
     const confirmPassword = el.registerConfirmPassword.value.trim();
 
     if (!employeeId || !fullName || !password || !confirmPassword) {
       setAuthStatus('กรุณากรอกข้อมูลสมัครสมาชิกให้ครบ', 'error');
+      return;
+    }
+    if (role === 'dept_user' && !department) {
+      setAuthStatus('กรุณาเลือกแผนกสำหรับ Department User', 'error');
       return;
     }
     if (password.length < 6) {
@@ -584,7 +607,7 @@
         category: 'auth',
         action: 'register',
         title: 'Created account',
-        text: `${fullName} created account`,
+        text: `${fullName} created ${role === 'mod' ? 'MOD' : getDepartmentName(department)} account`,
         user_uid: cred.user.uid,
         user_name: fullName,
         ref_no: employeeId,
@@ -1539,11 +1562,11 @@
               <div class="item-text">${escapeHtml(item.item_text)}</div>
               <div class="item-controls">
                 <div class="inline-options" data-response-group>
-                  <button class="option-btn pass" type="button" data-response="pass">Pass</button>
-                  <button class="option-btn fail" type="button" data-response="fail">Fail</button>
+                  <button class="option-btn pass" type="button" data-response="pass">ผ่าน</button>
+                  <button class="option-btn fail" type="button" data-response="fail">ไม่ผ่าน</button>
                   <button class="option-btn na" type="button" data-response="na">N/A</button>
                 </div>
-                <textarea data-note rows="2" placeholder="Note (optional)"></textarea>
+                <textarea data-note rows="2" placeholder="หมายเหตุ (ไม่บังคับ)"></textarea>
                 <div class="fail-extra hidden" data-fail-extra>
                   <select data-fail-dept>${renderDepartmentOptions()}</select>
                   <select data-fail-priority>
@@ -1552,7 +1575,7 @@
                 </div>
                 <label class="check-row hidden" data-create-issue-row>
                   <input type="checkbox" data-create-issue />
-                  <span>Create issue if this item fails</span>
+                  <span>สร้าง Issue หากข้อนี้ไม่ผ่าน</span>
                 </label>
               </div>
             </div>
@@ -3150,13 +3173,12 @@
   function populateDepartmentSelects() {
     const issueHtml = renderDepartmentOptions();
     if (el.issueDepartment) el.issueDepartment.innerHTML = issueHtml;
-    if (el.registerDepartment) el.registerDepartment.innerHTML = '<option value="MOD">MOD</option>';
     syncRegisterRoleDepartment();
   }
 
   function renderDepartmentOptions(allowedCodes = null) {
     const list = allowedCodes ? DEPARTMENTS.filter(dept => allowedCodes.includes(dept.code)) : DEPARTMENTS;
-    return list.map(dept => `<option value="${dept.code}">${dept.name}</option>`).join('');
+    return list.map(dept => `<option value="${dept.code}">${departmentLabel(dept)}</option>`).join('');
   }
 
   function slugify(value) {

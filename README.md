@@ -3,6 +3,8 @@
 เวอร์ชันนี้รองรับ:
 - Sign In ด้วย **Employee ID + Password**
 - Register ด้วย **Employee ID** โดยระบบจะสร้าง email ภายในแบบซ่อนหลังบ้านอัตโนมัติ
+- เลือก **Access Type** ได้ทั้ง `MOD` และ `Department User`
+- เลือก **Department** ได้ครบ: Engineering, Housekeeping, Front Office, Food & Beverage, Security, HR, Reservation, Sales, Recreation, Kitchen
 - บันทึกโปรไฟล์ผู้ใช้ลง `users/{uid}` ใน Firestore
 - Local Demo Mode ยังอยู่ เผื่อใช้ตอน Firebase ยังไม่พร้อม
 
@@ -11,7 +13,7 @@
 - Employee ID
 - Full Name
 - Access Type (`MOD` หรือ `Department User`)
-- Department
+- Department (ถ้าเลือก Department User)
 - Password
 
 ระบบจะสร้าง Firebase Auth account ด้วยรูปแบบ email ภายใน เช่น:

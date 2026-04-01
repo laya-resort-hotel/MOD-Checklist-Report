@@ -599,7 +599,8 @@ input:focus, select:focus, textarea:focus {
   gap: 10px;
 }
 .check-row { display: flex; align-items: center; gap: 10px; }
-.check-row input { width: 18px; height: 18px; }
+.check-row input { width: 18px; height: 18px; accent-color: var(--brand); cursor: pointer; flex: 0 0 18px; }
+.check-row span { cursor: pointer; user-select: none; }
 .activity-list { display: grid; gap: 12px; }
 .activity-item {
   border-left: 4px solid rgba(134,110,75,0.45);
@@ -1143,7 +1144,7 @@ body {
 .search-input,
 textarea,
 select,
-input {
+input:not([type="checkbox"]):not([type="radio"]) {
   -webkit-appearance: none;
   appearance: none;
 }

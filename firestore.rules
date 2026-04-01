@@ -437,8 +437,18 @@ service cloud.firestore {
         ]) &&
         request.resource.data.employee_id is string &&
         request.resource.data.full_name is string &&
-        request.resource.data.role == 'mod' &&
-        request.resource.data.department == 'MOD' &&
+        (
+          (
+            request.resource.data.role == 'mod' &&
+            request.resource.data.department == 'MOD'
+          ) || (
+            request.resource.data.role == 'dept_user' &&
+            request.resource.data.department is string &&
+            validDept(request.resource.data.department) &&
+            request.resource.data.department != 'MOD' &&
+            request.resource.data.department != 'ADMIN'
+          )
+        ) &&
         request.resource.data.position is string &&
         request.resource.data.is_active == true &&
         request.resource.data.phone is string &&
