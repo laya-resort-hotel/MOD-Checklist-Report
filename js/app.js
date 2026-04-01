@@ -3,7 +3,7 @@
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 
   const LANG_KEY = 'laya_mod_lang_v1';
-  const HIDDEN_TEMPLATE_KEY = 'laya_mod_hidden_templates_v1';
+  const HIDDEN_TEMPLATE_KEY = 'laya_mod_hidden_templates_v2';
 
   function getSavedLanguage() {
     try {
@@ -711,11 +711,22 @@
   }
 
   function getVisibleTemplates() {
-    return (state.data.templates || []).filter(template => !isTemplateHidden(template.template_code));
+    const templates = state.data.templates || [];
+    const visible = templates.filter(template => !isTemplateHidden(template.template_code));
+    if (!visible.length && templates.length) {
+      const hiddenCodes = state.ui.hiddenTemplateCodes || [];
+      if (hiddenCodes.length >= templates.length) {
+        state.ui.hiddenTemplateCodes = [];
+        saveHiddenTemplateCodes([]);
+        return templates;
+      }
+    }
+    return visible;
   }
 
   function getHiddenTemplates() {
-    return (state.data.templates || []).filter(template => isTemplateHidden(template.template_code));
+    const visibleCodes = new Set(getVisibleTemplates().map(template => template.template_code));
+    return (state.data.templates || []).filter(template => !visibleCodes.has(template.template_code));
   }
 
   function hydrateFromStorage() {
@@ -1780,6 +1791,7 @@
               <h3>${txt('เช็กลิสต์ที่ซ่อน', 'Hidden Checklists')}</h3>
               <p class="muted">${txt('เทมเพลตหลักที่ซ่อนจะยังอยู่ในระบบ และกดแสดงกลับได้', 'Hidden base templates remain in the system and can be restored anytime.')}</p>
             </div>
+            <button class="btn btn-ghost" data-template-restore-all>${txt('แสดงทั้งหมดกลับ', 'Restore all')}</button>
           </div>
           <div class="hidden-template-list">
             ${hiddenTemplates.map(template => `
@@ -1798,6 +1810,7 @@
     qsa('[data-template-hide]', el.templateCards).forEach(btn => btn.addEventListener('click', () => hideBaseTemplate(btn.dataset.templateHide)));
     qsa('[data-template-unhide]', el.templateCards).forEach(btn => btn.addEventListener('click', () => restoreHiddenTemplate(btn.dataset.templateUnhide)));
     qsa('[data-template-delete]', el.templateCards).forEach(btn => btn.addEventListener('click', () => deleteCustomTemplate(btn.dataset.templateDelete)));
+    qsa('[data-template-restore-all]', el.templateCards).forEach(btn => btn.addEventListener('click', restoreAllHiddenTemplates));
   }
 
   async function hideBaseTemplate(templateCode) {
@@ -1817,6 +1830,13 @@
     setTemplateHidden(templateCode, false);
     renderTemplateCards();
     setAuthStatus(txt('แสดง checklist กลับแล้ว', 'Checklist restored'), 'success');
+  }
+
+  function restoreAllHiddenTemplates() {
+    state.ui.hiddenTemplateCodes = [];
+    saveHiddenTemplateCodes([]);
+    renderTemplateCards();
+    setAuthStatus(txt('แสดง checklist ทั้งหมดกลับแล้ว', 'All checklists restored'), 'success');
   }
 
   async function deleteCustomTemplate(templateCode) {
