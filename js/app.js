@@ -101,6 +101,39 @@
     return currentLang() === 'en' ? (dept.name || dept.code || '') : (dept.name_th || dept.name || dept.code || '');
   }
 
+  function getDepartmentMeta(code) {
+    return DEPARTMENTS.find(d => d.code === code) || null;
+  }
+
+  function getDepartmentName(code) {
+    const dept = getDepartmentMeta(code);
+    return dept ? departmentLabel(dept) : (code || '-');
+  }
+
+  function translatePriority(value) {
+    const map = {
+      low: { th: 'ต่ำ', en: 'Low' },
+      medium: { th: 'ปานกลาง', en: 'Medium' },
+      high: { th: 'สูง', en: 'High' },
+      critical: { th: 'วิกฤต', en: 'Critical' },
+    };
+    const entry = map[value];
+    if (!entry) return labelize(value);
+    return currentLang() === 'en' ? entry.en : entry.th;
+  }
+
+  function translateStatus(value) {
+    const map = {
+      open: { th: 'เปิดอยู่', en: 'Open' },
+      in_progress: { th: 'กำลังดำเนินการ', en: 'In Progress' },
+      waiting: { th: 'รอ', en: 'Waiting' },
+      closed: { th: 'ปิดแล้ว', en: 'Closed' },
+    };
+    const entry = map[value];
+    if (!entry) return labelize(value);
+    return currentLang() === 'en' ? entry.en : entry.th;
+  }
+
   const state = {
     currentUser: null,
     firebaseAuthBound: false,
@@ -119,6 +152,7 @@
       newIssuePriority: 'medium',
       selectedTemplateCode: null,
       openIssueId: null,
+      openChecklistRunId: null,
       liveIssueComments: [],
       pendingIssuePhotos: [],
       pendingIssueVideo: null,
@@ -1138,15 +1172,19 @@
     saveLanguagePreference(next);
     applyLanguageToStaticUI();
     renderAll();
+    refreshLanguageSensitiveDynamicUI();
     if (state.ui.openIssueId) {
       const issue = state.data.issues.find(i => i.id === state.ui.openIssueId);
       if (issue) renderIssueModalContent(issue);
+    } else if (state.ui.openChecklistRunId) {
+      openChecklistRunSummary(state.ui.openChecklistRunId);
     }
   }
 
   function syncRegisterRoleDepartment() {
     if (!el.registerDepartment) return;
     const role = el.registerRole?.value || 'mod';
+    const previousValue = el.registerDepartment.value;
     if (role === 'mod') {
       el.registerDepartment.innerHTML = '<option value="MOD">MOD</option>';
       el.registerDepartment.value = 'MOD';
@@ -1156,6 +1194,9 @@
 
     const deptCodes = WORK_DEPARTMENT_CODES;
     el.registerDepartment.innerHTML = renderDepartmentOptions(deptCodes);
+    if (previousValue && deptCodes.includes(previousValue)) {
+      el.registerDepartment.value = previousValue;
+    }
     if (!deptCodes.includes(el.registerDepartment.value)) {
       el.registerDepartment.value = 'ENG';
     }
@@ -1910,8 +1951,8 @@
                 </div>
               </div>
               <div class="issue-badges">
-                ${issue.issue_type === 'checklist_submission' ? '<div class="status-pill status-closed">Checklist</div>' : `<div class="priority-pill priority-${issue.priority}">${labelize(issue.priority)}</div>`}
-                <div class="status-pill status-${issue.status}">${labelize(issue.status)}</div>
+                ${issue.issue_type === 'checklist_submission' ? `<div class="status-pill status-closed">${txt('เช็กลิสต์', 'Checklist')}</div>` : `<div class="priority-pill priority-${issue.priority}">${translatePriority(issue.priority)}</div>`}
+                <div class="status-pill status-${issue.status}">${translateStatus(issue.status)}</div>
               </div>
             </div>
             <div class="issue-desc">${escapeHtml(issue.description || '')}</div>
@@ -2025,6 +2066,8 @@
   function openChecklistRunSummary(runId) {
     const run = (state.data.checklistRuns || []).find(r => r.id === runId);
     if (!run) return;
+    state.ui.openChecklistRunId = runId;
+    state.ui.openIssueId = null;
     const answerHtml = (run.answers || []).map(ans => `
       <div class="comment-item">
         <div class="comment-meta">${escapeHtml(runSectionLabel(ans) || '')}</div>
@@ -3028,6 +3071,7 @@
     const issue = state.data.issues.find(i => i.id === issueId);
     if (!issue) return;
     state.ui.openIssueId = issueId;
+    state.ui.openChecklistRunId = null;
     if (isFirebaseLive()) {
       startIssueCommentsSync(issueId);
     }
@@ -3052,8 +3096,8 @@
           <div class="detail-head">
             <h3>${escapeHtml(issue.title)}</h3>
             <div class="inline-options">
-              <span class="priority-pill priority-${issue.priority}">${labelize(issue.priority)}</span>
-              <span class="status-pill status-${issue.status}">${labelize(issue.status)}</span>
+              <span class="priority-pill priority-${issue.priority}">${translatePriority(issue.priority)}</span>
+              <span class="status-pill status-${issue.status}">${translateStatus(issue.status)}</span>
               <span class="status-pill status-open">${escapeHtml(getDepartmentName(issue.assigned_department))}</span>
             </div>
           </div>
@@ -3195,6 +3239,7 @@
 
   function closeIssueModal() {
     state.ui.openIssueId = null;
+    state.ui.openChecklistRunId = null;
     stopIssueCommentsSync();
     el.issueModal.classList.add('hidden');
   }
@@ -3442,7 +3487,7 @@
       addActivity({
         type: 'issue',
         title: issue.title,
-        text: txt(`${state.currentUser.full_name} เปลี่ยนสถานะเป็น ${labelize(toStatus)}`, `${state.currentUser.full_name} changed status to ${labelize(toStatus)}`),
+        text: txt(`${state.currentUser.full_name} เปลี่ยนสถานะเป็น ${translateStatus(toStatus)}`, `${state.currentUser.full_name} changed status to ${translateStatus(toStatus)}`),
         created_at: new Date().toISOString(),
       });
 
@@ -4369,10 +4414,80 @@ function humanizeLogAction(action) {
     }
   }
 
+  function refreshLanguageSensitiveDynamicUI() {
+    if (el.checklistRunPanel && !el.checklistRunPanel.classList.contains('hidden')) {
+      const template = (state.data.templates || []).find(t => t.template_code === state.ui.selectedTemplateCode);
+      const panel = el.checklistRunPanel;
+      if (template) {
+        const heading = qs('.panel-header h3', panel);
+        const subtitle = qs('.panel-header p', panel);
+        const runLocation = qs('#runLocation', panel);
+        const labels = qsa('.checklist-run-head label', panel);
+        const submitBtn = qs('#submitChecklistBtn', panel);
+        const hideBtn = qs('#hideChecklistBtn', panel);
+        if (heading) heading.textContent = templateLabel(template);
+        if (subtitle) subtitle.textContent = txt('บันทึกผลตรวจ แล้วสร้าง issue เฉพาะข้อที่ไม่ผ่านและต้อง follow up', 'Record the inspection result and create issues only for failed items that need follow-up.');
+        if (labels[0]) labels[0].textContent = txt('ตำแหน่ง', 'Location');
+        if (labels[1]) labels[1].textContent = txt('วันที่', 'Date');
+        if (runLocation) runLocation.placeholder = txt('เช่น Main Resort / Public Area', 'e.g. Main Resort / Public Area');
+        if (submitBtn) submitBtn.textContent = txt('ส่งเช็กลิสต์', 'Submit Checklist');
+        if (hideBtn) hideBtn.textContent = txt('ซ่อน', 'Hide');
+
+        qsa('.section-card', panel).forEach(sectionCard => {
+          const sectionCode = sectionCard.dataset.sectionCode || '';
+          const section = (template.sections || []).find(sec => sec.section_code === sectionCode);
+          if (!section) return;
+          const h4 = qs('h4', sectionCard);
+          const muted = qs('.section-head .muted', sectionCard);
+          if (h4) h4.textContent = sectionLabel(section);
+          if (muted) muted.textContent = (section.items || []).length ? `${(section.items || []).length} ${txt('ข้อ', 'items')}` : txt('ฟอร์มพิเศษ', 'Special form');
+          const specialInput = qs('[data-special-form-input]', sectionCard);
+          if (specialInput) specialInput.placeholder = txt('พิมพ์ข้อมูลในส่วนนี้ได้เลย', 'Type details here');
+
+          qsa('.item-card', sectionCard).forEach(itemCard => {
+            const itemCode = itemCard.dataset.itemCode || '';
+            const item = (section.items || []).find(it => it.item_code === itemCode);
+            const itemText = qs('.item-text', itemCard);
+            const optionButtons = qsa('.option-btn', itemCard);
+            const note = qs('[data-note]', itemCard);
+            const createIssueText = qs('[data-create-issue-row] span', itemCard);
+            if (item && itemText) itemText.textContent = itemLabel(item);
+            if (optionButtons[0]) optionButtons[0].textContent = txt('ผ่าน', 'Pass');
+            if (optionButtons[1]) optionButtons[1].textContent = txt('ไม่ผ่าน', 'Fail');
+            if (optionButtons[2]) optionButtons[2].textContent = 'N/A';
+            if (note) note.placeholder = txt('หมายเหตุ (ไม่บังคับ)', 'Note (optional)');
+            if (createIssueText) createIssueText.textContent = txt('สร้าง Issue หากข้อนี้ไม่ผ่าน', 'Create issue if this item fails');
+          });
+        });
+      }
+
+      qsa('[data-fail-dept]', el.checklistRunPanel).forEach(select => {
+        const currentValue = select.value;
+        select.innerHTML = renderDepartmentOptions();
+        if (currentValue && qs(`option[value="${currentValue}"]`, select)) {
+          select.value = currentValue;
+        }
+      });
+
+      qsa('[data-fail-priority]', el.checklistRunPanel).forEach(select => {
+        const currentValue = select.value || 'medium';
+        select.innerHTML = PRIORITIES.map(p => `<option value="${p}" ${p === currentValue ? 'selected' : ''}>${translatePriority(p)}</option>`).join('');
+        select.value = currentValue;
+      });
+    }
+  }
+
   function populateDepartmentSelects() {
     const issueHtml = renderDepartmentOptions();
-    if (el.issueDepartment) el.issueDepartment.innerHTML = issueHtml;
+    if (el.issueDepartment) {
+      const currentValue = el.issueDepartment.value;
+      el.issueDepartment.innerHTML = issueHtml;
+      if (currentValue && qs(`option[value="${currentValue}"]`, el.issueDepartment)) {
+        el.issueDepartment.value = currentValue;
+      }
+    }
     syncRegisterRoleDepartment();
+    refreshLanguageSensitiveDynamicUI();
   }
 
   function renderDepartmentOptions(allowedCodes = WORK_DEPARTMENT_CODES) {
@@ -4722,14 +4837,10 @@ function humanizeLogAction(action) {
     if (!value) return '-';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return String(value);
-    return new Intl.DateTimeFormat('th-TH', {
+    return new Intl.DateTimeFormat(currentLang() === 'en' ? 'en-GB' : 'th-TH', {
       dateStyle: 'medium',
       timeStyle: 'short'
     }).format(date);
-  }
-
-  function getDepartmentName(code) {
-    return DEPARTMENTS.find(d => d.code === code)?.name || code || '-';
   }
 
   function labelize(value) {
