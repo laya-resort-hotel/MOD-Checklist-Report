@@ -145,8 +145,10 @@
 
           <div class="photo-uploader" id="issuePhotoDrop">
             <input id="issuePhotoInput" type="file" accept="image/*" multiple class="visually-hidden-file" />
-            <div class="photo-action-row single-action">
-              <label id="issuePhotoPickBtn" for="issuePhotoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">เพิ่มรูป / ถ่ายรูป</label>
+            <input id="issuePhotoCameraInput" type="file" accept="image/*" capture="environment" class="visually-hidden-file" />
+            <div class="photo-action-row">
+              <label id="issuePhotoGalleryPickBtn" for="issuePhotoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">เลือกรูป</label>
+              <label id="issuePhotoCameraPickBtn" for="issuePhotoCameraInput" class="btn btn-ghost photo-pick-label" role="button" tabindex="0">ถ่ายรูป</label>
             </div>
             <div id="issuePhotoHint" class="photo-hint muted">แนะนำรูปไม่เกิน 10 MB ต่อรูป • เลือกได้หลายรูป • ระบบจะย่อรูปให้อัตโนมัติก่อนบันทึก</div>
             <div class="photo-preview-wrap">
@@ -156,8 +158,10 @@
 
           <div class="photo-uploader video-uploader">
             <input id="issueVideoInput" type="file" accept="video/*" class="visually-hidden-file" />
-            <div class="photo-action-row single-action">
-              <label id="issueVideoPickBtn" for="issueVideoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">เพิ่มวิดีโอ / ถ่ายวิดีโอ</label>
+            <input id="issueVideoCameraInput" type="file" accept="video/*" capture="environment" class="visually-hidden-file" />
+            <div class="photo-action-row">
+              <label id="issueVideoGalleryPickBtn" for="issueVideoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">เลือกวิดีโอ</label>
+              <label id="issueVideoCameraPickBtn" for="issueVideoCameraInput" class="btn btn-ghost photo-pick-label" role="button" tabindex="0">ถ่ายวิดีโอ</label>
             </div>
             <div id="issueVideoHint" class="photo-hint muted">รองรับวิดีโอไม่เกิน 25 MB • แนะนำ MP4/MOV • ระบบจะสร้าง poster ให้ใช้อัตโนมัติ</div>
             <div class="photo-preview-wrap">

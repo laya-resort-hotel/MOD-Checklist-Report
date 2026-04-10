@@ -1088,8 +1088,10 @@
 
     setNodeText('#newIssueView .panel-header h3', 'แจ้งปัญหาใหม่', 'New Issue');
     setNodeText('#newIssueView .panel-header p', 'แจ้งปัญหาใหม่แบบเร็ว เน้นถ่ายรูปและ assign แผนกให้ชัด', 'Quick issue report with clear photos and department assignment.');
-    setNodeText('label[for="issuePhotoInput"]', 'เพิ่มรูป / ถ่ายรูป', 'Add Photo / Take Photo');
-    setNodeText('label[for="issueVideoInput"]', 'เพิ่มวิดีโอ / ถ่ายวิดีโอ', 'Add Video / Record Video');
+    setNodeText('#issuePhotoGalleryPickBtn', 'เลือกรูป', 'Choose Photo');
+    setNodeText('#issuePhotoCameraPickBtn', 'ถ่ายรูป', 'Take Photo');
+    setNodeText('#issueVideoGalleryPickBtn', 'เลือกวิดีโอ', 'Choose Video');
+    setNodeText('#issueVideoCameraPickBtn', 'ถ่ายวิดีโอ', 'Record Video');
     setNodeText('#issuePhotoHint', 'แนะนำรูปไม่เกิน 10 MB ต่อรูป • เลือกได้หลายรูป • ระบบจะย่อรูปให้อัตโนมัติก่อนบันทึก', 'Recommended max 10 MB per image • Multiple images allowed • Images will be compressed automatically before save');
     setNodeText('#issueVideoHint', 'รองรับวิดีโอไม่เกิน 25 MB • แนะนำ MP4/MOV • ระบบจะสร้าง poster ให้ใช้อัตโนมัติ', 'Video up to 25 MB • Recommended MP4/MOV • Poster image will be generated automatically');
 
@@ -1373,11 +1375,15 @@
       issueLocation: qs('#issueLocation'),
       issueDepartment: qs('#issueDepartment'),
       issuePhotoInput: qs('#issuePhotoInput'),
-      issuePhotoPickBtn: qs('#issuePhotoPickBtn'),
+      issuePhotoCameraInput: qs('#issuePhotoCameraInput'),
+      issuePhotoGalleryPickBtn: qs('#issuePhotoGalleryPickBtn'),
+      issuePhotoCameraPickBtn: qs('#issuePhotoCameraPickBtn'),
       issuePhotoHint: qs('#issuePhotoHint'),
       issuePhotoPreviewGrid: qs('#issuePhotoPreviewGrid'),
       issueVideoInput: qs('#issueVideoInput'),
-      issueVideoPickBtn: qs('#issueVideoPickBtn'),
+      issueVideoCameraInput: qs('#issueVideoCameraInput'),
+      issueVideoGalleryPickBtn: qs('#issueVideoGalleryPickBtn'),
+      issueVideoCameraPickBtn: qs('#issueVideoCameraPickBtn'),
       issueVideoHint: qs('#issueVideoHint'),
       issueVideoPreview: qs('#issueVideoPreview'),
       saveIssueBtn: qs('#saveIssueBtn'),
@@ -1447,10 +1453,14 @@
       qsa('.chip', el.boardFilterChips).forEach(c => c.classList.toggle('active', c === chip));
       renderBoard();
     });
-    el.issuePhotoInput.addEventListener('change', handleIssuePhotoPicked);
-    if (el.issuePhotoPickBtn) el.issuePhotoPickBtn.addEventListener('click', () => { if (el.issuePhotoInput) el.issuePhotoInput.value = ''; });
+    if (el.issuePhotoInput) el.issuePhotoInput.addEventListener('change', handleIssuePhotoPicked);
+    if (el.issuePhotoCameraInput) el.issuePhotoCameraInput.addEventListener('change', handleIssuePhotoPicked);
+    if (el.issuePhotoGalleryPickBtn) el.issuePhotoGalleryPickBtn.addEventListener('click', () => { if (el.issuePhotoInput) el.issuePhotoInput.value = ''; });
+    if (el.issuePhotoCameraPickBtn) el.issuePhotoCameraPickBtn.addEventListener('click', () => { if (el.issuePhotoCameraInput) el.issuePhotoCameraInput.value = ''; });
     if (el.issueVideoInput) el.issueVideoInput.addEventListener('change', handleIssueVideoPicked);
-    if (el.issueVideoPickBtn) el.issueVideoPickBtn.addEventListener('click', () => { if (el.issueVideoInput) el.issueVideoInput.value = ''; });
+    if (el.issueVideoCameraInput) el.issueVideoCameraInput.addEventListener('change', handleIssueVideoPicked);
+    if (el.issueVideoGalleryPickBtn) el.issueVideoGalleryPickBtn.addEventListener('click', () => { if (el.issueVideoInput) el.issueVideoInput.value = ''; });
+    if (el.issueVideoCameraPickBtn) el.issueVideoCameraPickBtn.addEventListener('click', () => { if (el.issueVideoCameraInput) el.issueVideoCameraInput.value = ''; });
     el.saveIssueBtn.addEventListener('click', saveIssueFromForm);
     el.clearIssueBtn.addEventListener('click', clearIssueForm);
     el.prioritySegment.addEventListener('click', (e) => {
@@ -2148,6 +2158,7 @@
         compressedTotal += optimized.fullBytes || 0;
       }
       state.ui.pendingIssuePhotos = optimizedItems;
+      event.target.value = '';
       renderIssuePhotoPreviewGrid(optimizedItems);
       setIssuePhotoHint(
         `เลือกรูปแล้ว ${optimizedItems.length} รูป • รวม ${formatBytes(originalTotal)} → ${formatBytes(compressedTotal)}`,
@@ -2155,7 +2166,9 @@
       );
     } catch (err) {
       console.error('Issue photo process failed', err);
-      el.issuePhotoInput.value = '';
+      if (event?.target) event.target.value = '';
+      if (el.issuePhotoInput) el.issuePhotoInput.value = '';
+      if (el.issuePhotoCameraInput) el.issuePhotoCameraInput.value = '';
       renderIssuePhotoPreviewGrid([]);
       state.ui.pendingIssuePhotos = [];
       const msg = err?.message === 'invalid_file_type'
@@ -2179,6 +2192,7 @@
         throw new Error('video_too_large');
       }
       const prepared = await prepareIssueVideo(file);
+      event.target.value = '';
       revokeIssueVideoPreview();
       state.ui.pendingIssueVideo = prepared;
       const hasCurrentPhotoFile = Boolean(el.issuePhotoInput?.files?.length || state.ui.pendingIssuePhotos?.length);
@@ -2195,7 +2209,9 @@
       setIssueVideoHint(`พร้อมอัปโหลดวิดีโอ ${formatBytes(prepared.originalBytes)} • poster ${formatBytes(prepared.posterBytes)}`, 'success');
     } catch (err) {
       console.error('Issue video process failed', err);
+      if (event?.target) event.target.value = '';
       if (el.issueVideoInput) el.issueVideoInput.value = '';
+      if (el.issueVideoCameraInput) el.issueVideoCameraInput.value = '';
       revokeIssueVideoPreview();
       state.ui.pendingIssueVideo = null;
       if (el.issueVideoPreview) {
@@ -3126,10 +3142,14 @@
                 <span class="muted">${txt('เพิ่มรูปหรือวิดีโอก่อนปิดงานได้', 'Add photos or videos before closing the job')}</span>
               </div>
               <input id="detailEvidencePhotoInput" type="file" accept="image/*" multiple class="visually-hidden-file" />
+              <input id="detailEvidencePhotoCameraInput" type="file" accept="image/*" capture="environment" class="visually-hidden-file" />
               <input id="detailEvidenceVideoInput" type="file" accept="video/*" class="visually-hidden-file" />
+              <input id="detailEvidenceVideoCameraInput" type="file" accept="video/*" capture="environment" class="visually-hidden-file" />
               <div class="action-row compact-wrap evidence-actions">
-                <label for="detailEvidencePhotoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">${txt('เพิ่มรูป / ถ่ายรูป', 'Add Photo / Take Photo')}</label>
-                <label for="detailEvidenceVideoInput" class="btn btn-ghost photo-pick-label" role="button" tabindex="0">${txt('เพิ่มวิดีโอ / ถ่ายวิดีโอ', 'Add Video / Record Video')}</label>
+                <label for="detailEvidencePhotoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">${txt('เลือกรูป', 'Choose Photo')}</label>
+                <label for="detailEvidencePhotoCameraInput" class="btn btn-ghost photo-pick-label" role="button" tabindex="0">${txt('ถ่ายรูป', 'Take Photo')}</label>
+                <label for="detailEvidenceVideoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">${txt('เลือกวิดีโอ', 'Choose Video')}</label>
+                <label for="detailEvidenceVideoCameraInput" class="btn btn-ghost photo-pick-label" role="button" tabindex="0">${txt('ถ่ายวิดีโอ', 'Record Video')}</label>
               </div>
               <div id="detailEvidenceStatus" class="detail-evidence-status muted">${txt('หลักฐานที่อัปแล้วจะแสดงด้านซ้ายทันที • เลือกรูปได้หลายรูป', 'Uploaded evidence will appear on the left immediately • Multiple images allowed')}</div>
             </div>
@@ -3159,7 +3179,9 @@
 
     const evidenceInputs = [
       ['#detailEvidencePhotoInput', 'photo'],
+      ['#detailEvidencePhotoCameraInput', 'photo'],
       ['#detailEvidenceVideoInput', 'video'],
+      ['#detailEvidenceVideoCameraInput', 'video'],
     ];
     evidenceInputs.forEach(([selector, kind]) => {
       const input = qs(selector, el.issueModalContent);
