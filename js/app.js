@@ -162,6 +162,10 @@
       checklistBuilderSections: [],
       language: getSavedLanguage(),
       hiddenTemplateCodes: getHiddenTemplateCodes(),
+      checklistFailMedia: {},
+      didInitialMentionCheck: false,
+      mentionModalOpen: false,
+      pendingMentionItems: [],
     },
     data: {
       issues: [],
@@ -177,7 +181,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v44-issue-date-filter';
+  const APP_VERSION = 'v45-checklist-media-mentions';
 
   function safeClone(value) {
     try {
@@ -1294,6 +1298,9 @@
         state.data.teamMembers = [];
         state.data.usageLogs = [];
         state.ui.liveIssueComments = [];
+        state.ui.didInitialMentionCheck = false;
+        state.ui.pendingMentionItems = [];
+        closeMentionAlertModal(true);
         renderAuthState();
         return;
       }
@@ -1334,6 +1341,7 @@
         } catch (_) {}
 
         setAuthStatus('เข้าสู่ระบบสำเร็จ', 'success');
+        state.ui.didInitialMentionCheck = false;
         startIssuesSync();
         renderAll();
       } catch (err) {
@@ -1410,6 +1418,9 @@
       exportUsageLogExcelBtn: qs('#exportUsageLogExcelBtn'),
       issueModal: qs('#issueModal'),
       issueModalContent: qs('#issueModalContent'),
+      mentionAlertModal: qs('#mentionAlertModal'),
+      mentionAlertModalContent: qs('#mentionAlertModalContent'),
+      closeMentionAlertModalBtn: qs('#closeMentionAlertModalBtn'),
       closeIssueModalBtn: qs('#closeIssueModalBtn'),
       exportJsonBtn: qs('#exportJsonBtn'),
       importJsonInput: qs('#importJsonInput'),
@@ -1500,6 +1511,10 @@
     el.closeIssueModalBtn.addEventListener('click', closeIssueModal);
     el.issueModal.addEventListener('click', (e) => {
       if (e.target.dataset.closeModal) closeIssueModal();
+    });
+    if (el.closeMentionAlertModalBtn) el.closeMentionAlertModalBtn.addEventListener('click', () => closeMentionAlertModal());
+    if (el.mentionAlertModal) el.mentionAlertModal.addEventListener('click', (e) => {
+      if (e.target.dataset.closeMentionModal) closeMentionAlertModal();
     });
     el.exportJsonBtn.addEventListener('click', exportLocalJson);
     el.importJsonInput.addEventListener('change', importLocalJson);
@@ -1700,6 +1715,7 @@
     persist();
     renderAuthState();
     renderAll();
+    queueMentionAlertCheck();
   }
 
   async function handleRegister() {
@@ -1793,6 +1809,9 @@
     stopUsageLogsSync();
     state.data.teamMembers = [];
     state.data.usageLogs = [];
+    state.ui.didInitialMentionCheck = false;
+    state.ui.pendingMentionItems = [];
+    closeMentionAlertModal(true);
     persist();
     renderAuthState();
   }
@@ -2752,6 +2771,7 @@
     if (!template) return;
 
     const runId = `draft_${cryptoRandom()}`;
+    state.ui.checklistFailMedia = {};
     const html = `
       <div class="panel-header">
         <h3>${escapeHtml(templateLabel(template))}</h3>
@@ -2826,6 +2846,24 @@
                   <input type="checkbox" data-create-issue />
                   <span>${txt('สร้าง Issue หากข้อนี้ไม่ผ่าน', 'Create issue if this item fails')}</span>
                 </label>
+                <div class="checklist-fail-media hidden" data-fail-media-block>
+                  <div class="muted checklist-fail-media-title">${txt('แนบสื่อสำหรับ Issue ของข้อนี้', 'Attach media for this issue')}</div>
+                  <input type="file" accept="image/*" multiple class="visually-hidden-file" data-fail-photo-input />
+                  <input type="file" accept="image/*" capture="environment" class="visually-hidden-file" data-fail-photo-camera-input />
+                  <input type="file" accept="video/*" class="visually-hidden-file" data-fail-video-input />
+                  <input type="file" accept="video/*" capture="environment" class="visually-hidden-file" data-fail-video-camera-input />
+                  <div class="photo-action-row checklist-media-actions">
+                    <label class="btn btn-secondary photo-pick-label" role="button" tabindex="0" data-fail-photo-gallery-label>${txt('เลือกรูป', 'Choose Photo')}</label>
+                    <label class="btn btn-ghost photo-pick-label" role="button" tabindex="0" data-fail-photo-camera-label>${txt('ถ่ายรูป', 'Take Photo')}</label>
+                    <label class="btn btn-secondary photo-pick-label" role="button" tabindex="0" data-fail-video-gallery-label>${txt('เลือกวิดีโอ', 'Choose Video')}</label>
+                    <label class="btn btn-ghost photo-pick-label" role="button" tabindex="0" data-fail-video-camera-label>${txt('ถ่ายวิดีโอ', 'Record Video')}</label>
+                  </div>
+                  <div class="muted checklist-fail-media-hint" data-fail-media-hint>${txt('แนบได้หลายรูป และวิดีโอ 1 ไฟล์สำหรับ Issue ของข้อนี้', 'Attach multiple photos and 1 video for this issue')}</div>
+                  <div class="photo-preview-wrap">
+                    <div class="photo-preview-grid hidden" data-fail-photo-preview-grid></div>
+                    <video class="photo-preview hidden" data-fail-video-preview controls playsinline preload="metadata"></video>
+                  </div>
+                </div>
               </div>
             </div>
           `).join('')}
@@ -2844,15 +2882,177 @@
         itemCard.dataset.response = btn.dataset.response;
         const failExtra = qs('[data-fail-extra]', itemCard);
         const createIssueRow = qs('[data-create-issue-row]', itemCard);
+        const failMediaBlock = qs('[data-fail-media-block]', itemCard);
         const isFail = btn.dataset.response === 'fail';
-        failExtra.classList.toggle('hidden', !isFail);
-        createIssueRow.classList.toggle('hidden', !isFail);
+        if (failExtra) failExtra.classList.toggle('hidden', !isFail);
+        if (createIssueRow) createIssueRow.classList.toggle('hidden', !isFail);
+        if (failMediaBlock) failMediaBlock.classList.toggle('hidden', !isFail);
         if (!isFail) {
           const check = qs('[data-create-issue]', itemCard);
           if (check) check.checked = false;
+          clearChecklistFailMedia(itemCard.dataset.itemCode, itemCard);
         }
       });
     });
+    bindChecklistMediaEvents(host);
+  }
+
+  function getChecklistFailMediaState(itemCode) {
+    if (!itemCode) return { photos: [], video: null };
+    const found = state.ui.checklistFailMedia?.[itemCode];
+    return found ? { photos: Array.isArray(found.photos) ? found.photos : [], video: found.video || null } : { photos: [], video: null };
+  }
+
+  function setChecklistFailMediaState(itemCode, nextState) {
+    if (!itemCode) return;
+    state.ui.checklistFailMedia = state.ui.checklistFailMedia || {};
+    const current = getChecklistFailMediaState(itemCode);
+    state.ui.checklistFailMedia[itemCode] = {
+      ...current,
+      ...nextState,
+      photos: Array.isArray(nextState?.photos) ? nextState.photos : (Array.isArray(current.photos) ? current.photos : []),
+      video: nextState && Object.prototype.hasOwnProperty.call(nextState, 'video') ? nextState.video : (current.video || null),
+    };
+  }
+
+  function revokeChecklistFailVideoPreview(video) {
+    const url = video?.previewUrl;
+    if (url && String(url).startsWith('blob:')) {
+      try { URL.revokeObjectURL(url); } catch (_) {}
+    }
+  }
+
+  function renderChecklistFailMediaPreview(itemCard) {
+    if (!itemCard) return;
+    const itemCode = itemCard.dataset.itemCode;
+    const media = getChecklistFailMediaState(itemCode);
+    const grid = qs('[data-fail-photo-preview-grid]', itemCard);
+    const videoEl = qs('[data-fail-video-preview]', itemCard);
+    const hint = qs('[data-fail-media-hint]', itemCard);
+    if (grid) {
+      if (!media.photos.length) {
+        grid.innerHTML = '';
+        grid.classList.add('hidden');
+      } else {
+        grid.innerHTML = media.photos.map((item, index) => `
+          <div class="photo-preview-card">
+            <img src="${escapeHtml(item.previewDataUrl || item.thumbDataUrl || item.fullDataUrl || '')}" alt="Checklist photo ${index + 1}" />
+            <div class="photo-preview-badge">${txt('รูป', 'Photo')} ${index + 1}</div>
+          </div>
+        `).join('');
+        grid.classList.remove('hidden');
+      }
+    }
+    if (videoEl) {
+      if (media.video?.previewUrl) {
+        videoEl.src = media.video.previewUrl;
+        videoEl.classList.remove('hidden');
+        try { videoEl.load(); } catch (_) {}
+      } else {
+        try { videoEl.pause(); } catch (_) {}
+        videoEl.removeAttribute('src');
+        videoEl.classList.add('hidden');
+      }
+    }
+    if (hint) {
+      const photoCount = media.photos.length;
+      const hasVideo = !!media.video;
+      hint.textContent = photoCount || hasVideo
+        ? txt(`แนบแล้ว ${photoCount} รูป${hasVideo ? ' • 1 วิดีโอ' : ''}`, `${photoCount} photo${photoCount === 1 ? '' : 's'} attached${hasVideo ? ' • 1 video' : ''}`)
+        : txt('แนบได้หลายรูป และวิดีโอ 1 ไฟล์สำหรับ Issue ของข้อนี้', 'Attach multiple photos and 1 video for this issue');
+      hint.classList.remove('error');
+    }
+  }
+
+  function clearChecklistFailMedia(itemCode, itemCard = null) {
+    if (!itemCode) return;
+    const current = getChecklistFailMediaState(itemCode);
+    revokeChecklistFailVideoPreview(current.video);
+    if (state.ui.checklistFailMedia && state.ui.checklistFailMedia[itemCode]) {
+      delete state.ui.checklistFailMedia[itemCode];
+    }
+    const card = itemCard || qsa('.item-card', el.checklistRunPanel).find(node => node.dataset.itemCode === itemCode);
+    if (card) {
+      qsa('[data-fail-photo-input],[data-fail-photo-camera-input],[data-fail-video-input],[data-fail-video-camera-input]', card).forEach(input => { input.value = ''; });
+      renderChecklistFailMediaPreview(card);
+    }
+  }
+
+  function bindChecklistMediaEvents(host) {
+    qsa('.item-card', host).forEach(itemCard => {
+      const itemCode = itemCard.dataset.itemCode || '';
+      const photoInput = qs('[data-fail-photo-input]', itemCard);
+      const photoCameraInput = qs('[data-fail-photo-camera-input]', itemCard);
+      const videoInput = qs('[data-fail-video-input]', itemCard);
+      const videoCameraInput = qs('[data-fail-video-camera-input]', itemCard);
+      const galleryLabel = qs('[data-fail-photo-gallery-label]', itemCard);
+      const cameraLabel = qs('[data-fail-photo-camera-label]', itemCard);
+      const videoGalleryLabel = qs('[data-fail-video-gallery-label]', itemCard);
+      const videoCameraLabel = qs('[data-fail-video-camera-label]', itemCard);
+      if (photoInput && galleryLabel) galleryLabel.setAttribute('for', `failPhoto_${itemCode}`), photoInput.id = `failPhoto_${itemCode}`;
+      if (photoCameraInput && cameraLabel) cameraLabel.setAttribute('for', `failPhotoCam_${itemCode}`), photoCameraInput.id = `failPhotoCam_${itemCode}`;
+      if (videoInput && videoGalleryLabel) videoGalleryLabel.setAttribute('for', `failVideo_${itemCode}`), videoInput.id = `failVideo_${itemCode}`;
+      if (videoCameraInput && videoCameraLabel) videoCameraLabel.setAttribute('for', `failVideoCam_${itemCode}`), videoCameraInput.id = `failVideoCam_${itemCode}`;
+      [photoInput, photoCameraInput, videoInput, videoCameraInput].filter(Boolean).forEach(input => input.addEventListener('click', () => { input.value = ''; }));
+      if (photoInput) photoInput.addEventListener('change', (event) => handleChecklistFailPhotoPicked(itemCode, itemCard, event));
+      if (photoCameraInput) photoCameraInput.addEventListener('change', (event) => handleChecklistFailPhotoPicked(itemCode, itemCard, event));
+      if (videoInput) videoInput.addEventListener('change', (event) => handleChecklistFailVideoPicked(itemCode, itemCard, event));
+      if (videoCameraInput) videoCameraInput.addEventListener('change', (event) => handleChecklistFailVideoPicked(itemCode, itemCard, event));
+      renderChecklistFailMediaPreview(itemCard);
+    });
+  }
+
+  async function handleChecklistFailPhotoPicked(itemCode, itemCard, event) {
+    const files = Array.from(event?.target?.files || []);
+    if (event?.target) event.target.value = '';
+    if (!files.length) return;
+    const hint = qs('[data-fail-media-hint]', itemCard);
+    try {
+      const optimizedItems = [];
+      for (let i = 0; i < files.length; i += 1) {
+        const file = files[i];
+        if (!file.type || !file.type.startsWith('image/')) throw new Error('invalid_file_type');
+        if (hint) hint.textContent = txt(`กำลังเตรียมรูป ${i + 1}/${files.length}...`, `Preparing image ${i + 1}/${files.length}...`);
+        const optimized = await optimizeIssuePhoto(file);
+        optimizedItems.push(optimized);
+      }
+      const current = getChecklistFailMediaState(itemCode);
+      setChecklistFailMediaState(itemCode, { photos: [...current.photos, ...optimizedItems] });
+      renderChecklistFailMediaPreview(itemCard);
+    } catch (err) {
+      console.error('checklist fail photo failed', err);
+      if (hint) {
+        hint.textContent = txt('แนบรูปไม่สำเร็จ ลองใช้ JPG/PNG', 'Could not attach image. Try JPG/PNG');
+        hint.classList.add('error');
+      }
+      alert(txt('แนบรูปไม่สำเร็จ', 'Could not attach photo'));
+    }
+  }
+
+  async function handleChecklistFailVideoPicked(itemCode, itemCard, event) {
+    const file = event?.target?.files?.[0];
+    if (event?.target) event.target.value = '';
+    if (!file) return;
+    const hint = qs('[data-fail-media-hint]', itemCard);
+    try {
+      if (!file.type || !file.type.startsWith('video/')) throw new Error('invalid_video_type');
+      if (file.size > 25 * 1024 * 1024) throw new Error('video_too_large');
+      if (hint) hint.textContent = txt('กำลังเตรียมวิดีโอ...', 'Preparing video...');
+      const prepared = await prepareIssueVideo(file);
+      const current = getChecklistFailMediaState(itemCode);
+      revokeChecklistFailVideoPreview(current.video);
+      setChecklistFailMediaState(itemCode, { video: prepared });
+      renderChecklistFailMediaPreview(itemCard);
+    } catch (err) {
+      console.error('checklist fail video failed', err);
+      if (hint) {
+        hint.textContent = err?.message === 'video_too_large'
+          ? txt('วิดีโอต้องไม่เกิน 25 MB', 'Video must be 25 MB or smaller')
+          : txt('แนบวิดีโอไม่สำเร็จ ลองใช้ MP4/MOV', 'Could not attach video. Try MP4/MOV');
+        hint.classList.add('error');
+      }
+      alert(txt('แนบวิดีโอไม่สำเร็จ', 'Could not attach video'));
+    }
   }
 
   async function submitChecklistRun(template, runId) {
@@ -2873,6 +3073,7 @@
       const createIssue = !!qs('[data-create-issue]', card)?.checked;
       const failDept = qs('[data-fail-dept]', card)?.value || 'ENG';
       const failPriority = qs('[data-fail-priority]', card)?.value || 'medium';
+      const failMedia = getChecklistFailMediaState(itemCode);
       if (!response) return;
       const templateSection = (template.sections || []).find(sec => sec.section_code === sectionCode) || null;
       const templateItem = (templateSection?.items || []).find(it => it.item_code === itemCode) || null;
@@ -2888,6 +3089,7 @@
         create_issue: createIssue && response === 'fail',
         fail_department: failDept,
         fail_priority: failPriority,
+        fail_media: { photos: Array.isArray(failMedia.photos) ? failMedia.photos : [], video: failMedia.video || null },
       });
     });
 
@@ -2954,7 +3156,16 @@
           priority: a.fail_priority,
           assigned_department: a.fail_department,
           location_text: location || templateLabel(template),
-          before_photos: [],
+          before_photos: (a.fail_media?.photos || []).map(photo => ({ url: photo.fullDataUrl, thumb_url: photo.thumbDataUrl })),
+          before_videos: a.fail_media?.video ? [{
+            file: a.fail_media.video.file,
+            preview_url: a.fail_media.video.previewUrl,
+            poster_url: a.fail_media.video.posterDataUrl,
+            thumb_url: a.fail_media.video.thumbDataUrl,
+            mime_type: a.fail_media.video.mimeType,
+            original_name: a.fail_media.video.fileName,
+            size: a.fail_media.video.originalBytes,
+          }] : [],
         });
       }
       addActivity({
@@ -2972,6 +3183,7 @@
         ref_no: run.run_no,
       });
 
+      state.ui.checklistFailMedia = {};
       persist();
       renderAll();
       el.checklistRunPanel.classList.add('hidden');
@@ -3295,6 +3507,149 @@
     el.issueModal.classList.add('hidden');
   }
 
+
+  function getMentionSeenKey() {
+    return state.currentUser?.uid ? `${APP_KEY}_mention_seen_${state.currentUser.uid}` : `${APP_KEY}_mention_seen_demo`;
+  }
+
+  function getSeenMentionIds() {
+    try {
+      const raw = localStorage.getItem(getMentionSeenKey());
+      const parsed = JSON.parse(raw || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveSeenMentionIds(ids = []) {
+    try {
+      const trimmed = Array.from(new Set(ids)).slice(-400);
+      localStorage.setItem(getMentionSeenKey(), JSON.stringify(trimmed));
+    } catch (_) {}
+  }
+
+  function mentionEntryId(item) {
+    return `${item.issue_id || 'issue'}:${item.comment_id || item.created_at || cryptoRandom()}`;
+  }
+
+  function closeMentionAlertModal(silent = false) {
+    if (!el.mentionAlertModal) return;
+    if (!silent && Array.isArray(state.ui.pendingMentionItems) && state.ui.pendingMentionItems.length) {
+      const seen = getSeenMentionIds();
+      saveSeenMentionIds([...seen, ...state.ui.pendingMentionItems.map(mentionEntryId)]);
+    }
+    state.ui.pendingMentionItems = [];
+    state.ui.mentionModalOpen = false;
+    el.mentionAlertModal.classList.add('hidden');
+    if (el.mentionAlertModalContent) el.mentionAlertModalContent.innerHTML = '';
+  }
+
+  function showMentionAlertModal(items = []) {
+    if (!el.mentionAlertModal || !el.mentionAlertModalContent || !items.length) return;
+    state.ui.pendingMentionItems = items;
+    state.ui.mentionModalOpen = true;
+    el.mentionAlertModalContent.innerHTML = `
+      <div class="panel-header mention-alert-header">
+        <div>
+          <h3>${txt('มีคนแท็กชื่อคุณ', 'You were mentioned')}</h3>
+          <p class="muted">${txt('ตรวจสอบว่าใครแท็กคุณไว้ใน Issue ไหนบ้าง', 'See which issues mention your name')}</p>
+        </div>
+      </div>
+      <div class="mention-alert-list">
+        ${items.map(item => `
+          <button type="button" class="mention-alert-item" data-open-mentioned-issue="${escapeHtml(item.issue_id || '')}">
+            <div class="mention-alert-item-top">
+              <span class="mention-alert-issue-no">${escapeHtml(item.issue_no || item.issue_id || 'Issue')}</span>
+              <span class="mention-alert-time">${escapeHtml(formatDateTime(item.created_at) || '-')}</span>
+            </div>
+            <div class="mention-alert-title">${escapeHtml(item.issue_title || item.issue_id || txt('Issue ที่ถูกแท็ก', 'Mentioned issue'))}</div>
+            <div class="mention-alert-meta">${escapeHtml(item.by_name || '-')} • ${escapeHtml(getDepartmentName(item.by_department || 'MOD'))}</div>
+            <div class="mention-alert-message">${escapeHtml(item.message || '')}</div>
+          </button>
+        `).join('')}
+      </div>
+      <div class="sticky-actions mention-alert-actions">
+        <button type="button" class="btn btn-primary" id="mentionAlertDoneBtn">${txt('รับทราบ', 'Got it')}</button>
+      </div>
+    `;
+    qsa('[data-open-mentioned-issue]', el.mentionAlertModalContent).forEach(btn => btn.addEventListener('click', () => {
+      const issueId = btn.dataset.openMentionedIssue || btn.dataset.openMentionedissue || btn.getAttribute('data-open-mentioned-issue') || '';
+      closeMentionAlertModal();
+      if (!issueId) return;
+      switchView('boardView');
+      openIssueModal(issueId);
+    }));
+    const doneBtn = qs('#mentionAlertDoneBtn', el.mentionAlertModalContent);
+    if (doneBtn) doneBtn.addEventListener('click', () => closeMentionAlertModal());
+    el.mentionAlertModal.classList.remove('hidden');
+  }
+
+  async function fetchMentionAlerts() {
+    if (!state.currentUser) return [];
+    if (isFirebaseLive() && window.LAYA_FIREBASE?.sdk?.collectionGroup && window.LAYA_FIREBASE?.sdk?.getDocs) {
+      const fb = window.LAYA_FIREBASE;
+      const sdk = fb.sdk;
+      const q = sdk.query(
+        sdk.collectionGroup(fb.db, 'comments'),
+        sdk.where('mentions', 'array-contains', state.currentUser.full_name)
+      );
+      const snap = await sdk.getDocs(q);
+      return snap.docs.map(docSnap => {
+        const data = docSnap.data() || {};
+        const issueId = docSnap.ref?.parent?.parent?.id || '';
+        const issue = (state.data.issues || []).find(item => item.id === issueId);
+        return {
+          comment_id: docSnap.id,
+          issue_id: issueId,
+          issue_no: issue?.issue_no || issueId,
+          issue_title: issue?.title || '',
+          by_uid: data.by_uid || '',
+          by_name: data.by_name || '',
+          by_department: data.by_department || '',
+          message: data.message || '',
+          created_at: normalizeDateValue(data.created_at),
+        };
+      }).filter(item => item.by_uid !== state.currentUser.uid)
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    }
+
+    return (state.data.issues || []).flatMap(issue =>
+      (Array.isArray(issue.comments) ? issue.comments : [])
+        .filter(comment => Array.isArray(comment.mentions) && comment.mentions.includes(state.currentUser.full_name))
+        .filter(comment => comment.by_uid !== state.currentUser.uid)
+        .map(comment => ({
+          comment_id: comment.id,
+          issue_id: issue.id,
+          issue_no: issue.issue_no || issue.id,
+          issue_title: issue.title || '',
+          by_uid: comment.by_uid || '',
+          by_name: comment.by_name || '',
+          by_department: comment.by_department || '',
+          message: comment.message || '',
+          created_at: comment.created_at || '',
+        }))
+    ).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  }
+
+  async function checkMentionAlertsOnLogin() {
+    if (!state.currentUser || state.ui.mentionModalOpen) return;
+    try {
+      const items = await fetchMentionAlerts();
+      if (!items.length) return;
+      const seenIds = new Set(getSeenMentionIds());
+      const unseen = items.filter(item => !seenIds.has(mentionEntryId(item))).slice(0, 12);
+      if (unseen.length) showMentionAlertModal(unseen);
+    } catch (err) {
+      console.error('mention alert check failed', err);
+    }
+  }
+
+  function queueMentionAlertCheck() {
+    if (!state.currentUser || state.ui.didInitialMentionCheck) return;
+    state.ui.didInitialMentionCheck = true;
+    window.setTimeout(() => { checkMentionAlertsOnLogin(); }, 700);
+  }
 
   async function handleDetailEvidencePicked(issueId, kind, event) {
     const input = event.target;
@@ -3779,6 +4134,7 @@
     state.firebaseIssuesUnsub = sdk.onSnapshot(q, (snap) => {
       state.data.issues = snap.docs.map(normalizeIssueDoc);
       renderAll();
+      queueMentionAlertCheck();
       if (state.ui.openIssueId) {
         const liveIssue = state.data.issues.find(i => i.id === state.ui.openIssueId);
         if (!liveIssue) closeIssueModal();
@@ -4535,12 +4891,23 @@ function humanizeLogAction(action) {
             const optionButtons = qsa('.option-btn', itemCard);
             const note = qs('[data-note]', itemCard);
             const createIssueText = qs('[data-create-issue-row] span', itemCard);
+            const mediaTitle = qs('[data-fail-media-block] .checklist-fail-media-title', itemCard);
+            const mediaHint = qs('[data-fail-media-hint]', itemCard);
+            const mediaLabels = qsa('[data-fail-media-block] .photo-pick-label', itemCard);
             if (item && itemText) itemText.textContent = itemLabel(item);
             if (optionButtons[0]) optionButtons[0].textContent = txt('ผ่าน', 'Pass');
             if (optionButtons[1]) optionButtons[1].textContent = txt('ไม่ผ่าน', 'Fail');
             if (optionButtons[2]) optionButtons[2].textContent = 'N/A';
             if (note) note.placeholder = txt('หมายเหตุ (ไม่บังคับ)', 'Note (optional)');
             if (createIssueText) createIssueText.textContent = txt('สร้าง Issue หากข้อนี้ไม่ผ่าน', 'Create issue if this item fails');
+            if (mediaTitle) mediaTitle.textContent = txt('แนบสื่อสำหรับ Issue ของข้อนี้', 'Attach media for this issue');
+            if (mediaLabels[0]) mediaLabels[0].textContent = txt('เลือกรูป', 'Choose Photo');
+            if (mediaLabels[1]) mediaLabels[1].textContent = txt('ถ่ายรูป', 'Take Photo');
+            if (mediaLabels[2]) mediaLabels[2].textContent = txt('เลือกวิดีโอ', 'Choose Video');
+            if (mediaLabels[3]) mediaLabels[3].textContent = txt('ถ่ายวิดีโอ', 'Record Video');
+            if (mediaHint && !getChecklistFailMediaState(itemCode).photos.length && !getChecklistFailMediaState(itemCode).video) {
+              mediaHint.textContent = txt('แนบได้หลายรูป และวิดีโอ 1 ไฟล์สำหรับ Issue ของข้อนี้', 'Attach multiple photos and 1 video for this issue');
+            }
           });
         });
       }

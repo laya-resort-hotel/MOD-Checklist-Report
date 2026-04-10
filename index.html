@@ -127,9 +127,7 @@
               <input id="boardDateFilter" class="search-input date-filter-input" type="date" />
               <button id="boardDateClearBtn" class="btn btn-ghost toolbar-date-clear" type="button">ล้างวัน</button>
             </div>
-			<div class="toolbar-filter-row">
-            <button id="openClosedJobsBtn" class="btn btn-secondary toolbar-shortcut" type="button">Closed Jobs</button> 
-			</div>
+            <button id="openClosedJobsBtn" class="btn btn-secondary toolbar-shortcut" type="button">Closed Jobs</button>
           </div>
           <div class="chip-row" id="boardFilterChips">
             <button class="chip active" data-filter="all">All</button>
@@ -340,6 +338,14 @@
     <div class="modal-card glass">
       <button id="closeIssueModalBtn" class="modal-close">×</button>
       <div id="issueModalContent"></div>
+    </div>
+  </div>
+
+  <div id="mentionAlertModal" class="modal hidden">
+    <div class="modal-backdrop" data-close-mention-modal="true"></div>
+    <div class="modal-card glass mention-alert-card">
+      <button id="closeMentionAlertModalBtn" class="modal-close" type="button">×</button>
+      <div id="mentionAlertModalContent"></div>
     </div>
   </div>
 

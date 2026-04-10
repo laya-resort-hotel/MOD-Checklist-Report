@@ -1414,6 +1414,10 @@ input:not([type="checkbox"]):not([type="radio"]) {
     gap: 8px;
   }
 
+  .checklist-media-actions {
+    grid-template-columns: 1fr;
+  }
+
   .photo-pick-label,
   .segment,
   .btn {
@@ -1755,4 +1759,70 @@ input:not([type="checkbox"]):not([type="radio"]) {
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+
+.checklist-fail-media {
+  padding: 12px;
+  border: 1px dashed rgba(134,110,75,0.2);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.66);
+}
+.checklist-fail-media-title {
+  font-weight: 700;
+  color: var(--text);
+}
+.checklist-fail-media-hint {
+  font-size: 12px;
+}
+.checklist-media-actions {
+  margin-top: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.mention-alert-card {
+  width: min(760px, calc(100vw - 24px));
+}
+.mention-alert-list {
+  display: grid;
+  gap: 12px;
+}
+.mention-alert-item {
+  width: 100%;
+  border: 1px solid rgba(134,110,75,0.16);
+  background: rgba(255,255,255,0.84);
+  border-radius: 18px;
+  padding: 14px;
+  text-align: left;
+  color: var(--text);
+}
+.mention-alert-item-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.mention-alert-issue-no {
+  font-weight: 800;
+  color: var(--brand);
+}
+.mention-alert-time {
+  color: var(--muted);
+}
+.mention-alert-title {
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+.mention-alert-meta {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.mention-alert-message {
+  color: var(--text);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
