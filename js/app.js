@@ -147,7 +147,9 @@
       activeView: 'boardView',
       boardFilter: 'all',
       boardSearch: '',
+      boardDateFilter: '',
       closedSearch: '',
+      closedDateFilter: '',
       logSearch: '',
       newIssuePriority: 'medium',
       selectedTemplateCode: null,
@@ -175,7 +177,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v42-activity-live-feed';
+  const APP_VERSION = 'v44-issue-date-filter';
 
   function safeClone(value) {
     try {
@@ -1073,6 +1075,8 @@
     if (!state.currentUser) setNodeText('#welcomeText', 'ยินดีต้อนรับ', 'Welcome');
 
     setNodePlaceholder('#boardSearch', 'ค้นหา issue, location, department', 'Search issue, location, department');
+    setNodeText('#boardDateClearBtn', 'ล้างวัน', 'Clear Date');
+    if (el.boardDateFilter) el.boardDateFilter.title = txt('เลือกวันที่ของ Issue', 'Choose issue date');
     setNodeText('#openClosedJobsBtn', 'งานที่ปิดแล้ว', 'Closed Jobs');
 
     const chips = {
@@ -1148,6 +1152,8 @@
     setNodeText('#closedView .panel-header p', 'งานที่ปิดแล้วและ checklist ที่ซ่อนจาก Board จะถูกเก็บไว้ที่นี่ เพื่อไม่ให้ปนกับงานที่ยังต้องติดตาม', 'Closed jobs and checklist cards hidden from the board are kept here so they do not mix with active follow-up items.');
     setNodeText('#backToBoardBtn', 'กลับไปบอร์ด', 'Back to Board');
     setNodePlaceholder('#closedSearch', 'ค้นหางานที่ปิดแล้ว, checklist, location, issue no', 'Search closed jobs, checklist, location, issue no');
+    setNodeText('#closedDateClearBtn', 'ล้างวัน', 'Clear Date');
+    if (el.closedDateFilter) el.closedDateFilter.title = txt('เลือกวันที่ของ Issue ที่ปิดแล้ว', 'Choose closed issue date');
 
     setNodeText('#moreView .panel-header h3', 'ทีมและเครื่องมือ', 'Team & Tools');
     setNodeText('#openClosedJobsFromMore', 'เปิดงานที่ปิดแล้ว', 'Open Closed Jobs');
@@ -1362,7 +1368,11 @@
       summaryGrid: qs('#summaryGrid'),
       boardList: qs('#boardList'),
       boardSearch: qs('#boardSearch'),
+      boardDateFilter: qs('#boardDateFilter'),
+      boardDateClearBtn: qs('#boardDateClearBtn'),
       closedSearch: qs('#closedSearch'),
+      closedDateFilter: qs('#closedDateFilter'),
+      closedDateClearBtn: qs('#closedDateClearBtn'),
       boardFilterChips: qs('#boardFilterChips'),
       closedList: qs('#closedList'),
       openClosedJobsBtn: qs('#openClosedJobsBtn'),
@@ -1432,8 +1442,26 @@
       state.ui.boardSearch = e.target.value.trim().toLowerCase();
       renderBoard();
     });
+    if (el.boardDateFilter) el.boardDateFilter.addEventListener('change', (e) => {
+      state.ui.boardDateFilter = e.target.value || '';
+      renderBoard();
+    });
+    if (el.boardDateClearBtn) el.boardDateClearBtn.addEventListener('click', () => {
+      state.ui.boardDateFilter = '';
+      if (el.boardDateFilter) el.boardDateFilter.value = '';
+      renderBoard();
+    });
     if (el.closedSearch) el.closedSearch.addEventListener('input', (e) => {
       state.ui.closedSearch = e.target.value.trim().toLowerCase();
+      renderClosedJobs();
+    });
+    if (el.closedDateFilter) el.closedDateFilter.addEventListener('change', (e) => {
+      state.ui.closedDateFilter = e.target.value || '';
+      renderClosedJobs();
+    });
+    if (el.closedDateClearBtn) el.closedDateClearBtn.addEventListener('click', () => {
+      state.ui.closedDateFilter = '';
+      if (el.closedDateFilter) el.closedDateFilter.value = '';
       renderClosedJobs();
     });
     if (el.logSearch) el.logSearch.addEventListener('input', (e) => {
@@ -2064,6 +2092,7 @@
     if (search) {
       runs = runs.filter(run => [run.template_name, run.template_name_th, run.location_text, run.run_no, run.inspector_name].join(' ').toLowerCase().includes(search));
     }
+    runs = runs.filter(run => matchesDateFilter(getChecklistRunFilterDate(run, 'board'), state.ui.boardDateFilter));
     return runs.map(run => ({ ...run, board_type: 'checklist_run' }));
   }
 
@@ -4234,6 +4263,34 @@ function humanizeLogAction(action) {
     return [...state.data.issues];
   }
 
+  function toDateKey(value) {
+    if (!value) return '';
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function matchesDateFilter(value, selectedDate) {
+    if (!selectedDate) return true;
+    return toDateKey(value) === selectedDate;
+  }
+
+  function getIssueFilterDate(issue, mode = 'board') {
+    if (!issue) return '';
+    if (mode === 'closed') return issue.closed_at || issue.updated_at || issue.created_at || '';
+    return issue.created_at || issue.updated_at || '';
+  }
+
+  function getChecklistRunFilterDate(run, mode = 'board') {
+    if (!run) return '';
+    if (mode === 'closed') return run.inspection_date || run.submitted_at || run.updated_at || run.created_at || '';
+    return run.inspection_date || run.submitted_at || run.created_at || '';
+  }
+
   function canWorkIssue(issue) {
     return !!(state.currentUser && issue);
   }
@@ -4246,7 +4303,8 @@ function humanizeLogAction(action) {
       const statusMatch = filter === 'all' ? openOnly : issue.status === filter;
       const hay = [issue.title, issue.description, issue.location_text, issue.assigned_department, issue.issue_no].join(' ').toLowerCase();
       const searchMatch = !search || hay.includes(search);
-      return statusMatch && searchMatch;
+      const dateMatch = matchesDateFilter(getIssueFilterDate(issue, 'board'), state.ui.boardDateFilter);
+      return statusMatch && searchMatch && dateMatch;
     });
   }
 
@@ -4257,7 +4315,9 @@ function humanizeLogAction(action) {
       .filter(issue => issue.status === 'closed')
       .filter(issue => {
         const hay = [issue.title, issue.description, issue.location_text, issue.assigned_department, issue.issue_no, issue.closed_by_name].join(' ').toLowerCase();
-        return !search || hay.includes(search);
+        const searchMatch = !search || hay.includes(search);
+        const dateMatch = matchesDateFilter(getIssueFilterDate(issue, 'closed'), state.ui.closedDateFilter);
+        return searchMatch && dateMatch;
       })
       .sort((a, b) => new Date(b.closed_at || b.updated_at || b.created_at) - new Date(a.closed_at || a.updated_at || a.created_at));
   }
@@ -4276,7 +4336,9 @@ function humanizeLogAction(action) {
       .filter(run => run.status === 'archived' || (run.status === 'submitted' && !isChecklistRunVisibleOnBoard(run)))
       .filter(run => {
         const hay = [run.template_name, run.location_text, run.run_no, run.inspector_name].join(' ').toLowerCase();
-        return !search || hay.includes(search);
+        const searchMatch = !search || hay.includes(search);
+        const dateMatch = matchesDateFilter(getChecklistRunFilterDate(run, 'closed'), state.ui.closedDateFilter);
+        return searchMatch && dateMatch;
       })
       .map(run => ({ ...run, closed_type: 'checklist_run' }))
       .sort((a, b) => new Date(b.updated_at || b.submitted_at || b.created_at || 0) - new Date(a.updated_at || a.submitted_at || a.created_at || 0));

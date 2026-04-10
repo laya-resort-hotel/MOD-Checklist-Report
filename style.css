@@ -1061,6 +1061,21 @@ code {
   white-space: nowrap;
 }
 
+.toolbar-filter-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.date-filter-input {
+  min-width: 180px;
+}
+
+.toolbar-date-clear {
+  white-space: nowrap;
+}
+
 .inner-toolbar {
   margin-bottom: 18px;
 }
@@ -1275,6 +1290,18 @@ input:not([type="checkbox"]):not([type="radio"]) {
   }
 
   .toolbar-shortcut {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .toolbar-filter-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .toolbar-date-clear {
     width: 100%;
     min-height: 46px;
   }

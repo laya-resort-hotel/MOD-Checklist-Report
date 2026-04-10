@@ -123,6 +123,10 @@
         <div class="toolbar glass">
           <div class="toolbar-left toolbar-left-split">
             <input id="boardSearch" class="search-input" type="search" placeholder="ค้นหา issue, location, department" />
+            <div class="toolbar-filter-row">
+              <input id="boardDateFilter" class="search-input date-filter-input" type="date" />
+              <button id="boardDateClearBtn" class="btn btn-ghost toolbar-date-clear" type="button">ล้างวัน</button>
+            </div>
             <button id="openClosedJobsBtn" class="btn btn-secondary toolbar-shortcut" type="button">Closed Jobs</button>
           </div>
           <div class="chip-row" id="boardFilterChips">
@@ -277,8 +281,12 @@
             <button id="backToBoardBtn" class="btn btn-ghost" type="button">Back to Board</button>
           </div>
           <div class="toolbar glass inner-toolbar">
-            <div class="toolbar-left">
+            <div class="toolbar-left toolbar-left-split">
               <input id="closedSearch" class="search-input" type="search" placeholder="ค้นหางานที่ปิดแล้ว, checklist, location, issue no" />
+              <div class="toolbar-filter-row">
+                <input id="closedDateFilter" class="search-input date-filter-input" type="date" />
+                <button id="closedDateClearBtn" class="btn btn-ghost toolbar-date-clear" type="button">ล้างวัน</button>
+              </div>
             </div>
           </div>
           <div id="closedList" class="card-list"></div>
