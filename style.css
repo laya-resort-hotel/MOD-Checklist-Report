@@ -1061,7 +1061,19 @@ code {
   white-space: nowrap;
 }
 
+.toolbar-filter-stack {
+  display: grid;
+  gap: 10px;
+}
+
 .toolbar-filter-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.toolbar-action-row {
   display: flex;
   gap: 10px;
   align-items: center;
@@ -1294,7 +1306,12 @@ input:not([type="checkbox"]):not([type="radio"]) {
     min-height: 46px;
   }
 
-  .toolbar-filter-row {
+  .toolbar-filter-stack {
+    width: 100%;
+  }
+
+  .toolbar-filter-row,
+  .toolbar-action-row {
     width: 100%;
     display: grid;
     grid-template-columns: 1fr;
