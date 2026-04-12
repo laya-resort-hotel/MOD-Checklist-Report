@@ -182,7 +182,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v50-evidence-delete';
+  const APP_VERSION = 'v52-board-media-preview';
 
   function safeClone(value) {
     try {
@@ -1996,8 +1996,11 @@
       }
       const issue = item;
       const deptName = getDepartmentName(issue.assigned_department);
-      const { thumb, full: fullCover, hasVideo } = getIssueCoverMedia(issue);
-      const mediaNote = hasVideo ? `<span>•</span><span>${issue.before_videos.length} ${txt('วิดีโอ', `video${issue.before_videos.length > 1 ? 's' : ''}`)}</span>` : '';
+      const { thumb, full: fullCover, hasVideo, photoCount, videoCount } = getIssueCoverMedia(issue);
+      const mediaBits = [];
+      if (photoCount > 0) mediaBits.push(`<span>${photoCount} ${txt('รูป', `photo${photoCount > 1 ? 's' : ''}`)}</span>`);
+      if (videoCount > 0) mediaBits.push(`<span>${videoCount} ${txt('วิดีโอ', `video${videoCount > 1 ? 's' : ''}`)}</span>`);
+      const mediaNote = mediaBits.length ? `<span>•</span>${mediaBits.join('<span>•</span>')}` : '';
       const thumbHtml = thumb
         ? `<div class="issue-thumb-wrap">${fullCover ? `<img class="issue-thumb" src="${thumb}" alt="Issue photo" />` : `<img class="issue-thumb" src="${thumb}" alt="Issue media poster" />`} ${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div>`
         : `<div class="issue-thumb placeholder">${hasVideo ? 'VIDEO' : (issue.issue_type === 'checklist_submission' ? 'CHECKLIST' : 'NO PHOTO')}</div>`;
@@ -2249,12 +2252,19 @@
   }
 
   function getIssueCoverMedia(issue = {}) {
-    const firstPhoto = Array.isArray(issue.before_photos) ? issue.before_photos.find(Boolean) : null;
-    const firstVideo = Array.isArray(issue.before_videos) ? issue.before_videos.find(Boolean) : null;
+    const beforePhotos = Array.isArray(issue.before_photos) ? issue.before_photos.filter(Boolean) : [];
+    const beforeVideos = Array.isArray(issue.before_videos) ? issue.before_videos.filter(Boolean) : [];
+    const afterPhotos = Array.isArray(issue.after_photos) ? issue.after_photos.filter(Boolean) : [];
+    const afterVideos = Array.isArray(issue.after_videos) ? issue.after_videos.filter(Boolean) : [];
+
+    const firstPhoto = beforePhotos[0] || afterPhotos[0] || null;
+    const firstVideo = beforeVideos[0] || afterVideos[0] || null;
     const thumb = issue.cover_thumb_url || issue.cover_photo_url || firstPhoto?.thumb_url || firstPhoto?.url || firstVideo?.thumb_url || firstVideo?.poster_url || '';
     const full = issue.cover_photo_url || firstPhoto?.url || firstVideo?.poster_url || thumb || '';
-    const hasVideo = Array.isArray(issue.before_videos) && issue.before_videos.length > 0;
-    return { thumb, full, hasVideo };
+    const hasVideo = beforeVideos.length > 0 || afterVideos.length > 0;
+    const photoCount = beforePhotos.length + afterPhotos.length;
+    const videoCount = beforeVideos.length + afterVideos.length;
+    return { thumb, full, hasVideo, photoCount, videoCount };
   }
 
   async function handleIssuePhotoPicked(event) {
@@ -4508,8 +4518,8 @@
     return {
       id: docSnap.id,
       ...data,
-      cover_photo_url: data.cover_photo_url || before_photos[0]?.url || before_videos[0]?.poster_url || '',
-      cover_thumb_url: data.cover_thumb_url || before_photos[0]?.thumb_url || before_photos[0]?.url || before_videos[0]?.thumb_url || before_videos[0]?.poster_url || '',
+      cover_photo_url: data.cover_photo_url || before_photos[0]?.url || before_videos[0]?.poster_url || (Array.isArray(data.after_photos) ? data.after_photos[0]?.url : '') || (Array.isArray(data.after_videos) ? data.after_videos[0]?.poster_url : '') || '',
+      cover_thumb_url: data.cover_thumb_url || before_photos[0]?.thumb_url || before_photos[0]?.url || before_videos[0]?.thumb_url || before_videos[0]?.poster_url || (Array.isArray(data.after_photos) ? data.after_photos[0]?.thumb_url : '') || (Array.isArray(data.after_photos) ? data.after_photos[0]?.url : '') || (Array.isArray(data.after_videos) ? data.after_videos[0]?.thumb_url : '') || (Array.isArray(data.after_videos) ? data.after_videos[0]?.poster_url : '') || '',
       before_photos,
       before_videos,
       after_photos: Array.isArray(data.after_photos) ? data.after_photos : [],
