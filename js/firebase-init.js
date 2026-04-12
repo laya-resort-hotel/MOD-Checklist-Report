@@ -33,7 +33,8 @@ import {
   ref as storageRef,
   uploadString,
   uploadBytes,
-  getDownloadURL
+  getDownloadURL,
+  deleteObject
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js';
 
 const cfg = window.LAYA_FIREBASE_CONFIG;
@@ -93,6 +94,7 @@ async function boot() {
         uploadString,
         uploadBytes,
         getDownloadURL,
+        deleteObject,
       }
     };
     window.dispatchEvent(new CustomEvent('laya-firebase-ready', { detail: window.LAYA_FIREBASE }));

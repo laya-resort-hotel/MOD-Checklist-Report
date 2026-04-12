@@ -1854,6 +1854,15 @@ input:not([type="checkbox"]):not([type="radio"]) {
 .issue-media-actions .mini-btn {
   background: rgba(255,255,255,0.94);
 }
+
+.issue-media-actions .mini-btn.danger {
+  background: rgba(117, 37, 37, 0.95);
+  color: #fff;
+  border-color: rgba(117, 37, 37, 0.95);
+}
+.issue-media-actions .mini-btn.danger:hover {
+  filter: brightness(0.96);
+}
 .issue-media-card.is-cover::after {
   content: "COVER";
   position: absolute;

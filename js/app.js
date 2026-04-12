@@ -182,7 +182,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v49-cover-photo';
+  const APP_VERSION = 'v50-evidence-delete';
 
   function safeClone(value) {
     try {
@@ -3503,6 +3503,16 @@
     qsa('[data-set-cover-photo]', el.issueModalContent).forEach(btn => btn.addEventListener('click', async () => {
       await setIssueCover(btn.dataset.issueId, btn.dataset.setCoverPhoto || '', btn.dataset.setCoverThumb || '');
     }));
+    qsa('[data-remove-after-photo-index]', el.issueModalContent).forEach(btn => btn.addEventListener('click', async () => {
+      const idx = Number(btn.dataset.removeAfterPhotoIndex || -1);
+      if (!Number.isInteger(idx) || idx < 0) return;
+      await removeIssueEvidencePhoto(issue.id, idx);
+    }));
+    qsa('[data-remove-after-video-index]', el.issueModalContent).forEach(btn => btn.addEventListener('click', async () => {
+      const idx = Number(btn.dataset.removeAfterVideoIndex || -1);
+      if (!Number.isInteger(idx) || idx < 0) return;
+      await removeIssueEvidenceVideo(issue.id, idx);
+    }));
 
     const evidenceInputs = [
       ['#detailEvidencePhotoInput', 'photo'],
@@ -3544,10 +3554,17 @@
         cards.push(...photos.map((photo, index) => {
           const photoUrl = photo.url || photo.thumb_url || issue.cover_photo_url || '';
           const isCover = Boolean(issue.cover_photo_url && photoUrl && issue.cover_photo_url === photoUrl) || (!issue.cover_photo_url && index === 0 && phase === 'before');
+          const actionButtons = [];
+          if (phase === 'before' && canWorkIssue(issue)) {
+            actionButtons.push(`<button class="mini-btn" data-set-cover-photo="${escapeHtml(photo.url || '')}" data-set-cover-thumb="${escapeHtml(photo.thumb_url || photo.url || '')}" data-issue-id="${issue.id}">${txt('ตั้งเป็น Cover', 'Set as Cover')}</button>`);
+          }
+          if (phase === 'after' && canWorkIssue(issue)) {
+            actionButtons.push(`<button class="mini-btn danger" data-remove-after-photo-index="${index}" data-issue-id="${issue.id}">${txt('ลบรูปนี้', 'Delete photo')}</button>`);
+          }
           return `
           <div class="issue-media-card ${isCover ? 'is-cover' : ''}">
             <img class="issue-hero" src="${photoUrl}" alt="Issue image ${index + 1}" />
-            ${phase === 'before' && canWorkIssue(issue) ? `<div class="issue-media-actions"><button class="mini-btn" data-set-cover-photo="${escapeHtml(photo.url || '')}" data-set-cover-thumb="${escapeHtml(photo.thumb_url || photo.url || '')}" data-issue-id="${issue.id}">${txt('ตั้งเป็น Cover', 'Set as Cover')}</button></div>` : ''}
+            ${actionButtons.length ? `<div class="issue-media-actions">${actionButtons.join('')}</div>` : ''}
           </div>
         `;
         }));
@@ -3555,11 +3572,18 @@
       if (videos.length) {
         cards.push(...videos.map((video, index) => {
           const isCover = Boolean(issue.cover_photo_url && video.poster_url && issue.cover_photo_url === video.poster_url);
+          const actionButtons = [];
+          if (phase === 'before' && canWorkIssue(issue) && video.poster_url) {
+            actionButtons.push(`<button class="mini-btn" data-set-cover-photo="${escapeHtml(video.poster_url || '')}" data-set-cover-thumb="${escapeHtml(video.thumb_url || video.poster_url || '')}" data-issue-id="${issue.id}">${txt('ใช้ Poster เป็น Cover', 'Use poster as Cover')}</button>`);
+          }
+          if (phase === 'after' && canWorkIssue(issue)) {
+            actionButtons.push(`<button class="mini-btn danger" data-remove-after-video-index="${index}" data-issue-id="${issue.id}">${txt('ลบวิดีโอนี้', 'Delete video')}</button>`);
+          }
           return `
           <div class="issue-media-card ${isCover ? 'is-cover' : ''}">
             <div class="issue-media-label">${txt('วิดีโอ', 'Video')} ${index + 1}</div>
             <video class="issue-video" src="${video.url || ''}" ${video.poster_url ? `poster="${video.poster_url}"` : ''} controls playsinline preload="metadata"></video>
-            ${phase === 'before' && canWorkIssue(issue) && video.poster_url ? `<div class="issue-media-actions"><button class="mini-btn" data-set-cover-photo="${escapeHtml(video.poster_url || '')}" data-set-cover-thumb="${escapeHtml(video.thumb_url || video.poster_url || '')}" data-issue-id="${issue.id}">${txt('ใช้ Poster เป็น Cover', 'Use poster as Cover')}</button></div>` : ''}
+            ${actionButtons.length ? `<div class="issue-media-actions">${actionButtons.join('')}</div>` : ''}
           </div>
         `;
         }));
@@ -3957,6 +3981,153 @@
       action: 'add_evidence_video',
       title: issue.title,
       text: `${state.currentUser.full_name} added completion video to ${issue.issue_no || issueId}`,
+      issue_id: issueId,
+      ref_no: issue.issue_no || issueId,
+    });
+  }
+
+  async function deleteStoragePaths(paths = []) {
+    const uniquePaths = [...new Set((Array.isArray(paths) ? paths : []).filter(Boolean))];
+    if (!uniquePaths.length) return;
+    const fb = window.LAYA_FIREBASE;
+    if (!fb?.ready || !fb.storage || !fb.sdk?.storageRef || !fb.sdk?.deleteObject) return;
+    await Promise.all(uniquePaths.map(async (storagePath) => {
+      try {
+        const ref = fb.sdk.storageRef(fb.storage, storagePath);
+        await fb.sdk.deleteObject(ref);
+      } catch (err) {
+        console.warn('storage delete skipped', storagePath, err?.message || err);
+      }
+    }));
+  }
+
+  async function removeIssueEvidencePhoto(issueId, index) {
+    const issue = state.data.issues.find(i => i.id === issueId);
+    if (!issue || !canWorkIssue(issue)) return;
+    const photos = Array.isArray(issue.after_photos) ? issue.after_photos.filter(Boolean) : [];
+    if (index < 0 || index >= photos.length) return;
+    const target = photos[index] || {};
+    if (!window.confirm(txt('ลบรูปหลักฐานนี้ใช่ไหม', 'Delete this evidence photo?'))) return;
+
+    const nowIso = new Date().toISOString();
+    if (!isFirebaseLive()) {
+      issue.after_photos = photos.filter((_, idx) => idx !== index);
+      issue.updated_at = nowIso;
+      issue.last_activity_at = nowIso;
+      issue.activity_count = Number(issue.activity_count || 0) + 1;
+      recordUsageLogLocal({
+        category: 'evidence',
+        action: 'delete_evidence_photo',
+        title: issue.title,
+        text: `${state.currentUser.full_name} removed completion photo from ${issue.issue_no || issueId}`,
+        issue_id: issueId,
+        ref_no: issue.issue_no || issueId,
+      });
+      persist();
+      renderAll();
+      openIssueModal(issueId);
+      return;
+    }
+
+    const fb = window.LAYA_FIREBASE;
+    const sdk = fb.sdk;
+    await sdk.runTransaction(fb.db, async (tx) => {
+      const issueRef = sdk.doc(fb.db, 'issues', issueId);
+      const snap = await tx.get(issueRef);
+      if (!snap.exists()) throw new Error('issue_not_found');
+      const liveIssue = { id: snap.id, ...snap.data() };
+      if (!canWorkIssue(liveIssue)) throw new Error('permission_denied');
+      const livePhotos = Array.isArray(liveIssue.after_photos) ? liveIssue.after_photos.filter(Boolean) : [];
+      if (index < 0 || index >= livePhotos.length) throw new Error('evidence_not_found');
+      const nextAfterPhotos = livePhotos.filter((_, idx) => idx !== index);
+      const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${issueId}/activity`));
+      tx.update(issueRef, {
+        after_photos: nextAfterPhotos,
+        updated_at: sdk.serverTimestamp(),
+        last_activity_at: sdk.serverTimestamp(),
+        activity_count: sdk.increment(1),
+      });
+      tx.set(activityRef, {
+        action: 'photo_deleted',
+        note: 'Deleted completion evidence photo',
+        by_uid: state.currentUser.uid,
+        by_name: state.currentUser.full_name,
+        by_department: state.currentUser.department,
+        created_at: sdk.serverTimestamp(),
+      });
+    });
+    await deleteStoragePaths([target.storage_path, target.thumb_storage_path]);
+    recordUsageLog({
+      category: 'evidence',
+      action: 'delete_evidence_photo',
+      title: issue.title,
+      text: `${state.currentUser.full_name} removed completion photo from ${issue.issue_no || issueId}`,
+      issue_id: issueId,
+      ref_no: issue.issue_no || issueId,
+    });
+  }
+
+  async function removeIssueEvidenceVideo(issueId, index) {
+    const issue = state.data.issues.find(i => i.id === issueId);
+    if (!issue || !canWorkIssue(issue)) return;
+    const videos = Array.isArray(issue.after_videos) ? issue.after_videos.filter(Boolean) : [];
+    if (index < 0 || index >= videos.length) return;
+    const target = videos[index] || {};
+    if (!window.confirm(txt('ลบวิดีโอหลักฐานนี้ใช่ไหม', 'Delete this evidence video?'))) return;
+
+    const nowIso = new Date().toISOString();
+    if (!isFirebaseLive()) {
+      issue.after_videos = videos.filter((_, idx) => idx !== index);
+      issue.updated_at = nowIso;
+      issue.last_activity_at = nowIso;
+      issue.activity_count = Number(issue.activity_count || 0) + 1;
+      recordUsageLogLocal({
+        category: 'evidence',
+        action: 'delete_evidence_video',
+        title: issue.title,
+        text: `${state.currentUser.full_name} removed completion video from ${issue.issue_no || issueId}`,
+        issue_id: issueId,
+        ref_no: issue.issue_no || issueId,
+      });
+      persist();
+      renderAll();
+      openIssueModal(issueId);
+      return;
+    }
+
+    const fb = window.LAYA_FIREBASE;
+    const sdk = fb.sdk;
+    await sdk.runTransaction(fb.db, async (tx) => {
+      const issueRef = sdk.doc(fb.db, 'issues', issueId);
+      const snap = await tx.get(issueRef);
+      if (!snap.exists()) throw new Error('issue_not_found');
+      const liveIssue = { id: snap.id, ...snap.data() };
+      if (!canWorkIssue(liveIssue)) throw new Error('permission_denied');
+      const liveVideos = Array.isArray(liveIssue.after_videos) ? liveIssue.after_videos.filter(Boolean) : [];
+      if (index < 0 || index >= liveVideos.length) throw new Error('evidence_not_found');
+      const nextAfterVideos = liveVideos.filter((_, idx) => idx !== index);
+      const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${issueId}/activity`));
+      tx.update(issueRef, {
+        after_videos: nextAfterVideos,
+        updated_at: sdk.serverTimestamp(),
+        last_activity_at: sdk.serverTimestamp(),
+        activity_count: sdk.increment(1),
+      });
+      tx.set(activityRef, {
+        action: 'video_deleted',
+        note: 'Deleted completion evidence video',
+        by_uid: state.currentUser.uid,
+        by_name: state.currentUser.full_name,
+        by_department: state.currentUser.department,
+        created_at: sdk.serverTimestamp(),
+      });
+    });
+    await deleteStoragePaths([target.storage_path, target.poster_storage_path, target.thumb_storage_path]);
+    recordUsageLog({
+      category: 'evidence',
+      action: 'delete_evidence_video',
+      title: issue.title,
+      text: `${state.currentUser.full_name} removed completion video from ${issue.issue_no || issueId}`,
       issue_id: issueId,
       ref_no: issue.issue_no || issueId,
     });
@@ -4500,8 +4671,10 @@ function humanizeLogAction(action) {
     change_status: txt('เปลี่ยนสถานะ', 'Changed status'),
     add_comment: txt('เพิ่มคอมเมนต์', 'Added comment'),
     add_evidence_photo: txt('เพิ่มรูปหลักฐาน', 'Added evidence photo'),
+    delete_evidence_photo: txt('ลบรูปหลักฐาน', 'Deleted evidence photo'),
     cover_updated: txt('เปลี่ยนภาพปก', 'Updated cover photo'),
     add_evidence_video: txt('เพิ่มวิดีโอหลักฐาน', 'Added evidence video'),
+    delete_evidence_video: txt('ลบวิดีโอหลักฐาน', 'Deleted evidence video'),
   };
   return map[action] || labelize(String(action || 'log').replace(/_/g, ' '));
 }
