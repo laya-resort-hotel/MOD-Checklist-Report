@@ -1876,3 +1876,19 @@ input:not([type="checkbox"]):not([type="radio"]) {
   font-size: 12px;
   font-weight: 700;
 }
+
+
+.btn-cache {
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .topbar-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .btn-cache {
+    order: 3;
+  }
+}

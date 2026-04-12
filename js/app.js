@@ -1076,6 +1076,8 @@
 
     setNodeText('.topbar .eyebrow', 'LAYA RESORT PHUKET', 'LAYA RESORT PHUKET');
     setNodeText('.topbar-title', 'MOD Checklist Report', 'MOD Checklist Report');
+    setNodeText('#clearCacheBtn', 'ล้างแคช', 'Clear Cache');
+    setNodeText('#clearCacheBtnMore', 'ล้างแคช', 'Clear Cache');
     setNodeText('#logoutBtn', 'ออกจากระบบ', 'Logout');
     if (!state.currentUser) setNodeText('#welcomeText', 'ยินดีต้อนรับ', 'Welcome');
 
@@ -1372,6 +1374,8 @@
       registerPane: qs('#registerPane'),
       authStatus: qs('#authStatus'),
       demoBox: qs('#demoBox'),
+      clearCacheBtn: qs('#clearCacheBtn'),
+      clearCacheBtnMore: qs('#clearCacheBtnMore'),
       logoutBtn: qs('#logoutBtn'),
       welcomeText: qs('#welcomeText'),
       summaryGrid: qs('#summaryGrid'),
@@ -1444,6 +1448,8 @@
   function bindEvents() {
     el.loginBtn.addEventListener('click', handleLogin);
     el.registerBtn.addEventListener('click', handleRegister);
+    if (el.clearCacheBtn) el.clearCacheBtn.addEventListener('click', handleClearCache);
+    if (el.clearCacheBtnMore) el.clearCacheBtnMore.addEventListener('click', handleClearCache);
     el.logoutBtn.addEventListener('click', handleLogout);
     el.showSignInTab.addEventListener('click', () => showAuthTab('signin'));
     el.showRegisterTab.addEventListener('click', () => showAuthTab('register'));
@@ -1799,6 +1805,76 @@
       }
       clearPendingRegistration();
       setAuthStatus(friendlyRegisterError(err), 'error');
+    }
+  }
+
+  async function handleClearCache() {
+    const message = txt(
+      'ระบบจะล้างแคชของเว็บ, ซ่อนเทมเพลต, แจ้งเตือนที่เคยอ่าน, ข้อมูล session ชั่วคราว และรีโหลดหน้าใหม่\n\nข้อมูลใน Firebase จะไม่หาย\nข้อมูลโหมด Local Demo จะยังอยู่ ยกเว้นแคชชั่วคราวของหน้าเว็บ',
+      'This will clear the web cache, hidden templates, seen mention alerts, temporary session data, and reload the page.\n\nFirebase data will not be deleted.\nLocal demo data will stay, except temporary web cache.'
+    );
+
+    if (!window.confirm(message)) return;
+
+    const buttons = [el.clearCacheBtn, el.clearCacheBtnMore].filter(Boolean);
+    buttons.forEach(btn => {
+      btn.disabled = true;
+      btn.textContent = txt('กำลังล้างแคช...', 'Clearing...');
+    });
+
+    try {
+      try {
+        if ('caches' in window) {
+          const cacheKeys = await caches.keys();
+          await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+        }
+      } catch (cacheErr) {
+        console.warn('CacheStorage clear failed', cacheErr);
+      }
+
+      try {
+        if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((reg) => reg.unregister()));
+        }
+      } catch (swErr) {
+        console.warn('Service worker unregister failed', swErr);
+      }
+
+      try { sessionStorage.clear(); } catch (_) {}
+
+      try {
+        const savedLang = currentLang();
+        const localKeys = Object.keys(localStorage || {});
+        localKeys.forEach((key) => {
+          if (key === LANG_KEY) return;
+          if (key === APP_KEY && !isFirebaseLive()) return;
+          if (key === APP_KEY || key === HIDDEN_TEMPLATE_KEY || key.startsWith(`${APP_KEY}_mention_seen_`) || key.startsWith('workbox-') || key.startsWith('sw-') || key.startsWith('cache-')) {
+            localStorage.removeItem(key);
+          }
+        });
+        saveLanguagePreference(savedLang);
+      } catch (storageErr) {
+        console.warn('Local storage cleanup failed', storageErr);
+      }
+
+      state.ui.hiddenTemplateCodes = [];
+      saveHiddenTemplateCodes([]);
+
+      if (el.modeBanner) {
+        el.modeBanner.textContent = txt('ล้างแคชแล้ว กำลังรีโหลด...', 'Cache cleared. Reloading...');
+      }
+
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set('cache_reset', String(Date.now()));
+      window.location.replace(nextUrl.toString());
+    } catch (err) {
+      console.error(err);
+      buttons.forEach(btn => {
+        btn.disabled = false;
+        btn.textContent = txt('ล้างแคช', 'Clear Cache');
+      });
+      window.alert(txt('ล้างแคชไม่สำเร็จ กรุณาลองใหม่อีกครั้ง', 'Failed to clear cache. Please try again.'));
     }
   }
 
