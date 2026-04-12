@@ -182,7 +182,48 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v52-board-media-preview';
+  const APP_VERSION = 'v54-ios-video-upload-fix';
+
+  const MAX_VIDEO_BYTES = 150 * 1024 * 1024;
+  const VIDEO_ACCEPT_ATTR = 'video/*,.mov,.mp4,.m4v,.qt,.3gp,.webm';
+  const VIDEO_EXTENSION_MIME_MAP = {
+    mov: 'video/quicktime',
+    qt: 'video/quicktime',
+    mp4: 'video/mp4',
+    m4v: 'video/x-m4v',
+    webm: 'video/webm',
+    ogv: 'video/ogg',
+    mkv: 'video/x-matroska',
+    avi: 'video/x-msvideo',
+    '3gp': 'video/3gpp',
+    '3g2': 'video/3gpp2'
+  };
+
+  function getVideoLimitBytes() {
+    return MAX_VIDEO_BYTES;
+  }
+
+  function getVideoLimitLabel() {
+    return formatBytes(getVideoLimitBytes());
+  }
+
+  function getFileNameExtension(name = '') {
+    const clean = String(name || '').trim().split('?')[0].split('#')[0];
+    const bits = clean.split('.');
+    return bits.length > 1 ? bits.pop().toLowerCase() : '';
+  }
+
+  function normalizeVideoMimeType(file) {
+    const rawType = String(file?.type || '').trim().toLowerCase();
+    if (rawType && rawType.startsWith('video/')) return rawType;
+    const ext = getFileNameExtension(file?.name || '');
+    return VIDEO_EXTENSION_MIME_MAP[ext] || '';
+  }
+
+  function isSupportedVideoFile(file) {
+    return Boolean(normalizeVideoMimeType(file));
+  }
+
 
   function safeClone(value) {
     try {
@@ -2391,10 +2432,10 @@
 
     try {
       setIssueVideoHint('กำลังเตรียมวิดีโอสำหรับอัปโหลด…', '');
-      if (!file.type || !file.type.startsWith('video/')) {
+      if (!isSupportedVideoFile(file)) {
         throw new Error('invalid_video_type');
       }
-      if (file.size > 25 * 1024 * 1024) {
+      if ((file.size || 0) > getVideoLimitBytes()) {
         throw new Error('video_too_large');
       }
       const prepared = await prepareIssueVideo(file);
@@ -2428,8 +2469,8 @@
       const msg = err?.message === 'invalid_video_type'
         ? 'ไฟล์นี้ไม่ใช่วิดีโอ'
         : err?.message === 'video_too_large'
-          ? 'วิดีโอต้องไม่เกิน 25 MB'
-          : 'เลือกวิดีโอไม่สำเร็จ ลองไฟล์ MP4/MOV ที่ขนาดไม่เกิน 25 MB';
+          ? `วิดีโอต้องไม่เกิน ${getVideoLimitLabel()}`
+          : `เลือกวิดีโอไม่สำเร็จ ลองไฟล์ MP4/MOV จาก iPhone หรือ Android และขนาดไม่เกิน ${getVideoLimitLabel()}`;
       setIssueVideoHint(msg, 'error');
       alert(msg);
     }
@@ -2758,7 +2799,19 @@
     const ext = getFileExtension(fileName, mimeType);
     const videoPath = `issue_videos/${uid}/${issueId}/${phase}/video_${ts}.${ext}`;
     const videoRef = fb.sdk.storageRef(fb.storage, videoPath);
-    await fb.sdk.uploadBytes(videoRef, file, { contentType: mimeType, cacheControl: 'public,max-age=3600' });
+    const videoMeta = { contentType: mimeType, cacheControl: 'public,max-age=3600' };
+    if (typeof fb.sdk.uploadBytesResumable === 'function') {
+      await new Promise((resolve, reject) => {
+        try {
+          const task = fb.sdk.uploadBytesResumable(videoRef, file, videoMeta);
+          task.on('state_changed', undefined, reject, resolve);
+        } catch (uploadErr) {
+          reject(uploadErr);
+        }
+      });
+    } else {
+      await fb.sdk.uploadBytes(videoRef, file, videoMeta);
+    }
     const videoUrl = await fb.sdk.getDownloadURL(videoRef);
 
     let posterUrl = '';
@@ -3019,8 +3072,8 @@
                   <div class="muted checklist-fail-media-title">${txt('แนบสื่อสำหรับ Issue ของข้อนี้', 'Attach media for this issue')}</div>
                   <input type="file" accept="image/*" multiple class="visually-hidden-file" data-fail-photo-input />
                   <input type="file" accept="image/*" capture="environment" class="visually-hidden-file" data-fail-photo-camera-input />
-                  <input type="file" accept="video/*" class="visually-hidden-file" data-fail-video-input />
-                  <input type="file" accept="video/*" capture="environment" class="visually-hidden-file" data-fail-video-camera-input />
+                  <input type="file" accept="${VIDEO_ACCEPT_ATTR}" class="visually-hidden-file" data-fail-video-input />
+                  <input type="file" accept="${VIDEO_ACCEPT_ATTR}" capture="environment" class="visually-hidden-file" data-fail-video-camera-input />
                   <div class="photo-action-row checklist-media-actions">
                     <label class="btn btn-secondary photo-pick-label" role="button" tabindex="0" data-fail-photo-gallery-label>${txt('เลือกรูป', 'Choose Photo')}</label>
                     <label class="btn btn-ghost photo-pick-label" role="button" tabindex="0" data-fail-photo-camera-label>${txt('ถ่ายรูป', 'Take Photo')}</label>
@@ -3204,8 +3257,8 @@
     if (!file) return;
     const hint = qs('[data-fail-media-hint]', itemCard);
     try {
-      if (!file.type || !file.type.startsWith('video/')) throw new Error('invalid_video_type');
-      if (file.size > 25 * 1024 * 1024) throw new Error('video_too_large');
+      if (!isSupportedVideoFile(file)) throw new Error('invalid_video_type');
+      if ((file.size || 0) > getVideoLimitBytes()) throw new Error('video_too_large');
       if (hint) hint.textContent = txt('กำลังเตรียมวิดีโอ...', 'Preparing video...');
       const prepared = await prepareIssueVideo(file);
       const current = getChecklistFailMediaState(itemCode);
@@ -3216,8 +3269,8 @@
       console.error('checklist fail video failed', err);
       if (hint) {
         hint.textContent = err?.message === 'video_too_large'
-          ? txt('วิดีโอต้องไม่เกิน 25 MB', 'Video must be 25 MB or smaller')
-          : txt('แนบวิดีโอไม่สำเร็จ ลองใช้ MP4/MOV', 'Could not attach video. Try MP4/MOV');
+          ? txt(`วิดีโอต้องไม่เกิน ${getVideoLimitLabel()}`, `Video must be ${getVideoLimitLabel()} or smaller`)
+          : txt('แนบวิดีโอไม่สำเร็จ ลองใช้ MP4/MOV/M4V จาก iPhone', 'Could not attach video. Try iPhone MP4/MOV/M4V');
         hint.classList.add('error');
       }
       alert(txt('แนบวิดีโอไม่สำเร็จ', 'Could not attach video'));
@@ -3553,8 +3606,8 @@
               </div>
               <input id="detailEvidencePhotoInput" type="file" accept="image/*" multiple class="visually-hidden-file" />
               <input id="detailEvidencePhotoCameraInput" type="file" accept="image/*" capture="environment" class="visually-hidden-file" />
-              <input id="detailEvidenceVideoInput" type="file" accept="video/*" class="visually-hidden-file" />
-              <input id="detailEvidenceVideoCameraInput" type="file" accept="video/*" capture="environment" class="visually-hidden-file" />
+              <input id="detailEvidenceVideoInput" type="file" accept="${VIDEO_ACCEPT_ATTR}" class="visually-hidden-file" />
+              <input id="detailEvidenceVideoCameraInput" type="file" accept="${VIDEO_ACCEPT_ATTR}" capture="environment" class="visually-hidden-file" />
               <div class="action-row compact-wrap evidence-actions">
                 <label for="detailEvidencePhotoInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">${txt('เลือกรูป', 'Choose Photo')}</label>
                 <label for="detailEvidencePhotoCameraInput" class="btn btn-ghost photo-pick-label" role="button" tabindex="0">${txt('ถ่ายรูป', 'Take Photo')}</label>
@@ -3979,8 +4032,8 @@
     const issue = state.data.issues.find(i => i.id === issueId);
     if (!issue || !canWorkIssue(issue)) throw new Error('permission_denied');
 
-    if (!file.type || !file.type.startsWith('video/')) throw new Error('invalid_video_type');
-    if ((file.size || 0) > 25 * 1024 * 1024) throw new Error('video_too_large');
+    if (!isSupportedVideoFile(file)) throw new Error('invalid_video_type');
+    if ((file.size || 0) > getVideoLimitBytes()) throw new Error('video_too_large');
 
     const prepared = await prepareIssueVideo(file);
     const nowIso = new Date().toISOString();
@@ -5579,7 +5632,7 @@ function humanizeLogAction(action) {
     return {
       file,
       fileName: file.name || 'video.mp4',
-      mimeType: file.type || 'video/mp4',
+      mimeType: normalizeVideoMimeType(file) || 'video/mp4',
       originalBytes: file.size || 0,
       previewUrl,
       posterDataUrl,
@@ -5595,11 +5648,20 @@ function humanizeLogAction(action) {
       video.preload = 'metadata';
       video.muted = true;
       video.playsInline = true;
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+      video.crossOrigin = 'anonymous';
       video.src = objectUrl;
+      try { video.load(); } catch (_) {}
 
       await new Promise((resolve, reject) => {
-        video.onerror = () => reject(new Error('video_load_failed'));
-        video.onloadeddata = () => resolve();
+        let settled = false;
+        const done = () => { if (settled) return; settled = true; resolve(); };
+        const fail = () => { if (settled) return; settled = true; reject(new Error('video_load_failed')); };
+        video.onerror = fail;
+        video.onloadeddata = done;
+        video.onloadedmetadata = done;
+        setTimeout(done, 1800);
       });
 
       const captureAt = Number.isFinite(video.duration) && video.duration > 0.2 ? Math.min(0.2, video.duration / 2) : 0;
