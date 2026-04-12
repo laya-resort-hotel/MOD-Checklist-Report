@@ -33,7 +33,6 @@ import {
   ref as storageRef,
   uploadString,
   uploadBytes,
-  uploadBytesResumable,
   getDownloadURL,
   deleteObject
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js';
@@ -94,7 +93,6 @@ async function boot() {
         storageRef,
         uploadString,
         uploadBytes,
-        uploadBytesResumable,
         getDownloadURL,
         deleteObject,
       }
