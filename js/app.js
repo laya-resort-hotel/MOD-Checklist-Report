@@ -110,6 +110,30 @@
     return dept ? departmentLabel(dept) : (code || '-');
   }
 
+  function getIssueCardThumbnail(issue) {
+    if (!issue || typeof issue !== 'object') return '';
+    const firstPhoto = Array.isArray(issue.before_photos) && issue.before_photos.length ? issue.before_photos[0] : null;
+    const firstVideo = Array.isArray(issue.before_videos) && issue.before_videos.length ? issue.before_videos[0] : null;
+    return issue.cover_thumb_url
+      || issue.cover_photo_url
+      || firstPhoto?.thumb_url
+      || firstPhoto?.url
+      || firstVideo?.thumb_url
+      || firstVideo?.poster_url
+      || '';
+  }
+
+  function hydrateIssueCoverMedia(issue) {
+    if (!issue || typeof issue !== 'object') return issue;
+    const firstPhoto = Array.isArray(issue.before_photos) && issue.before_photos.length ? issue.before_photos[0] : null;
+    const firstVideo = Array.isArray(issue.before_videos) && issue.before_videos.length ? issue.before_videos[0] : null;
+    return {
+      ...issue,
+      cover_photo_url: issue.cover_photo_url || firstPhoto?.url || firstVideo?.poster_url || '',
+      cover_thumb_url: issue.cover_thumb_url || firstPhoto?.thumb_url || firstPhoto?.url || firstVideo?.thumb_url || firstVideo?.poster_url || '',
+    };
+  }
+
   function translatePriority(value) {
     const map = {
       low: { th: 'ต่ำ', en: 'Low' },
@@ -1924,7 +1948,7 @@
 
       const issue = item;
       const deptName = getDepartmentName(issue.assigned_department);
-      const thumb = issue.cover_thumb_url || issue.cover_photo_url || issue.before_videos?.[0]?.thumb_url || issue.before_videos?.[0]?.poster_url || '';
+      const thumb = getIssueCardThumbnail(issue);
       const hasVideo = Array.isArray(issue.before_videos) && issue.before_videos.length > 0;
       const thumbHtml = thumb
         ? `<div class="issue-thumb-wrap">${thumb ? `<img class="issue-thumb" src="${thumb}" alt="Closed issue media" />` : ''}${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div>`
@@ -1986,7 +2010,7 @@
       }
       const issue = item;
       const deptName = getDepartmentName(issue.assigned_department);
-      const thumb = issue.cover_thumb_url || issue.cover_photo_url || issue.before_videos?.[0]?.thumb_url || issue.before_videos?.[0]?.poster_url || '';
+      const thumb = getIssueCardThumbnail(issue);
       const hasVideo = Array.isArray(issue.before_videos) && issue.before_videos.length > 0;
       const mediaNote = hasVideo ? `<span>•</span><span>${issue.before_videos.length} ${txt('วิดีโอ', `video${issue.before_videos.length > 1 ? 's' : ''}`)}</span>` : '';
       const thumbHtml = thumb
@@ -4165,7 +4189,7 @@
 
   function normalizeIssueDoc(docSnap) {
     const data = docSnap.data() || {};
-    return {
+    return hydrateIssueCoverMedia({
       id: docSnap.id,
       ...data,
       before_photos: Array.isArray(data.before_photos) ? data.before_photos : [],
@@ -4178,7 +4202,7 @@
       last_comment_at: normalizeDateValue(data.last_comment_at),
       closed_at: normalizeDateValue(data.closed_at),
       comments: [],
-    };
+    });
   }
 
   function normalizeCommentDoc(docSnap) {

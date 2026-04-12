@@ -123,15 +123,11 @@
         <div class="toolbar glass">
           <div class="toolbar-left toolbar-left-split">
             <input id="boardSearch" class="search-input" type="search" placeholder="ค้นหา issue, location, department" />
-            <div class="toolbar-filter-stack">
-              <div class="toolbar-filter-row">
-                <input id="boardDateFilter" class="search-input date-filter-input" type="date" />
-              </div>
-              <div class="toolbar-action-row">
-                <button id="boardDateClearBtn" class="btn btn-ghost toolbar-date-clear" type="button">ล้างวัน</button>
-                <button id="openClosedJobsBtn" class="btn btn-secondary toolbar-shortcut" type="button">Closed Jobs</button>
-              </div>
+            <div class="toolbar-filter-row">
+              <input id="boardDateFilter" class="search-input date-filter-input" type="date" />
+              <button id="boardDateClearBtn" class="btn btn-ghost toolbar-date-clear" type="button">ล้างวัน</button>
             </div>
+            <button id="openClosedJobsBtn" class="btn btn-secondary toolbar-shortcut" type="button">Closed Jobs</button>
           </div>
           <div class="chip-row" id="boardFilterChips">
             <button class="chip active" data-filter="all">All</button>
