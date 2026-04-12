@@ -110,30 +110,6 @@
     return dept ? departmentLabel(dept) : (code || '-');
   }
 
-  function getIssueCardThumbnail(issue) {
-    if (!issue || typeof issue !== 'object') return '';
-    const firstPhoto = Array.isArray(issue.before_photos) && issue.before_photos.length ? issue.before_photos[0] : null;
-    const firstVideo = Array.isArray(issue.before_videos) && issue.before_videos.length ? issue.before_videos[0] : null;
-    return issue.cover_thumb_url
-      || issue.cover_photo_url
-      || firstPhoto?.thumb_url
-      || firstPhoto?.url
-      || firstVideo?.thumb_url
-      || firstVideo?.poster_url
-      || '';
-  }
-
-  function hydrateIssueCoverMedia(issue) {
-    if (!issue || typeof issue !== 'object') return issue;
-    const firstPhoto = Array.isArray(issue.before_photos) && issue.before_photos.length ? issue.before_photos[0] : null;
-    const firstVideo = Array.isArray(issue.before_videos) && issue.before_videos.length ? issue.before_videos[0] : null;
-    return {
-      ...issue,
-      cover_photo_url: issue.cover_photo_url || firstPhoto?.url || firstVideo?.poster_url || '',
-      cover_thumb_url: issue.cover_thumb_url || firstPhoto?.thumb_url || firstPhoto?.url || firstVideo?.thumb_url || firstVideo?.poster_url || '',
-    };
-  }
-
   function translatePriority(value) {
     const map = {
       low: { th: 'ต่ำ', en: 'Low' },
@@ -182,6 +158,7 @@
       liveIssueComments: [],
       pendingIssuePhotos: [],
       pendingIssueVideo: null,
+      pendingIssueCoverPhoto: null,
       pendingEvidenceBusy: false,
       checklistBuilderSections: [],
       language: getSavedLanguage(),
@@ -205,7 +182,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v45-checklist-media-mentions';
+  const APP_VERSION = 'v49-cover-photo';
 
   function safeClone(value) {
     try {
@@ -1422,6 +1399,12 @@
       issuePhotoCameraPickBtn: qs('#issuePhotoCameraPickBtn'),
       issuePhotoHint: qs('#issuePhotoHint'),
       issuePhotoPreviewGrid: qs('#issuePhotoPreviewGrid'),
+      issueCoverPhotoInput: qs('#issueCoverPhotoInput'),
+      issueCoverPhotoCameraInput: qs('#issueCoverPhotoCameraInput'),
+      issueCoverPhotoGalleryPickBtn: qs('#issueCoverPhotoGalleryPickBtn'),
+      issueCoverPhotoCameraPickBtn: qs('#issueCoverPhotoCameraPickBtn'),
+      issueCoverPhotoHint: qs('#issueCoverPhotoHint'),
+      issueCoverPhotoPreviewGrid: qs('#issueCoverPhotoPreviewGrid'),
       issueVideoInput: qs('#issueVideoInput'),
       issueVideoCameraInput: qs('#issueVideoCameraInput'),
       issueVideoGalleryPickBtn: qs('#issueVideoGalleryPickBtn'),
@@ -1520,6 +1503,10 @@
     if (el.issuePhotoCameraInput) el.issuePhotoCameraInput.addEventListener('change', handleIssuePhotoPicked);
     if (el.issuePhotoGalleryPickBtn) el.issuePhotoGalleryPickBtn.addEventListener('click', () => { if (el.issuePhotoInput) el.issuePhotoInput.value = ''; });
     if (el.issuePhotoCameraPickBtn) el.issuePhotoCameraPickBtn.addEventListener('click', () => { if (el.issuePhotoCameraInput) el.issuePhotoCameraInput.value = ''; });
+    if (el.issueCoverPhotoInput) el.issueCoverPhotoInput.addEventListener('change', handleIssueCoverPhotoPicked);
+    if (el.issueCoverPhotoCameraInput) el.issueCoverPhotoCameraInput.addEventListener('change', handleIssueCoverPhotoPicked);
+    if (el.issueCoverPhotoGalleryPickBtn) el.issueCoverPhotoGalleryPickBtn.addEventListener('click', () => { if (el.issueCoverPhotoInput) el.issueCoverPhotoInput.value = ''; });
+    if (el.issueCoverPhotoCameraPickBtn) el.issueCoverPhotoCameraPickBtn.addEventListener('click', () => { if (el.issueCoverPhotoCameraInput) el.issueCoverPhotoCameraInput.value = ''; });
     if (el.issueVideoInput) el.issueVideoInput.addEventListener('change', handleIssueVideoPicked);
     if (el.issueVideoCameraInput) el.issueVideoCameraInput.addEventListener('change', handleIssueVideoPicked);
     if (el.issueVideoGalleryPickBtn) el.issueVideoGalleryPickBtn.addEventListener('click', () => { if (el.issueVideoInput) el.issueVideoInput.value = ''; });
@@ -1948,8 +1935,7 @@
 
       const issue = item;
       const deptName = getDepartmentName(issue.assigned_department);
-      const thumb = getIssueCardThumbnail(issue);
-      const hasVideo = Array.isArray(issue.before_videos) && issue.before_videos.length > 0;
+      const { thumb, full: fullCover, hasVideo } = getIssueCoverMedia(issue);
       const thumbHtml = thumb
         ? `<div class="issue-thumb-wrap">${thumb ? `<img class="issue-thumb" src="${thumb}" alt="Closed issue media" />` : ''}${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div>`
         : `<div class="issue-thumb placeholder">DONE</div>`;
@@ -2010,11 +1996,10 @@
       }
       const issue = item;
       const deptName = getDepartmentName(issue.assigned_department);
-      const thumb = getIssueCardThumbnail(issue);
-      const hasVideo = Array.isArray(issue.before_videos) && issue.before_videos.length > 0;
+      const { thumb, full: fullCover, hasVideo } = getIssueCoverMedia(issue);
       const mediaNote = hasVideo ? `<span>•</span><span>${issue.before_videos.length} ${txt('วิดีโอ', `video${issue.before_videos.length > 1 ? 's' : ''}`)}</span>` : '';
       const thumbHtml = thumb
-        ? `<div class="issue-thumb-wrap">${issue.cover_photo_url || issue.cover_thumb_url ? `<img class="issue-thumb" src="${thumb}" alt="Issue photo" />` : `<img class="issue-thumb" src="${thumb}" alt="Issue media poster" />`} ${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div>`
+        ? `<div class="issue-thumb-wrap">${fullCover ? `<img class="issue-thumb" src="${thumb}" alt="Issue photo" />` : `<img class="issue-thumb" src="${thumb}" alt="Issue media poster" />`} ${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div>`
         : `<div class="issue-thumb placeholder">${hasVideo ? 'VIDEO' : (issue.issue_type === 'checklist_submission' ? 'CHECKLIST' : 'NO PHOTO')}</div>`;
       return `
         <article class="issue-card ${getIssueCardToneClass(issue)}">
@@ -2209,6 +2194,69 @@
     el.issuePhotoPreviewGrid.classList.remove('hidden');
   }
 
+
+  function setIssueCoverHint(message, tone = '') {
+    if (!el.issueCoverPhotoHint) return;
+    el.issueCoverPhotoHint.textContent = message;
+    el.issueCoverPhotoHint.classList.remove('error', 'success');
+    if (tone) el.issueCoverPhotoHint.classList.add(tone);
+  }
+
+  function renderIssueCoverPreview(item = null) {
+    if (!el.issueCoverPhotoPreviewGrid) return;
+    if (!item) {
+      el.issueCoverPhotoPreviewGrid.innerHTML = '';
+      el.issueCoverPhotoPreviewGrid.classList.add('hidden');
+      return;
+    }
+    el.issueCoverPhotoPreviewGrid.innerHTML = `
+      <div class="photo-preview-card">
+        <img src="${escapeHtml(item.previewDataUrl || item.thumbDataUrl || item.fullDataUrl || '')}" alt="Issue cover" />
+        <div class="photo-preview-badge cover-badge">${txt('COVER', 'COVER')}</div>
+      </div>
+    `;
+    el.issueCoverPhotoPreviewGrid.classList.remove('hidden');
+  }
+
+  async function handleIssueCoverPhotoPicked(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      if (!file.type || !file.type.startsWith('image/')) {
+        throw new Error('invalid_file_type');
+      }
+      setIssueCoverHint(txt('กำลังเตรียมภาพ Cover…', 'Preparing cover image...'), '');
+      const optimized = await optimizeIssuePhoto(file);
+      state.ui.pendingIssueCoverPhoto = optimized;
+      if (event?.target) event.target.value = '';
+      if (el.issueCoverPhotoInput) el.issueCoverPhotoInput.value = '';
+      if (el.issueCoverPhotoCameraInput) el.issueCoverPhotoCameraInput.value = '';
+      renderIssueCoverPreview(optimized);
+      setIssueCoverHint(txt(`ตั้งภาพ Cover แล้ว • ${formatBytes(optimized.originalBytes || 0)} → ${formatBytes(optimized.fullBytes || 0)}`, `Cover image ready • ${formatBytes(optimized.originalBytes || 0)} → ${formatBytes(optimized.fullBytes || 0)}`), 'success');
+    } catch (err) {
+      console.error('Issue cover process failed', err);
+      if (event?.target) event.target.value = '';
+      if (el.issueCoverPhotoInput) el.issueCoverPhotoInput.value = '';
+      if (el.issueCoverPhotoCameraInput) el.issueCoverPhotoCameraInput.value = '';
+      renderIssueCoverPreview(null);
+      state.ui.pendingIssueCoverPhoto = null;
+      const msg = err?.message === 'invalid_file_type'
+        ? txt('มีไฟล์ที่ไม่ใช่รูปภาพสำหรับ Cover', 'Selected file is not an image for cover')
+        : txt('เลือกรูป Cover ไม่สำเร็จ ลองใช้ JPG/PNG แล้วลองอีกครั้ง', 'Could not prepare cover image. Please try JPG/PNG again.');
+      setIssueCoverHint(msg, 'error');
+      alert(msg);
+    }
+  }
+
+  function getIssueCoverMedia(issue = {}) {
+    const firstPhoto = Array.isArray(issue.before_photos) ? issue.before_photos.find(Boolean) : null;
+    const firstVideo = Array.isArray(issue.before_videos) ? issue.before_videos.find(Boolean) : null;
+    const thumb = issue.cover_thumb_url || issue.cover_photo_url || firstPhoto?.thumb_url || firstPhoto?.url || firstVideo?.thumb_url || firstVideo?.poster_url || '';
+    const full = issue.cover_photo_url || firstPhoto?.url || firstVideo?.poster_url || thumb || '';
+    const hasVideo = Array.isArray(issue.before_videos) && issue.before_videos.length > 0;
+    return { thumb, full, hasVideo };
+  }
+
   async function handleIssuePhotoPicked(event) {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
@@ -2331,6 +2379,10 @@
     el.issuePhotoInput.value = '';
     renderIssuePhotoPreviewGrid([]);
     state.ui.pendingIssuePhotos = [];
+    if (el.issueCoverPhotoInput) el.issueCoverPhotoInput.value = '';
+    if (el.issueCoverPhotoCameraInput) el.issueCoverPhotoCameraInput.value = '';
+    renderIssueCoverPreview(null);
+    state.ui.pendingIssueCoverPhoto = null;
     if (el.issueVideoInput) el.issueVideoInput.value = '';
     revokeIssueVideoPreview();
     state.ui.pendingIssueVideo = null;
@@ -2354,6 +2406,13 @@
     const priority = state.ui.newIssuePriority;
     const pendingPhotos = Array.isArray(state.ui.pendingIssuePhotos) ? state.ui.pendingIssuePhotos : [];
     const pendingVideo = state.ui.pendingIssueVideo;
+    const pendingCoverPhoto = state.ui.pendingIssueCoverPhoto;
+    const beforePhotoItems = pendingCoverPhoto
+      ? [
+          { url: pendingCoverPhoto.fullDataUrl, thumb_url: pendingCoverPhoto.thumbDataUrl },
+          ...pendingPhotos.map(photo => ({ url: photo.fullDataUrl, thumb_url: photo.thumbDataUrl }))
+        ]
+      : pendingPhotos.map(photo => ({ url: photo.fullDataUrl, thumb_url: photo.thumbDataUrl }));
 
     if (!title) return alert('กรุณาใส่หัวข้อ issue');
     if (!location) return alert('กรุณาใส่ location');
@@ -2369,7 +2428,7 @@
         priority,
         assigned_department: assignedDepartment,
         location_text: location,
-        before_photos: pendingPhotos.map(photo => ({ url: photo.fullDataUrl, thumb_url: photo.thumbDataUrl })),
+        before_photos: beforePhotoItems,
         before_videos: pendingVideo ? [{
           file: pendingVideo.file,
           preview_url: pendingVideo.previewUrl,
@@ -3441,6 +3500,9 @@
     `;
 
     qsa('[data-detail-status]', el.issueModalContent).forEach(btn => btn.addEventListener('click', () => updateIssueStatus(issue.id, btn.dataset.detailStatus)));
+    qsa('[data-set-cover-photo]', el.issueModalContent).forEach(btn => btn.addEventListener('click', async () => {
+      await setIssueCover(btn.dataset.issueId, btn.dataset.setCoverPhoto || '', btn.dataset.setCoverThumb || '');
+    }));
 
     const evidenceInputs = [
       ['#detailEvidencePhotoInput', 'photo'],
@@ -3476,28 +3538,37 @@
     const afterPhotos = Array.isArray(issue.after_photos) ? issue.after_photos.filter(Boolean) : [];
     const afterVideos = Array.isArray(issue.after_videos) ? issue.after_videos.filter(Boolean) : [];
 
-    const renderMediaCards = (photos = [], videos = []) => {
+    const renderMediaCards = (photos = [], videos = [], phase = 'before') => {
       const cards = [];
       if (photos.length) {
-        cards.push(...photos.map((photo, index) => `
-          <div class="issue-media-card">
-            <img class="issue-hero" src="${photo.url || photo.thumb_url || issue.cover_photo_url || ''}" alt="Issue image ${index + 1}" />
+        cards.push(...photos.map((photo, index) => {
+          const photoUrl = photo.url || photo.thumb_url || issue.cover_photo_url || '';
+          const isCover = Boolean(issue.cover_photo_url && photoUrl && issue.cover_photo_url === photoUrl) || (!issue.cover_photo_url && index === 0 && phase === 'before');
+          return `
+          <div class="issue-media-card ${isCover ? 'is-cover' : ''}">
+            <img class="issue-hero" src="${photoUrl}" alt="Issue image ${index + 1}" />
+            ${phase === 'before' && canWorkIssue(issue) ? `<div class="issue-media-actions"><button class="mini-btn" data-set-cover-photo="${escapeHtml(photo.url || '')}" data-set-cover-thumb="${escapeHtml(photo.thumb_url || photo.url || '')}" data-issue-id="${issue.id}">${txt('ตั้งเป็น Cover', 'Set as Cover')}</button></div>` : ''}
           </div>
-        `));
+        `;
+        }));
       }
       if (videos.length) {
-        cards.push(...videos.map((video, index) => `
-          <div class="issue-media-card">
+        cards.push(...videos.map((video, index) => {
+          const isCover = Boolean(issue.cover_photo_url && video.poster_url && issue.cover_photo_url === video.poster_url);
+          return `
+          <div class="issue-media-card ${isCover ? 'is-cover' : ''}">
             <div class="issue-media-label">${txt('วิดีโอ', 'Video')} ${index + 1}</div>
             <video class="issue-video" src="${video.url || ''}" ${video.poster_url ? `poster="${video.poster_url}"` : ''} controls playsinline preload="metadata"></video>
+            ${phase === 'before' && canWorkIssue(issue) && video.poster_url ? `<div class="issue-media-actions"><button class="mini-btn" data-set-cover-photo="${escapeHtml(video.poster_url || '')}" data-set-cover-thumb="${escapeHtml(video.thumb_url || video.poster_url || '')}" data-issue-id="${issue.id}">${txt('ใช้ Poster เป็น Cover', 'Use poster as Cover')}</button></div>` : ''}
           </div>
-        `));
+        `;
+        }));
       }
       return cards;
     };
 
-    const beforeCards = renderMediaCards(beforePhotos, beforeVideos);
-    const afterCards = renderMediaCards(afterPhotos, afterVideos);
+    const beforeCards = renderMediaCards(beforePhotos, beforeVideos, 'before');
+    const afterCards = renderMediaCards(afterPhotos, afterVideos, 'after');
 
     if (!beforeCards.length && !afterCards.length) {
       return `<div class="issue-hero placeholder issue-thumb">${txt('ไม่มีสื่อ', 'NO MEDIA')}</div>`;
@@ -3982,6 +4053,78 @@
     }
   }
 
+  async function setIssueCover(issueId, coverUrl, coverThumbUrl = '') {
+    const issue = state.data.issues.find(i => i.id === issueId);
+    if (!issue || !canWorkIssue(issue)) return;
+    const nextCoverUrl = coverUrl || '';
+    const nextCoverThumb = coverThumbUrl || coverUrl || '';
+
+    if (!isFirebaseLive()) {
+      issue.cover_photo_url = nextCoverUrl;
+      issue.cover_thumb_url = nextCoverThumb;
+      issue.updated_at = new Date().toISOString();
+      issue.last_activity_at = issue.updated_at;
+      addActivity({
+        type: 'issue',
+        title: issue.title,
+        text: txt(`${state.currentUser.full_name} ตั้งภาพปกให้ ${issue.issue_no || issueId}`, `${state.currentUser.full_name} set cover photo for ${issue.issue_no || issueId}`),
+        created_at: issue.updated_at,
+      });
+      recordUsageLogLocal({
+        category: 'issue',
+        action: 'set_cover',
+        title: issue.title,
+        text: txt(`${state.currentUser.full_name} ตั้งภาพปกให้ ${issue.issue_no || issueId}`, `${state.currentUser.full_name} set cover photo for ${issue.issue_no || issueId}`),
+        issue_id: issueId,
+        ref_no: issue.issue_no || issueId,
+      });
+      persist();
+      renderAll();
+      if (state.ui.openIssueId === issueId) openIssueModal(issueId);
+      return;
+    }
+
+    try {
+      const fb = window.LAYA_FIREBASE;
+      const sdk = fb.sdk;
+      await sdk.runTransaction(fb.db, async (tx) => {
+        const issueRef = sdk.doc(fb.db, 'issues', issueId);
+        const snap = await tx.get(issueRef);
+        if (!snap.exists()) throw new Error('issue_not_found');
+        const liveIssue = { id: snap.id, ...snap.data() };
+        if (!canWorkIssue(liveIssue)) throw new Error('permission_denied');
+        const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${issueId}/activity`));
+        tx.update(issueRef, {
+          cover_photo_url: nextCoverUrl,
+          cover_thumb_url: nextCoverThumb,
+          updated_at: sdk.serverTimestamp(),
+          last_activity_at: sdk.serverTimestamp(),
+          activity_count: sdk.increment(1),
+        });
+        tx.set(activityRef, {
+          action: 'cover_updated',
+          note: 'Updated issue cover photo',
+          by_uid: state.currentUser.uid,
+          by_name: state.currentUser.full_name,
+          by_department: state.currentUser.department,
+          created_at: sdk.serverTimestamp(),
+        });
+      });
+      recordUsageLog({
+        category: 'issue',
+        action: 'set_cover',
+        title: issue.title,
+        text: txt(`${state.currentUser.full_name} ตั้งภาพปกให้ ${issue.issue_no || issueId}`, `${state.currentUser.full_name} set cover photo for ${issue.issue_no || issueId}`),
+        issue_id: issueId,
+        ref_no: issue.issue_no || issueId,
+      });
+      if (state.ui.openIssueId === issueId) openIssueModal(issueId);
+    } catch (err) {
+      console.error('set issue cover failed', err);
+      alert(friendlyIssueError(err));
+    }
+  }
+
   async function addIssueComment(issueId, message, mentions = []) {
     const issue = state.data.issues.find(i => i.id === issueId);
     if (!issue || !canWorkIssue(issue)) return;
@@ -4189,11 +4332,15 @@
 
   function normalizeIssueDoc(docSnap) {
     const data = docSnap.data() || {};
-    return hydrateIssueCoverMedia({
+    const before_photos = Array.isArray(data.before_photos) ? data.before_photos : [];
+    const before_videos = Array.isArray(data.before_videos) ? data.before_videos : [];
+    return {
       id: docSnap.id,
       ...data,
-      before_photos: Array.isArray(data.before_photos) ? data.before_photos : [],
-      before_videos: Array.isArray(data.before_videos) ? data.before_videos : [],
+      cover_photo_url: data.cover_photo_url || before_photos[0]?.url || before_videos[0]?.poster_url || '',
+      cover_thumb_url: data.cover_thumb_url || before_photos[0]?.thumb_url || before_photos[0]?.url || before_videos[0]?.thumb_url || before_videos[0]?.poster_url || '',
+      before_photos,
+      before_videos,
       after_photos: Array.isArray(data.after_photos) ? data.after_photos : [],
       after_videos: Array.isArray(data.after_videos) ? data.after_videos : [],
       created_at: normalizeDateValue(data.created_at),
@@ -4202,7 +4349,7 @@
       last_comment_at: normalizeDateValue(data.last_comment_at),
       closed_at: normalizeDateValue(data.closed_at),
       comments: [],
-    });
+    };
   }
 
   function normalizeCommentDoc(docSnap) {
@@ -4353,6 +4500,7 @@ function humanizeLogAction(action) {
     change_status: txt('เปลี่ยนสถานะ', 'Changed status'),
     add_comment: txt('เพิ่มคอมเมนต์', 'Added comment'),
     add_evidence_photo: txt('เพิ่มรูปหลักฐาน', 'Added evidence photo'),
+    cover_updated: txt('เปลี่ยนภาพปก', 'Updated cover photo'),
     add_evidence_video: txt('เพิ่มวิดีโอหลักฐาน', 'Added evidence video'),
   };
   return map[action] || labelize(String(action || 'log').replace(/_/g, ' '));
