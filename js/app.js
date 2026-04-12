@@ -2013,10 +2013,12 @@
 
       const issue = item;
       const deptName = getDepartmentName(issue.assigned_department);
-      const { thumb, full: fullCover, hasVideo } = getIssueCoverMedia(issue);
+      const { thumb, full: fullCover, hasVideo, videoPreviewUrl } = getIssueCoverMedia(issue);
       const thumbHtml = thumb
         ? `<div class="issue-thumb-wrap">${thumb ? `<img class="issue-thumb" src="${thumb}" alt="Closed issue media" />` : ''}${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div>`
-        : `<div class="issue-thumb placeholder">DONE</div>`;
+        : videoPreviewUrl
+          ? `<div class="issue-thumb-wrap"><video class="issue-thumb" src="${videoPreviewUrl}" muted playsinline preload="metadata"></video><span class="media-badge">VIDEO</span></div>`
+          : `<div class="issue-thumb placeholder">DONE</div>`;
       const closedMeta = issue.closed_at ? `<span>•</span><span>${txt('ปิดเมื่อ', 'Closed')} ${formatDateTime(issue.closed_at)}</span>` : '';
       return `
         <article class="issue-card issue-tone-closed">
@@ -2074,14 +2076,16 @@
       }
       const issue = item;
       const deptName = getDepartmentName(issue.assigned_department);
-      const { thumb, full: fullCover, hasVideo, photoCount, videoCount } = getIssueCoverMedia(issue);
+      const { thumb, full: fullCover, hasVideo, photoCount, videoCount, videoPreviewUrl } = getIssueCoverMedia(issue);
       const mediaBits = [];
       if (photoCount > 0) mediaBits.push(`<span>${photoCount} ${txt('รูป', `photo${photoCount > 1 ? 's' : ''}`)}</span>`);
       if (videoCount > 0) mediaBits.push(`<span>${videoCount} ${txt('วิดีโอ', `video${videoCount > 1 ? 's' : ''}`)}</span>`);
       const mediaNote = mediaBits.length ? `<span>•</span>${mediaBits.join('<span>•</span>')}` : '';
       const thumbHtml = thumb
         ? `<div class="issue-thumb-wrap">${fullCover ? `<img class="issue-thumb" src="${thumb}" alt="Issue photo" />` : `<img class="issue-thumb" src="${thumb}" alt="Issue media poster" />`} ${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div>`
-        : `<div class="issue-thumb placeholder">${hasVideo ? 'VIDEO' : (issue.issue_type === 'checklist_submission' ? 'CHECKLIST' : 'NO PHOTO')}</div>`;
+        : videoPreviewUrl
+          ? `<div class="issue-thumb-wrap"><video class="issue-thumb" src="${videoPreviewUrl}" muted playsinline preload="metadata"></video><span class="media-badge">VIDEO</span></div>`
+          : `<div class="issue-thumb placeholder">${hasVideo ? 'VIDEO' : (issue.issue_type === 'checklist_submission' ? 'CHECKLIST' : 'NO PHOTO')}</div>`;
       return `
         <article class="issue-card ${getIssueCardToneClass(issue)}">
           ${thumbHtml}
@@ -2338,11 +2342,12 @@
     const firstPhoto = beforePhotos[0] || afterPhotos[0] || null;
     const firstVideo = beforeVideos[0] || afterVideos[0] || null;
     const thumb = issue.cover_thumb_url || issue.cover_photo_url || firstPhoto?.thumb_url || firstPhoto?.url || firstVideo?.thumb_url || firstVideo?.poster_url || '';
-    const full = issue.cover_photo_url || firstPhoto?.url || firstVideo?.poster_url || thumb || '';
+    const full = issue.cover_photo_url || firstPhoto?.url || firstVideo?.poster_url || firstVideo?.url || thumb || '';
     const hasVideo = beforeVideos.length > 0 || afterVideos.length > 0;
     const photoCount = beforePhotos.length + afterPhotos.length;
     const videoCount = beforeVideos.length + afterVideos.length;
-    return { thumb, full, hasVideo, photoCount, videoCount };
+    const videoPreviewUrl = firstVideo?.url || '';
+    return { thumb, full, hasVideo, photoCount, videoCount, videoPreviewUrl };
   }
 
   async function handleIssuePhotoPicked(event) {
@@ -2492,7 +2497,7 @@
       el.issueVideoPreview.classList.add('hidden');
     }
     setIssuePhotoHint('แนะนำรูปไม่เกิน 10 MB ต่อรูป • เลือกได้หลายรูป • ระบบจะย่อรูปก่อนบันทึกทุกครั้ง');
-    setIssueVideoHint(`รองรับวิดีโอไม่เกิน ${MAX_VIDEO_UPLOAD_MB} MB • แนะนำ MP4/MOV • ระบบจะสร้าง poster ให้ใช้อัตโนมัติ`);
+    setIssueVideoHint(`รองรับวิดีโอไม่เกิน ${MAX_VIDEO_UPLOAD_MB} MB • แนะนำ MP4/MOV • อัปตรงเข้า Storage ก่อน แล้วสร้าง preview ทีหลังอัตโนมัติ`);
     state.ui.newIssuePriority = 'medium';
     qsa('.segment', el.prioritySegment).forEach(seg => seg.classList.toggle('active', seg.dataset.value === 'medium'));
   }
@@ -2537,6 +2542,8 @@
           mime_type: pendingVideo.mimeType,
           original_name: pendingVideo.fileName,
           size: pendingVideo.originalBytes,
+          preview_status: pendingVideo.posterDataUrl ? 'ready' : 'pending',
+          compression_status: 'pending',
         }] : [],
       });
       clearIssueForm();
@@ -2696,6 +2703,14 @@
       issue_id: issueRef.id,
       ref_no: createdIssueNo || issueRef.id,
     });
+    if (Array.isArray(payload.before_videos) && payload.before_videos[0]?.file && Array.isArray(uploadedBeforeVideos) && uploadedBeforeVideos[0]?.storage_path) {
+      queueIssueVideoPreviewBackfill({
+        issueId: issueRef.id,
+        phase: 'before',
+        file: payload.before_videos[0].file,
+        videoMeta: uploadedBeforeVideos[0]
+      });
+    }
     return issueRef.id;
   }
 
@@ -2756,7 +2771,112 @@
       original_name: first.original_name || first.file.name || 'video.mp4',
       size: first.size || first.file.size || 0,
       uploaded_at: new Date().toISOString(),
+      preview_status: uploaded.posterUrl || uploaded.thumbUrl ? 'ready' : 'pending',
+      compression_status: 'pending',
     }];
+  }
+
+
+  async function uploadIssueVideoPreviewAssets({ issueId, phase = 'before', ts = Date.now(), posterDataUrl = '', thumbDataUrl = '' }) {
+    const fb = window.LAYA_FIREBASE;
+    if (!fb?.ready || !fb.storage || !fb.sdk?.storageRef || !fb.sdk?.uploadString || !fb.sdk?.getDownloadURL) {
+      throw new Error('storage_not_ready');
+    }
+    const uid = fb.auth.currentUser?.uid;
+    if (!uid) throw new Error('not_signed_in');
+
+    let posterUrl = '';
+    let thumbUrl = '';
+    let posterPath = '';
+    let thumbPath = '';
+
+    if (posterDataUrl) {
+      posterPath = `issue_videos/${uid}/${issueId}/${phase}/poster_${ts}.jpg`;
+      const posterRef = fb.sdk.storageRef(fb.storage, posterPath);
+      await fb.sdk.uploadString(posterRef, posterDataUrl, 'data_url', { contentType: 'image/jpeg', cacheControl: 'public,max-age=3600' });
+      posterUrl = await fb.sdk.getDownloadURL(posterRef);
+    }
+
+    if (thumbDataUrl) {
+      thumbPath = `issue_videos/${uid}/${issueId}/${phase}/thumb_${ts}.jpg`;
+      const thumbRef = fb.sdk.storageRef(fb.storage, thumbPath);
+      await fb.sdk.uploadString(thumbRef, thumbDataUrl, 'data_url', { contentType: 'image/jpeg', cacheControl: 'public,max-age=3600' });
+      thumbUrl = await fb.sdk.getDownloadURL(thumbRef);
+    }
+
+    return { posterUrl, posterPath, thumbUrl, thumbPath };
+  }
+
+  function queueIssueVideoPreviewBackfill({ issueId, phase = 'before', file = null, videoMeta = null }) {
+    if (!isFirebaseLive() || !issueId || !file || !videoMeta?.storage_path) return;
+    window.setTimeout(() => {
+      backfillIssueVideoPreview({ issueId, phase, file, videoMeta }).catch(err => {
+        console.warn('issue video preview backfill failed', err);
+      });
+    }, 50);
+  }
+
+  async function backfillIssueVideoPreview({ issueId, phase = 'before', file, videoMeta }) {
+    const fb = window.LAYA_FIREBASE;
+    const sdk = fb?.sdk;
+    if (!fb?.ready || !sdk?.doc || !sdk?.getDoc || !sdk?.updateDoc || !file || !videoMeta?.storage_path) return;
+
+    let poster;
+    try {
+      poster = await extractVideoPoster(file);
+    } catch (err) {
+      console.warn('deferred video poster generation failed', err);
+      return;
+    }
+    if (!poster?.posterDataUrl && !poster?.thumbDataUrl) return;
+
+    const assets = await uploadIssueVideoPreviewAssets({
+      issueId,
+      phase,
+      ts: Date.now(),
+      posterDataUrl: poster.posterDataUrl || '',
+      thumbDataUrl: poster.thumbDataUrl || poster.posterDataUrl || ''
+    });
+
+    const issueRef = sdk.doc(fb.db, 'issues', issueId);
+    const snap = await sdk.getDoc(issueRef);
+    if (!snap.exists()) return;
+    const data = snap.data() || {};
+    const fieldName = phase === 'after' ? 'after_videos' : 'before_videos';
+    const videos = Array.isArray(data[fieldName]) ? [...data[fieldName]] : [];
+    const idx = videos.findIndex(item => item?.storage_path === videoMeta.storage_path || item?.url === videoMeta.url);
+    if (idx < 0) return;
+
+    videos[idx] = {
+      ...videos[idx],
+      poster_url: assets.posterUrl || videos[idx].poster_url || '',
+      thumb_url: assets.thumbUrl || assets.posterUrl || videos[idx].thumb_url || videos[idx].poster_url || '',
+      poster_storage_path: assets.posterPath || videos[idx].poster_storage_path || '',
+      thumb_storage_path: assets.thumbPath || videos[idx].thumb_storage_path || '',
+      preview_status: 'ready',
+      preview_generated_at: new Date().toISOString(),
+      compression_status: 'pending'
+    };
+
+    const patch = {
+      [fieldName]: videos,
+      updated_at: sdk.serverTimestamp(),
+    };
+    if (!data.cover_photo_url && phase === 'before' && (assets.posterUrl || assets.thumbUrl)) {
+      patch.cover_photo_url = assets.posterUrl || assets.thumbUrl || '';
+      patch.cover_thumb_url = assets.thumbUrl || assets.posterUrl || '';
+    }
+    await sdk.updateDoc(issueRef, patch);
+
+    const localIssue = state.data.issues.find(item => item.id === issueId);
+    if (localIssue) {
+      localIssue[fieldName] = videos;
+      if (!localIssue.cover_photo_url && phase === 'before') {
+        localIssue.cover_photo_url = patch.cover_photo_url || localIssue.cover_photo_url || '';
+        localIssue.cover_thumb_url = patch.cover_thumb_url || localIssue.cover_thumb_url || '';
+      }
+      renderAll();
+    }
   }
 
   async function uploadIssueVideoSet({ issueId, file, mimeType = 'video/mp4', fileName = 'video.mp4', posterDataUrl = '', thumbDataUrl = '', phase = 'before' }) {
@@ -2779,19 +2899,12 @@
     let thumbUrl = '';
     let posterPath = '';
     let thumbPath = '';
-
-    if (posterDataUrl) {
-      posterPath = `issue_videos/${uid}/${issueId}/${phase}/poster_${ts}.jpg`;
-      const posterRef = fb.sdk.storageRef(fb.storage, posterPath);
-      await fb.sdk.uploadString(posterRef, posterDataUrl, 'data_url', { contentType: 'image/jpeg', cacheControl: 'public,max-age=3600' });
-      posterUrl = await fb.sdk.getDownloadURL(posterRef);
-    }
-
-    if (thumbDataUrl) {
-      thumbPath = `issue_videos/${uid}/${issueId}/${phase}/thumb_${ts}.jpg`;
-      const thumbRef = fb.sdk.storageRef(fb.storage, thumbPath);
-      await fb.sdk.uploadString(thumbRef, thumbDataUrl, 'data_url', { contentType: 'image/jpeg', cacheControl: 'public,max-age=3600' });
-      thumbUrl = await fb.sdk.getDownloadURL(thumbRef);
+    if (posterDataUrl || thumbDataUrl) {
+      const assets = await uploadIssueVideoPreviewAssets({ issueId, phase, ts, posterDataUrl, thumbDataUrl });
+      posterUrl = assets.posterUrl;
+      thumbUrl = assets.thumbUrl;
+      posterPath = assets.posterPath;
+      thumbPath = assets.thumbPath;
     }
 
     return { videoUrl, videoPath, posterUrl, posterPath, thumbUrl, thumbPath };
@@ -4009,6 +4122,8 @@
         original_name: prepared.fileName,
         size: prepared.originalBytes,
         uploaded_at: nowIso,
+        preview_status: prepared.posterDataUrl ? 'ready' : 'pending',
+        compression_status: 'pending',
       });
       issue.updated_at = nowIso;
       issue.last_activity_at = nowIso;
@@ -4047,6 +4162,8 @@
       original_name: prepared.fileName,
       size: prepared.originalBytes,
       uploaded_at: nowIso,
+      preview_status: uploaded.posterUrl || uploaded.thumbUrl ? 'ready' : 'pending',
+      compression_status: 'pending',
     };
 
     try { if (prepared.previewUrl) URL.revokeObjectURL(prepared.previewUrl); } catch (_) {}
@@ -4083,6 +4200,12 @@
       text: `${state.currentUser.full_name} added completion video to ${issue.issue_no || issueId}`,
       issue_id: issueId,
       ref_no: issue.issue_no || issueId,
+    });
+    queueIssueVideoPreviewBackfill({
+      issueId,
+      phase: 'after',
+      file: prepared.file,
+      videoMeta: evidence
     });
   }
 
@@ -5580,25 +5703,17 @@ function humanizeLogAction(action) {
 
   async function prepareIssueVideo(file) {
     const previewUrl = URL.createObjectURL(file);
-    let posterDataUrl = '';
-    let thumbDataUrl = '';
-    try {
-      const poster = await extractVideoPoster(file);
-      posterDataUrl = poster.posterDataUrl || '';
-      thumbDataUrl = poster.thumbDataUrl || poster.posterDataUrl || '';
-    } catch (err) {
-      console.warn('video poster generation failed', err);
-    }
-
     return {
       file,
       fileName: file.name || 'video.mp4',
       mimeType: file.type || 'video/mp4',
       originalBytes: file.size || 0,
       previewUrl,
-      posterDataUrl,
-      thumbDataUrl,
-      posterBytes: estimateDataUrlBytes(posterDataUrl),
+      posterDataUrl: '',
+      thumbDataUrl: '',
+      posterBytes: 0,
+      previewPending: true,
+      compressionPending: true,
     };
   }
 
