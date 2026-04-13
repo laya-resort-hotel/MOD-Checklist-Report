@@ -795,7 +795,7 @@ input:focus, select:focus, textarea:focus {
   border-radius: 22px;
   padding: 8px;
   display: none;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 6px;
   z-index: 50;
   background: rgba(255,252,247,0.9);
@@ -1095,20 +1095,23 @@ code {
   }
   .issue-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .issue-actions .mini-btn:first-child { grid-column: 1 / -1; }
-  .fab {
-    width: 56px;
-    height: 56px;
-    right: 14px;
-    bottom: calc(92px + env(safe-area-inset-bottom));
-  }
+  .fab { display: none; }
   .bottom-nav {
-    left: 10px;
-    right: 10px;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    left: 8px;
+    right: 8px;
     padding: 6px;
+    gap: 4px;
   }
   .bottom-nav .nav-link {
-    font-size: 11px;
-    min-height: 50px;
+    font-size: 10px;
+    min-height: 48px;
+    padding: 8px 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: -0.01em;
   }
 }
 
@@ -1613,31 +1616,29 @@ input:not([type="checkbox"]):not([type="radio"]) {
     z-index: auto;
   }
 
-  .fab {
-    width: 54px;
-    height: 54px;
-    right: 14px;
-    bottom: calc(82px + env(safe-area-inset-bottom));
-    font-size: 26px;
-    box-shadow: 0 12px 24px rgba(28,41,35,0.20);
-  }
+  .fab { display: none; }
 
   .bottom-nav {
     display: grid;
-    left: 10px;
-    right: 10px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    left: 8px;
+    right: 8px;
     bottom: calc(10px + env(safe-area-inset-bottom));
     padding: 6px;
-    gap: 6px;
+    gap: 4px;
     border-radius: 20px;
     box-shadow: 0 16px 34px rgba(30,34,32,0.12);
   }
 
   .bottom-nav .nav-link {
-    min-height: 52px;
-    padding: 9px 4px;
-    font-size: 11px;
+    min-height: 48px;
+    padding: 8px 2px;
+    font-size: 10px;
     border-radius: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: -0.01em;
   }
 
   .modal-card {
