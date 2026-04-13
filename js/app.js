@@ -1088,7 +1088,6 @@
       boardView: txt('บอร์ด', 'Board'),
       newIssueView: txt('แจ้งปัญหาใหม่', 'New Issue'),
       checklistView: txt('เช็กลิสต์', 'Checklist'),
-      activityView: txt('กิจกรรม', 'Activity'),
       logView: txt('บันทึกการใช้งาน', 'Log'),
       closedView: txt('งานที่ปิดแล้ว', 'Closed Jobs'),
       settingsView: txt('ตั้งค่า', 'Settings'),
@@ -2398,6 +2397,7 @@
   function switchView(viewId) {
     state.ui.activeView = viewId;
     closeAccountMiniMenu(true);
+    if (viewId === 'activityView') viewId = 'logView';
     if (viewId === 'newIssueView') {
       clearIssueForm();
     }
