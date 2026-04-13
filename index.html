@@ -306,18 +306,48 @@
               <h3>Profile Settings</h3>
               <p class="muted">Update your display name used across this system.</p>
             </div>
-            <div class="form-grid two-col settings-form-grid">
-              <div>
-                <label>Employee ID</label>
-                <input id="settingsEmployeeId" type="text" readonly />
+            <div class="settings-profile-hero">
+              <div class="settings-avatar-card">
+                <div id="settingsProfileAvatarPreview" class="settings-profile-avatar">
+                  <img id="settingsProfileAvatarImg" class="hidden" alt="Profile avatar" />
+                  <span id="settingsProfileInitials">M</span>
+                </div>
+                <input id="settingsAvatarInput" type="file" accept="image/*" class="visually-hidden-file" />
+                <input id="settingsAvatarCameraInput" type="file" accept="image/*" capture="environment" class="visually-hidden-file" />
+                <div class="settings-avatar-actions">
+                  <label id="settingsAvatarPickBtn" for="settingsAvatarInput" class="btn btn-secondary photo-pick-label" role="button" tabindex="0">เลือกรูปโปรไฟล์</label>
+                  <label id="settingsAvatarCameraBtn" for="settingsAvatarCameraInput" class="btn btn-ghost photo-pick-label" role="button" tabindex="0">ถ่ายรูปโปรไฟล์</label>
+                  <button id="settingsAvatarRemoveBtn" class="btn btn-ghost" type="button">ลบรูป</button>
+                </div>
+                <div id="settingsAvatarHint" class="muted settings-avatar-hint">ระบบจะย่อรูปให้อัตโนมัติก่อนบันทึก</div>
               </div>
-              <div>
-                <label>Department</label>
-                <input id="settingsDepartment" type="text" readonly />
-              </div>
-              <div class="full-span">
-                <label>Full Name</label>
-                <input id="settingsFullName" type="text" placeholder="Full Name" />
+              <div class="settings-identity-card">
+                <div class="settings-identity-head">
+                  <div id="settingsProfileNameDisplay" class="settings-profile-name">-</div>
+                  <div id="settingsProfileMetaText" class="settings-profile-meta">-</div>
+                </div>
+                <div class="settings-badge-row">
+                  <span id="settingsRoleBadge" class="settings-badge role">MOD</span>
+                  <span id="settingsDepartmentBadge" class="settings-badge department">MOD</span>
+                </div>
+                <div class="form-grid two-col settings-form-grid compact">
+                  <div>
+                    <label>Employee ID</label>
+                    <input id="settingsEmployeeId" type="text" readonly />
+                  </div>
+                  <div>
+                    <label>Role</label>
+                    <input id="settingsRole" type="text" readonly />
+                  </div>
+                  <div class="full-span">
+                    <label>Department</label>
+                    <input id="settingsDepartment" type="text" readonly />
+                  </div>
+                  <div class="full-span">
+                    <label>Full Name</label>
+                    <input id="settingsFullName" type="text" placeholder="Full Name" />
+                  </div>
+                </div>
               </div>
             </div>
             <div id="settingsProfileStatus" class="settings-status hidden"></div>
@@ -409,6 +439,24 @@
     <div class="modal-card glass mention-alert-card">
       <button id="closeMentionAlertModalBtn" class="modal-close" type="button">×</button>
       <div id="mentionAlertModalContent"></div>
+    </div>
+  </div>
+
+  <div id="passwordConfirmModal" class="modal hidden">
+    <div class="modal-backdrop" data-close-password-modal="true"></div>
+    <div class="modal-card glass password-confirm-card">
+      <button id="closePasswordConfirmModalBtn" class="modal-close" type="button">×</button>
+      <div class="password-confirm-icon">🔐</div>
+      <h3 id="passwordConfirmTitle">ยืนยันการเปลี่ยนรหัสผ่าน</h3>
+      <p id="passwordConfirmMessage" class="muted">ระบบจะอัปเดตรหัสผ่านใหม่ทันทีหลังยืนยัน</p>
+      <div class="password-confirm-summary">
+        <div><strong id="passwordConfirmSummaryLabel">บัญชี</strong>: <span id="passwordConfirmAccount">-</span></div>
+        <div><strong id="passwordConfirmLengthLabel">ความยาวรหัสผ่านใหม่</strong>: <span id="passwordConfirmLength">-</span></div>
+      </div>
+      <div class="password-confirm-actions">
+        <button id="cancelPasswordChangeBtn" class="btn btn-ghost" type="button">ยกเลิก</button>
+        <button id="confirmPasswordChangeBtn" class="btn btn-primary" type="button">ยืนยันเปลี่ยนรหัสผ่าน</button>
+      </div>
     </div>
   </div>
 

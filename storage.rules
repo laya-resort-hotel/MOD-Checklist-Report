@@ -41,6 +41,11 @@ service firebase.storage {
       allow write: if signedIn() && request.auth.uid == uid && isImage() && under5MB();
     }
 
+    match /profile_photos/{uid}/{allPaths=**} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid && isImage() && under5MB();
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

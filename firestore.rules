@@ -417,6 +417,7 @@ service cloud.firestore {
           'phone',
           'email',
           'avatar_url',
+          'avatar_storage_path',
           'created_at',
           'updated_at',
           'last_login_at'
@@ -431,6 +432,7 @@ service cloud.firestore {
           'phone',
           'email',
           'avatar_url',
+          'avatar_storage_path',
           'created_at',
           'updated_at',
           'last_login_at'
@@ -453,7 +455,8 @@ service cloud.firestore {
         request.resource.data.is_active == true &&
         request.resource.data.phone is string &&
         request.resource.data.email is string &&
-        request.resource.data.avatar_url is string
+        request.resource.data.avatar_url is string &&
+        request.resource.data.avatar_storage_path is string
       );
 
       allow update: if isAdmin() || (
@@ -462,12 +465,14 @@ service cloud.firestore {
           'full_name',
           'phone',
           'avatar_url',
+          'avatar_storage_path',
           'updated_at',
           'last_login_at'
         ]) &&
         request.resource.data.role == resource.data.role &&
         request.resource.data.employee_id == resource.data.employee_id &&
-        request.resource.data.is_active == resource.data.is_active
+        request.resource.data.is_active == resource.data.is_active &&
+        request.resource.data.avatar_storage_path is string
       );
 
       allow delete: if isAdmin();

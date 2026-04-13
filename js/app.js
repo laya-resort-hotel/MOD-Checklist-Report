@@ -112,6 +112,23 @@
     return dept ? departmentLabel(dept) : (code || '-');
   }
 
+  function getRoleName(role) {
+    const value = String(role || 'dept_user').toLowerCase();
+    const map = {
+      admin: { th: 'ผู้ดูแลระบบ', en: 'Admin' },
+      mod: { th: 'MOD', en: 'MOD' },
+      dept_user: { th: 'ผู้ใช้แผนก', en: 'Department User' },
+    };
+    const entry = map[value] || { th: labelize(value), en: labelize(value) };
+    return currentLang() === 'en' ? entry.en : entry.th;
+  }
+
+  function getUserInitials(name) {
+    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return 'M';
+    return parts.slice(0, 2).map(part => part.charAt(0).toUpperCase()).join('');
+  }
+
   function translatePriority(value) {
     const map = {
       low: { th: 'ต่ำ', en: 'Low' },
@@ -169,6 +186,9 @@
       didInitialMentionCheck: false,
       mentionModalOpen: false,
       pendingMentionItems: [],
+      pendingProfileAvatar: null,
+      passwordChangeDraft: null,
+      passwordChangeBusy: false,
     },
     data: {
       issues: [],
@@ -184,7 +204,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v56-settings-profile-password';
+  const APP_VERSION = 'v57-settings-avatar-role-password-modal';
 
   function safeClone(value) {
     try {
@@ -1172,12 +1192,13 @@
     setNodeText('#openSettingsFromMore', 'เปิดตั้งค่า', 'Open Settings');
     setNodeText('#exportJsonBtn', 'ส่งออก Local JSON', 'Export Local JSON');
     setNodeText('#settingsView .panel:nth-of-type(1) .panel-header h3', 'ตั้งค่าโปรไฟล์', 'Profile Settings');
-    setNodeText('#settingsView .panel:nth-of-type(1) .panel-header p', 'เปลี่ยนชื่อที่แสดงในระบบนี้', 'Update your display name used across this system.');
+    setNodeText('#settingsView .panel:nth-of-type(1) .panel-header p', 'เปลี่ยนชื่อ รูปโปรไฟล์ และดูข้อมูลบัญชีของคุณ', 'Update your display name, profile photo, and account details.');
     setNodeText('#settingsView .panel:nth-of-type(2) .panel-header h3', 'ตั้งค่ารหัสผ่าน', 'Password Settings');
     setNodeText('#settingsView .panel:nth-of-type(2) .panel-header p', 'เปลี่ยนรหัสผ่านสำหรับการเข้าสู่ระบบครั้งถัดไป', 'Change your password for future sign in.');
     const settingsLabels = qsa('#settingsView label');
     const settingsTexts = [
       txt('รหัสพนักงาน', 'Employee ID'),
+      txt('สิทธิ์การใช้งาน', 'Role'),
       txt('แผนก', 'Department'),
       txt('ชื่อ-นามสกุล', 'Full Name'),
       txt('รหัสผ่านปัจจุบัน', 'Current Password'),
@@ -1189,8 +1210,18 @@
     setNodePlaceholder('#settingsCurrentPassword', 'รหัสผ่านปัจจุบัน', 'Current password');
     setNodePlaceholder('#settingsNewPassword', 'อย่างน้อย 6 ตัวอักษร', 'At least 6 characters');
     setNodePlaceholder('#settingsConfirmPassword', 'ยืนยันรหัสผ่านใหม่', 'Confirm new password');
-    setNodeText('#saveProfileSettingsBtn', 'บันทึกชื่อ', 'Save Profile');
+    setNodeText('#saveProfileSettingsBtn', 'บันทึกโปรไฟล์', 'Save Profile');
     setNodeText('#savePasswordSettingsBtn', 'เปลี่ยนรหัสผ่าน', 'Change Password');
+    setNodeText('#settingsAvatarPickBtn', 'เลือกรูปโปรไฟล์', 'Choose Photo');
+    setNodeText('#settingsAvatarCameraBtn', 'ถ่ายรูปโปรไฟล์', 'Take Photo');
+    setNodeText('#settingsAvatarRemoveBtn', 'ลบรูป', 'Remove Photo');
+    setNodeText('#settingsAvatarHint', 'ระบบจะย่อรูปให้อัตโนมัติก่อนบันทึก', 'Your photo will be compressed automatically before saving.');
+    setNodeText('#passwordConfirmTitle', 'ยืนยันการเปลี่ยนรหัสผ่าน', 'Confirm password change');
+    setNodeText('#passwordConfirmMessage', 'ระบบจะอัปเดตรหัสผ่านใหม่ทันทีหลังยืนยัน', 'Your password will be updated immediately after confirmation.');
+    setNodeText('#passwordConfirmSummaryLabel', 'บัญชี', 'Account');
+    setNodeText('#passwordConfirmLengthLabel', 'ความยาวรหัสผ่านใหม่', 'New password length');
+    setNodeText('#cancelPasswordChangeBtn', 'ยกเลิก', 'Cancel');
+    setNodeText('#confirmPasswordChangeBtn', 'ยืนยันเปลี่ยนรหัสผ่าน', 'Confirm password change');
     const importLabel = qs('#moreView .upload-btn');
     if (importLabel && importLabel.childNodes[0]) importLabel.childNodes[0].textContent = txt('นำเข้า Local JSON', 'Import Local JSON');
     setNodeText('#seedDemoBtn', 'รีเซ็ตข้อมูลเดโม', 'Reset Demo Data');
@@ -1279,6 +1310,7 @@
       phone: '',
       email,
       avatar_url: '',
+      avatar_storage_path: '',
       created_at: window.LAYA_FIREBASE.sdk.serverTimestamp(),
       updated_at: window.LAYA_FIREBASE.sdk.serverTimestamp(),
       last_login_at: window.LAYA_FIREBASE.sdk.serverTimestamp()
@@ -1329,6 +1361,7 @@
         state.ui.didInitialMentionCheck = false;
         state.ui.pendingMentionItems = [];
         closeMentionAlertModal(true);
+    closePasswordConfirmModal(true);
         renderAuthState();
         return;
       }
@@ -1467,7 +1500,20 @@
       modeBanner: qs('#modeBanner'),
       connectionBadge: qs('#connectionBadge'),
       teamMembersList: qs('#teamMembersList'),
+      settingsProfileAvatarPreview: qs('#settingsProfileAvatarPreview'),
+      settingsProfileAvatarImg: qs('#settingsProfileAvatarImg'),
+      settingsProfileInitials: qs('#settingsProfileInitials'),
+      settingsProfileNameDisplay: qs('#settingsProfileNameDisplay'),
+      settingsProfileMetaText: qs('#settingsProfileMetaText'),
+      settingsRoleBadge: qs('#settingsRoleBadge'),
+      settingsDepartmentBadge: qs('#settingsDepartmentBadge'),
+      settingsAvatarInput: qs('#settingsAvatarInput'),
+      settingsAvatarCameraInput: qs('#settingsAvatarCameraInput'),
+      settingsAvatarPickBtn: qs('#settingsAvatarPickBtn'),
+      settingsAvatarCameraBtn: qs('#settingsAvatarCameraBtn'),
+      settingsAvatarRemoveBtn: qs('#settingsAvatarRemoveBtn'),
       settingsEmployeeId: qs('#settingsEmployeeId'),
+      settingsRole: qs('#settingsRole'),
       settingsDepartment: qs('#settingsDepartment'),
       settingsFullName: qs('#settingsFullName'),
       settingsCurrentPassword: qs('#settingsCurrentPassword'),
@@ -1477,6 +1523,12 @@
       settingsPasswordStatus: qs('#settingsPasswordStatus'),
       saveProfileSettingsBtn: qs('#saveProfileSettingsBtn'),
       savePasswordSettingsBtn: qs('#savePasswordSettingsBtn'),
+      passwordConfirmModal: qs('#passwordConfirmModal'),
+      closePasswordConfirmModalBtn: qs('#closePasswordConfirmModalBtn'),
+      passwordConfirmAccount: qs('#passwordConfirmAccount'),
+      passwordConfirmLength: qs('#passwordConfirmLength'),
+      cancelPasswordChangeBtn: qs('#cancelPasswordChangeBtn'),
+      confirmPasswordChangeBtn: qs('#confirmPasswordChangeBtn'),
     });
 
     populateDepartmentSelects();
@@ -1581,7 +1633,17 @@
       renderAll();
     });
     if (el.saveProfileSettingsBtn) el.saveProfileSettingsBtn.addEventListener('click', handleSaveProfileSettings);
+    if (el.settingsFullName) el.settingsFullName.addEventListener('input', renderSettingsAvatar);
     if (el.savePasswordSettingsBtn) el.savePasswordSettingsBtn.addEventListener('click', handleSavePasswordSettings);
+    if (el.settingsAvatarInput) el.settingsAvatarInput.addEventListener('change', handleProfileAvatarPicked);
+    if (el.settingsAvatarCameraInput) el.settingsAvatarCameraInput.addEventListener('change', handleProfileAvatarPicked);
+    if (el.settingsAvatarPickBtn) el.settingsAvatarPickBtn.addEventListener('click', () => { if (el.settingsAvatarInput) el.settingsAvatarInput.value = ''; });
+    if (el.settingsAvatarCameraBtn) el.settingsAvatarCameraBtn.addEventListener('click', () => { if (el.settingsAvatarCameraInput) el.settingsAvatarCameraInput.value = ''; });
+    if (el.settingsAvatarRemoveBtn) el.settingsAvatarRemoveBtn.addEventListener('click', handleRemoveProfileAvatar);
+    if (el.closePasswordConfirmModalBtn) el.closePasswordConfirmModalBtn.addEventListener('click', closePasswordConfirmModal);
+    if (el.cancelPasswordChangeBtn) el.cancelPasswordChangeBtn.addEventListener('click', closePasswordConfirmModal);
+    if (el.confirmPasswordChangeBtn) el.confirmPasswordChangeBtn.addEventListener('click', confirmPasswordChange);
+    if (el.passwordConfirmModal) el.passwordConfirmModal.addEventListener('click', (e) => { if (e.target.dataset.closePasswordModal) closePasswordConfirmModal(); });
     if (el.addChecklistTemplateBtn) {
       el.addChecklistTemplateBtn.addEventListener('click', openChecklistTemplateBuilder);
     }
@@ -1940,6 +2002,7 @@
     state.ui.didInitialMentionCheck = false;
     state.ui.pendingMentionItems = [];
     closeMentionAlertModal(true);
+    closePasswordConfirmModal(true);
     persist();
     renderAuthState();
   }
@@ -1967,46 +2030,159 @@
     node.className = `settings-status ${type}`;
   }
 
+  function getPendingAvatarPreviewUrl() {
+    if (state.ui.pendingProfileAvatar && state.ui.pendingProfileAvatar.removed) return '';
+    if (state.ui.pendingProfileAvatar?.previewDataUrl) return state.ui.pendingProfileAvatar.previewDataUrl;
+    return state.currentUser?.avatar_url || '';
+  }
+
+  function renderSettingsAvatar() {
+    const previewUrl = getPendingAvatarPreviewUrl();
+    const initials = getUserInitials(el.settingsFullName?.value || state.currentUser?.full_name || 'M');
+    if (el.settingsProfileInitials) el.settingsProfileInitials.textContent = initials;
+    if (el.settingsProfileAvatarImg) {
+      if (previewUrl) {
+        el.settingsProfileAvatarImg.src = previewUrl;
+        el.settingsProfileAvatarImg.classList.remove('hidden');
+        if (el.settingsProfileInitials) el.settingsProfileInitials.classList.add('hidden');
+        if (el.settingsProfileAvatarPreview) el.settingsProfileAvatarPreview.classList.add('has-image');
+      } else {
+        el.settingsProfileAvatarImg.removeAttribute('src');
+        el.settingsProfileAvatarImg.classList.add('hidden');
+        if (el.settingsProfileInitials) el.settingsProfileInitials.classList.remove('hidden');
+        if (el.settingsProfileAvatarPreview) el.settingsProfileAvatarPreview.classList.remove('has-image');
+      }
+    }
+    if (el.settingsAvatarRemoveBtn) el.settingsAvatarRemoveBtn.disabled = !previewUrl;
+  }
+
   function renderSettingsView() {
     if (!state.currentUser) return;
-    if (el.settingsEmployeeId) el.settingsEmployeeId.value = state.currentUser.employee_id || '';
-    if (el.settingsDepartment) el.settingsDepartment.value = getDepartmentName(state.currentUser.department || 'MOD');
-    if (el.settingsFullName && document.activeElement !== el.settingsFullName) el.settingsFullName.value = state.currentUser.full_name || '';
+    const fullName = state.currentUser.full_name || '';
+    const employeeId = state.currentUser.employee_id || '';
+    const roleName = getRoleName(state.currentUser.role || 'dept_user');
+    const departmentName = getDepartmentName(state.currentUser.department || 'MOD');
+    if (el.settingsEmployeeId) el.settingsEmployeeId.value = employeeId;
+    if (el.settingsRole) el.settingsRole.value = roleName;
+    if (el.settingsDepartment) el.settingsDepartment.value = departmentName;
+    if (el.settingsFullName && document.activeElement !== el.settingsFullName) el.settingsFullName.value = fullName;
+    if (el.settingsProfileNameDisplay) el.settingsProfileNameDisplay.textContent = fullName || '-';
+    if (el.settingsProfileMetaText) el.settingsProfileMetaText.textContent = `${employeeId || '-'} • ${roleName}`;
+    if (el.settingsRoleBadge) el.settingsRoleBadge.textContent = roleName;
+    if (el.settingsDepartmentBadge) el.settingsDepartmentBadge.textContent = departmentName;
+    renderSettingsAvatar();
+  }
+
+  async function handleProfileAvatarPicked(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const optimized = await optimizeIssuePhoto(file);
+      state.ui.pendingProfileAvatar = {
+        previewDataUrl: optimized.previewDataUrl || optimized.fullDataUrl,
+        fullDataUrl: optimized.fullDataUrl,
+        thumbDataUrl: optimized.thumbDataUrl,
+        mimeType: 'image/jpeg',
+        originalBytes: file.size || 0,
+        removed: false,
+      };
+      renderSettingsAvatar();
+      setSettingsStatus('profile', txt('เลือกรูปโปรไฟล์แล้ว กดบันทึกโปรไฟล์เพื่ออัปเดต', 'Profile photo selected. Tap Save Profile to update.'), 'info');
+    } catch (err) {
+      console.error(err);
+      setSettingsStatus('profile', txt('เลือกรูปโปรไฟล์ไม่สำเร็จ', 'Could not process the selected profile photo'), 'error');
+    } finally {
+      if (event.target) event.target.value = '';
+    }
+  }
+
+  function handleRemoveProfileAvatar() {
+    state.ui.pendingProfileAvatar = { removed: true, previewDataUrl: '', fullDataUrl: '', thumbDataUrl: '', mimeType: 'image/jpeg' };
+    renderSettingsAvatar();
+    setSettingsStatus('profile', txt('เลือกลบรูปโปรไฟล์แล้ว กดบันทึกโปรไฟล์เพื่อยืนยัน', 'Profile photo removal is ready. Tap Save Profile to confirm.'), 'info');
+  }
+
+  async function uploadProfileAvatarAsset(uid, avatar) {
+    const fb = window.LAYA_FIREBASE;
+    if (!fb?.ready || !fb.storage || !fb.sdk?.storageRef || !fb.sdk?.uploadString || !fb.sdk?.getDownloadURL) throw new Error('storage_not_ready');
+    const ts = Date.now();
+    const storagePath = `profile_photos/${uid}/avatar_${ts}.jpg`;
+    const avatarRef = fb.sdk.storageRef(fb.storage, storagePath);
+    await fb.sdk.uploadString(avatarRef, avatar.fullDataUrl, 'data_url', {
+      contentType: avatar.mimeType || 'image/jpeg',
+      cacheControl: 'public,max-age=3600'
+    });
+    const avatarUrl = await fb.sdk.getDownloadURL(avatarRef);
+    return { avatarUrl, storagePath };
   }
 
   async function handleSaveProfileSettings() {
     if (!state.currentUser) return;
     const fullName = String(el.settingsFullName?.value || '').trim();
+    const avatarDraft = state.ui.pendingProfileAvatar;
+    const currentName = String(state.currentUser.full_name || '').trim();
+    const currentAvatarUrl = String(state.currentUser.avatar_url || '');
+    const nameChanged = !!fullName && fullName !== currentName;
+    const avatarChanged = !!avatarDraft;
     if (!fullName) {
       setSettingsStatus('profile', txt('กรุณากรอกชื่อ-นามสกุล', 'Please enter your full name'), 'error');
       return;
     }
-    if (fullName === String(state.currentUser.full_name || '').trim()) {
-      setSettingsStatus('profile', txt('ยังไม่มีการเปลี่ยนแปลงชื่อ', 'No profile changes detected'), 'info');
+    if (!nameChanged && !avatarChanged) {
+      setSettingsStatus('profile', txt('ยังไม่มีการเปลี่ยนแปลงโปรไฟล์', 'No profile changes detected'), 'info');
       return;
     }
     try {
-      setSettingsStatus('profile', txt('กำลังบันทึกชื่อ...', 'Saving profile...'), 'info');
+      setSettingsStatus('profile', txt('กำลังบันทึกโปรไฟล์...', 'Saving profile...'), 'info');
+      let nextAvatarUrl = currentAvatarUrl;
+      let nextAvatarPath = String(state.currentUser.avatar_storage_path || '');
+      let oldAvatarPath = nextAvatarPath;
+      if (avatarDraft?.removed) {
+        nextAvatarUrl = '';
+        nextAvatarPath = '';
+      } else if (avatarDraft?.fullDataUrl) {
+        if (isFirebaseLive()) {
+          const uploaded = await uploadProfileAvatarAsset(state.currentUser.uid, avatarDraft);
+          nextAvatarUrl = uploaded.avatarUrl;
+          nextAvatarPath = uploaded.storagePath;
+        } else {
+          nextAvatarUrl = avatarDraft.previewDataUrl || avatarDraft.fullDataUrl || '';
+          nextAvatarPath = '';
+        }
+      }
+
       if (isFirebaseLive()) {
         const fb = window.LAYA_FIREBASE;
         const userRef = fb.sdk.doc(fb.db, 'users', state.currentUser.uid);
         await fb.sdk.updateDoc(userRef, {
           full_name: fullName,
+          avatar_url: nextAvatarUrl,
+          avatar_storage_path: nextAvatarPath,
           updated_at: fb.sdk.serverTimestamp(),
         });
+        if (oldAvatarPath && oldAvatarPath !== nextAvatarPath && fb.sdk?.deleteObject && fb.sdk?.storageRef && fb.storage) {
+          try {
+            await fb.sdk.deleteObject(fb.sdk.storageRef(fb.storage, oldAvatarPath));
+          } catch (deleteErr) {
+            console.warn('Failed to delete previous avatar asset', deleteErr);
+          }
+        }
       }
       const oldName = state.currentUser.full_name || '';
       state.currentUser.full_name = fullName;
-      state.data.teamMembers = (state.data.teamMembers || []).map(member => member.uid === state.currentUser.uid ? { ...member, full_name: fullName } : member);
+      state.currentUser.avatar_url = nextAvatarUrl;
+      state.currentUser.avatar_storage_path = nextAvatarPath;
+      state.data.teamMembers = (state.data.teamMembers || []).map(member => member.uid === state.currentUser.uid ? { ...member, full_name: fullName, avatar_url: nextAvatarUrl, avatar_storage_path: nextAvatarPath } : member);
+      state.ui.pendingProfileAvatar = null;
       persist();
       renderAll();
-      setSettingsStatus('profile', txt('บันทึกชื่อเรียบร้อยแล้ว', 'Profile updated successfully'), 'success');
+      setSettingsStatus('profile', txt('บันทึกโปรไฟล์เรียบร้อยแล้ว', 'Profile updated successfully'), 'success');
       try {
         recordUsageLog({
           category: 'account',
           action: 'profile_update',
-          title: txt('เปลี่ยนชื่อผู้ใช้', 'Updated profile name'),
-          text: txt(`${fullName} เปลี่ยนชื่อจาก ${oldName || '-'} เป็น ${fullName}`, `${fullName} changed profile name from ${oldName || '-'} to ${fullName}`),
+          title: txt('อัปเดตโปรไฟล์', 'Updated profile'),
+          text: txt(`${fullName} อัปเดตโปรไฟล์${nameChanged ? ` จาก ${oldName || '-'}` : ''}${avatarChanged ? ' และเปลี่ยนรูปโปรไฟล์' : ''}`, `${fullName} updated the profile${nameChanged ? ` from ${oldName || '-'}` : ''}${avatarChanged ? ' and changed the profile photo' : ''}`),
           user_uid: state.currentUser.uid,
           user_name: fullName,
           ref_no: state.currentUser.employee_id || '',
@@ -2014,7 +2190,7 @@
       } catch (_) {}
     } catch (err) {
       console.error(err);
-      setSettingsStatus('profile', txt('บันทึกชื่อไม่สำเร็จ', 'Failed to update profile'), 'error');
+      setSettingsStatus('profile', txt('บันทึกโปรไฟล์ไม่สำเร็จ', 'Failed to update profile'), 'error');
     }
   }
 
@@ -2039,15 +2215,40 @@
       setSettingsStatus('password', txt('การเปลี่ยนรหัสผ่านใช้ได้เมื่อเชื่อม Firebase Live', 'Password change is available in Firebase Live mode'), 'error');
       return;
     }
+    state.ui.passwordChangeDraft = { currentPassword, newPassword };
+    openPasswordConfirmModal();
+  }
+
+  function openPasswordConfirmModal() {
+    if (!el.passwordConfirmModal || !state.currentUser || !state.ui.passwordChangeDraft) return;
+    if (el.passwordConfirmAccount) el.passwordConfirmAccount.textContent = `${state.currentUser.full_name || '-'} (${state.currentUser.employee_id || '-'})`;
+    if (el.passwordConfirmLength) el.passwordConfirmLength.textContent = `${String(state.ui.passwordChangeDraft.newPassword || '').length} ${txt('ตัวอักษร', 'characters')}`;
+    el.passwordConfirmModal.classList.remove('hidden');
+  }
+
+  function closePasswordConfirmModal(force = false) {
+    if (!force && state.ui.passwordChangeBusy) return;
+    if (el.passwordConfirmModal) el.passwordConfirmModal.classList.add('hidden');
+    if (!state.ui.passwordChangeBusy) state.ui.passwordChangeDraft = null;
+    if (el.confirmPasswordChangeBtn) el.confirmPasswordChangeBtn.disabled = false;
+  }
+
+  async function confirmPasswordChange() {
+    if (!state.currentUser || !state.ui.passwordChangeDraft || !isFirebaseLive()) return;
     try {
+      state.ui.passwordChangeBusy = true;
+      if (el.confirmPasswordChangeBtn) {
+        el.confirmPasswordChangeBtn.disabled = true;
+        el.confirmPasswordChangeBtn.textContent = txt('กำลังเปลี่ยนรหัสผ่าน...', 'Changing password...');
+      }
       setSettingsStatus('password', txt('กำลังเปลี่ยนรหัสผ่าน...', 'Changing password...'), 'info');
       const fb = window.LAYA_FIREBASE;
       const authUser = fb.auth.currentUser;
       if (!authUser) throw new Error('not_signed_in');
       const email = authUser.email || employeeIdToEmail(state.currentUser.employee_id || '');
-      const credential = fb.sdk.EmailAuthProvider.credential(email, currentPassword);
+      const credential = fb.sdk.EmailAuthProvider.credential(email, state.ui.passwordChangeDraft.currentPassword);
       await fb.sdk.reauthenticateWithCredential(authUser, credential);
-      await fb.sdk.updatePassword(authUser, newPassword);
+      await fb.sdk.updatePassword(authUser, state.ui.passwordChangeDraft.newPassword);
       if (el.settingsCurrentPassword) el.settingsCurrentPassword.value = '';
       if (el.settingsNewPassword) el.settingsNewPassword.value = '';
       if (el.settingsConfirmPassword) el.settingsConfirmPassword.value = '';
@@ -2063,6 +2264,8 @@
           ref_no: state.currentUser.employee_id || '',
         });
       } catch (_) {}
+      state.ui.passwordChangeDraft = null;
+      closePasswordConfirmModal(true);
     } catch (err) {
       console.error(err);
       const code = String(err?.code || err?.message || '');
@@ -2071,6 +2274,12 @@
       else if (code.includes('too-many-requests')) message = txt('ลองใหม่อีกครั้งในภายหลัง', 'Please try again later');
       else if (code.includes('requires-recent-login')) message = txt('กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่ก่อนเปลี่ยนรหัสผ่าน', 'Please sign out and sign in again before changing password');
       setSettingsStatus('password', message, 'error');
+    } finally {
+      state.ui.passwordChangeBusy = false;
+      if (el.confirmPasswordChangeBtn) {
+        el.confirmPasswordChangeBtn.disabled = false;
+        el.confirmPasswordChangeBtn.textContent = txt('ยืนยันเปลี่ยนรหัสผ่าน', 'Confirm password change');
+      }
     }
   }
 
@@ -5216,7 +5425,7 @@ function humanizeLogAction(action) {
     }
     el.teamMembersList.innerHTML = members.map(member => `
       <div class="team-member-item">
-        <div class="team-member-avatar">${escapeHtml((member.full_name || '?').trim().charAt(0).toUpperCase())}</div>
+        <div class="team-member-avatar">${member.avatar_url ? `<img src="${escapeHtml(member.avatar_url)}" alt="${escapeHtml(member.full_name || 'User')}" />` : escapeHtml(getUserInitials(member.full_name || '?'))}</div>
         <div>
           <div class="team-member-name">${escapeHtml(member.full_name || '-')}</div>
           <div class="team-member-meta">${escapeHtml(getDepartmentName(member.department || 'MOD'))} • ${escapeHtml(member.employee_id || '')}</div>
