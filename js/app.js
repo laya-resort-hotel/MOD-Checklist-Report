@@ -189,6 +189,7 @@
       pendingProfileAvatar: null,
       passwordChangeDraft: null,
       passwordChangeBusy: false,
+      accountMenuOpen: false,
     },
     data: {
       issues: [],
@@ -204,7 +205,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v57-settings-avatar-role-password-modal';
+  const APP_VERSION = 'v59-topbar-avatar-account-menu';
 
   function safeClone(value) {
     try {
@@ -1103,6 +1104,13 @@
     setNodeText('#clearCacheBtn', 'ล้างแคช', 'Clear Cache');
     setNodeText('#clearCacheBtnMore', 'ล้างแคช', 'Clear Cache');
     setNodeText('#logoutBtn', 'ออกจากระบบ', 'Logout');
+    setNodeText('#topbarAccountName', 'บัญชีของฉัน', 'My Account');
+    setNodeText('#topbarAccountMeta', 'ทีม MOD', 'MOD Team');
+    setNodeText('#accountMenuName', 'บัญชีของฉัน', 'My Account');
+    setNodeText('#accountMenuMeta', '0000 • MOD', '0000 • MOD');
+    setNodeText('#accountMenuOpenSettings', 'เปิดตั้งค่า', 'Open Settings');
+    setNodeText('#accountMenuClearCache', 'ล้างแคช', 'Clear Cache');
+    setNodeText('#accountMenuLogout', 'ออกจากระบบ', 'Logout');
     if (!state.currentUser) setNodeText('#welcomeText', 'ยินดีต้อนรับ', 'Welcome');
 
     setNodePlaceholder('#boardSearch', 'ค้นหา issue, location, department', 'Search issue, location, department');
@@ -1433,6 +1441,24 @@
       authStatus: qs('#authStatus'),
       demoBox: qs('#demoBox'),
       openSettingsBtn: qs('#openSettingsBtn'),
+      topbarAccountBtn: qs('#topbarAccountBtn'),
+      topbarAvatar: qs('#topbarAvatar'),
+      topbarAvatarImg: qs('#topbarAvatarImg'),
+      topbarAvatarInitials: qs('#topbarAvatarInitials'),
+      topbarAccountName: qs('#topbarAccountName'),
+      topbarAccountMeta: qs('#topbarAccountMeta'),
+      accountMenuWrap: qs('#accountMenuWrap'),
+      accountMiniMenu: qs('#accountMiniMenu'),
+      accountMiniAvatar: qs('#accountMiniAvatar'),
+      accountMiniAvatarImg: qs('#accountMiniAvatarImg'),
+      accountMiniAvatarInitials: qs('#accountMiniAvatarInitials'),
+      accountMenuName: qs('#accountMenuName'),
+      accountMenuMeta: qs('#accountMenuMeta'),
+      accountMenuRoleBadge: qs('#accountMenuRoleBadge'),
+      accountMenuDepartmentBadge: qs('#accountMenuDepartmentBadge'),
+      accountMenuOpenSettings: qs('#accountMenuOpenSettings'),
+      accountMenuClearCache: qs('#accountMenuClearCache'),
+      accountMenuLogout: qs('#accountMenuLogout'),
       clearCacheBtn: qs('#clearCacheBtn'),
       clearCacheBtnMore: qs('#clearCacheBtnMore'),
       logoutBtn: qs('#logoutBtn'),
@@ -1538,9 +1564,15 @@
     el.loginBtn.addEventListener('click', handleLogin);
     el.registerBtn.addEventListener('click', handleRegister);
     if (el.openSettingsBtn) el.openSettingsBtn.addEventListener('click', () => switchView('settingsView'));
+    if (el.topbarAccountBtn) el.topbarAccountBtn.addEventListener('click', handleToggleAccountMenu);
+    if (el.accountMenuOpenSettings) el.accountMenuOpenSettings.addEventListener('click', handleOpenSettingsFromAccountMenu);
     if (el.clearCacheBtn) el.clearCacheBtn.addEventListener('click', handleClearCache);
     if (el.clearCacheBtnMore) el.clearCacheBtnMore.addEventListener('click', handleClearCache);
-    el.logoutBtn.addEventListener('click', handleLogout);
+    if (el.accountMenuClearCache) el.accountMenuClearCache.addEventListener('click', handleClearCache);
+    if (el.logoutBtn) el.logoutBtn.addEventListener('click', handleLogout);
+    if (el.accountMenuLogout) el.accountMenuLogout.addEventListener('click', handleLogout);
+    document.addEventListener('click', handleDocumentClickForAccountMenu);
+    document.addEventListener('keydown', handleGlobalKeydown);
     el.showSignInTab.addEventListener('click', () => showAuthTab('signin'));
     el.showRegisterTab.addEventListener('click', () => showAuthTab('register'));
     if (el.registerRole) el.registerRole.addEventListener('change', syncRegisterRoleDepartment);
@@ -2011,11 +2043,91 @@
     const loggedIn = !!state.currentUser;
     el.loginScreen.classList.toggle('hidden', loggedIn);
     el.appShell.classList.toggle('hidden', !loggedIn);
-    if (!loggedIn) return;
+    if (!loggedIn) {
+      closeAccountMiniMenu(true);
+      return;
+    }
     const teamName = state.currentUser.department ? getDepartmentName(state.currentUser.department) : 'MOD';
     el.welcomeText.textContent = `${state.currentUser.full_name} • ${teamName} ${txt('ทีม', 'Team')}`;
+    renderTopbarAccount();
     renderTeamMembers();
     renderSettingsView();
+  }
+
+  function renderTopbarAccount() {
+    const user = state.currentUser;
+    if (!user) return;
+    const fullName = String(user.full_name || txt('บัญชีของฉัน', 'My Account'));
+    const employeeId = String(user.employee_id || '-');
+    const roleName = getRoleName(user.role || 'dept_user');
+    const departmentName = getDepartmentName(user.department || 'MOD');
+    const avatarUrl = String(user.avatar_url || '');
+    const initials = getUserInitials(fullName || 'M');
+    if (el.topbarAccountName) el.topbarAccountName.textContent = fullName;
+    if (el.topbarAccountMeta) el.topbarAccountMeta.textContent = `${departmentName} ${txt('ทีม', 'Team')}`;
+    if (el.accountMenuName) el.accountMenuName.textContent = fullName;
+    if (el.accountMenuMeta) el.accountMenuMeta.textContent = `${employeeId} • ${roleName}`;
+    if (el.accountMenuRoleBadge) el.accountMenuRoleBadge.textContent = roleName;
+    if (el.accountMenuDepartmentBadge) el.accountMenuDepartmentBadge.textContent = departmentName;
+    if (el.topbarAvatarInitials) el.topbarAvatarInitials.textContent = initials;
+    if (el.accountMiniAvatarInitials) el.accountMiniAvatarInitials.textContent = initials;
+    const imagePairs = [
+      [el.topbarAvatarImg, el.topbarAvatarInitials, el.topbarAvatar],
+      [el.accountMiniAvatarImg, el.accountMiniAvatarInitials, el.accountMiniAvatar],
+    ];
+    imagePairs.forEach(([img, initialsNode, wrap]) => {
+      if (!img) return;
+      if (avatarUrl) {
+        img.src = avatarUrl;
+        img.classList.remove('hidden');
+        if (initialsNode) initialsNode.classList.add('hidden');
+        if (wrap) wrap.classList.add('has-image');
+      } else {
+        img.removeAttribute('src');
+        img.classList.add('hidden');
+        if (initialsNode) initialsNode.classList.remove('hidden');
+        if (wrap) wrap.classList.remove('has-image');
+      }
+    });
+  }
+
+  function openAccountMiniMenu() {
+    state.ui.accountMenuOpen = true;
+    if (el.accountMiniMenu) el.accountMiniMenu.classList.remove('hidden');
+    if (el.topbarAccountBtn) el.topbarAccountBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeAccountMiniMenu(silent = false) {
+    state.ui.accountMenuOpen = false;
+    if (el.accountMiniMenu) el.accountMiniMenu.classList.add('hidden');
+    if (el.topbarAccountBtn) el.topbarAccountBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  function handleToggleAccountMenu(event) {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (state.ui.accountMenuOpen) {
+      closeAccountMiniMenu(true);
+    } else {
+      renderTopbarAccount();
+      openAccountMiniMenu();
+    }
+  }
+
+  function handleOpenSettingsFromAccountMenu() {
+    closeAccountMiniMenu(true);
+    switchView('settingsView');
+  }
+
+  function handleDocumentClickForAccountMenu(event) {
+    if (!state.ui.accountMenuOpen) return;
+    if (!el.accountMenuWrap) return;
+    if (el.accountMenuWrap.contains(event.target)) return;
+    closeAccountMiniMenu(true);
+  }
+
+  function handleGlobalKeydown(event) {
+    if (event.key === 'Escape' && state.ui.accountMenuOpen) closeAccountMiniMenu(true);
   }
 
   function setSettingsStatus(kind, message = '', type = 'info') {
@@ -2285,6 +2397,7 @@
 
   function switchView(viewId) {
     state.ui.activeView = viewId;
+    closeAccountMiniMenu(true);
     if (viewId === 'newIssueView') {
       clearIssueForm();
     }

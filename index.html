@@ -114,9 +114,40 @@
             <button class="lang-btn" type="button" data-lang-btn="en">EN</button>
           </div>
           <span class="badge success" id="connectionBadge">Ready</span>
-          <button id="openSettingsBtn" class="btn btn-ghost" type="button">Settings</button>
           <button id="clearCacheBtn" class="btn btn-ghost btn-cache" type="button">Clear Cache</button>
-          <button id="logoutBtn" class="btn btn-ghost">Logout</button>
+          <div class="account-menu-wrap" id="accountMenuWrap">
+            <button id="topbarAccountBtn" class="account-chip" type="button" aria-haspopup="menu" aria-expanded="false">
+              <span id="topbarAvatar" class="topbar-avatar">
+                <img id="topbarAvatarImg" class="hidden" alt="Profile" />
+                <span id="topbarAvatarInitials">M</span>
+              </span>
+              <span class="account-chip-text desktop-only-inline">
+                <span id="topbarAccountName" class="account-chip-name">My Account</span>
+                <span id="topbarAccountMeta" class="account-chip-meta">MOD Team</span>
+              </span>
+            </button>
+            <div id="accountMiniMenu" class="account-mini-menu hidden" role="menu" aria-label="Account menu">
+              <div class="account-mini-header">
+                <div class="account-mini-avatar" id="accountMiniAvatar">
+                  <img id="accountMiniAvatarImg" class="hidden" alt="Profile" />
+                  <span id="accountMiniAvatarInitials">M</span>
+                </div>
+                <div class="account-mini-head-copy">
+                  <div id="accountMenuName" class="account-mini-name">My Account</div>
+                  <div id="accountMenuMeta" class="account-mini-meta">0000 • MOD</div>
+                  <div class="account-mini-badges">
+                    <span id="accountMenuRoleBadge" class="account-mini-badge role">MOD</span>
+                    <span id="accountMenuDepartmentBadge" class="account-mini-badge department">MOD</span>
+                  </div>
+                </div>
+              </div>
+              <div class="account-mini-actions">
+                <button id="accountMenuOpenSettings" class="account-menu-item" type="button">Open Settings</button>
+                <button id="accountMenuClearCache" class="account-menu-item" type="button">Clear Cache</button>
+                <button id="accountMenuLogout" class="account-menu-item danger" type="button">Logout</button>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
