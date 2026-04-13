@@ -184,7 +184,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v52-board-media-preview';
+  const APP_VERSION = 'v56-settings-profile-password';
 
   function safeClone(value) {
     try {
@@ -1070,6 +1070,7 @@
       activityView: txt('กิจกรรม', 'Activity'),
       logView: txt('บันทึกการใช้งาน', 'Log'),
       closedView: txt('งานที่ปิดแล้ว', 'Closed Jobs'),
+      settingsView: txt('ตั้งค่า', 'Settings'),
     };
     qsa('.sidebar-nav .nav-link, .bottom-nav .nav-link').forEach(btn => {
       const label = sidebarLabels[btn.dataset.view];
@@ -1078,6 +1079,7 @@
 
     setNodeText('.topbar .eyebrow', 'LAYA RESORT PHUKET', 'LAYA RESORT PHUKET');
     setNodeText('.topbar-title', 'MOD Checklist Report', 'MOD Checklist Report');
+    setNodeText('#openSettingsBtn', 'ตั้งค่า', 'Settings');
     setNodeText('#clearCacheBtn', 'ล้างแคช', 'Clear Cache');
     setNodeText('#clearCacheBtnMore', 'ล้างแคช', 'Clear Cache');
     setNodeText('#logoutBtn', 'ออกจากระบบ', 'Logout');
@@ -1167,7 +1169,28 @@
     setNodeText('#moreView .panel-header h3', 'ทีมและเครื่องมือ', 'Team & Tools');
     setNodeText('#openClosedJobsFromMore', 'เปิดงานที่ปิดแล้ว', 'Open Closed Jobs');
     setNodeText('#openUsageLogFromMore', 'เปิด Usage Log', 'Open Usage Log');
+    setNodeText('#openSettingsFromMore', 'เปิดตั้งค่า', 'Open Settings');
     setNodeText('#exportJsonBtn', 'ส่งออก Local JSON', 'Export Local JSON');
+    setNodeText('#settingsView .panel:nth-of-type(1) .panel-header h3', 'ตั้งค่าโปรไฟล์', 'Profile Settings');
+    setNodeText('#settingsView .panel:nth-of-type(1) .panel-header p', 'เปลี่ยนชื่อที่แสดงในระบบนี้', 'Update your display name used across this system.');
+    setNodeText('#settingsView .panel:nth-of-type(2) .panel-header h3', 'ตั้งค่ารหัสผ่าน', 'Password Settings');
+    setNodeText('#settingsView .panel:nth-of-type(2) .panel-header p', 'เปลี่ยนรหัสผ่านสำหรับการเข้าสู่ระบบครั้งถัดไป', 'Change your password for future sign in.');
+    const settingsLabels = qsa('#settingsView label');
+    const settingsTexts = [
+      txt('รหัสพนักงาน', 'Employee ID'),
+      txt('แผนก', 'Department'),
+      txt('ชื่อ-นามสกุล', 'Full Name'),
+      txt('รหัสผ่านปัจจุบัน', 'Current Password'),
+      txt('รหัสผ่านใหม่', 'New Password'),
+      txt('ยืนยันรหัสผ่านใหม่', 'Confirm New Password'),
+    ];
+    settingsLabels.forEach((label, index) => { if (settingsTexts[index]) label.textContent = settingsTexts[index]; });
+    setNodePlaceholder('#settingsFullName', 'ชื่อ-นามสกุล', 'Full Name');
+    setNodePlaceholder('#settingsCurrentPassword', 'รหัสผ่านปัจจุบัน', 'Current password');
+    setNodePlaceholder('#settingsNewPassword', 'อย่างน้อย 6 ตัวอักษร', 'At least 6 characters');
+    setNodePlaceholder('#settingsConfirmPassword', 'ยืนยันรหัสผ่านใหม่', 'Confirm new password');
+    setNodeText('#saveProfileSettingsBtn', 'บันทึกชื่อ', 'Save Profile');
+    setNodeText('#savePasswordSettingsBtn', 'เปลี่ยนรหัสผ่าน', 'Change Password');
     const importLabel = qs('#moreView .upload-btn');
     if (importLabel && importLabel.childNodes[0]) importLabel.childNodes[0].textContent = txt('นำเข้า Local JSON', 'Import Local JSON');
     setNodeText('#seedDemoBtn', 'รีเซ็ตข้อมูลเดโม', 'Reset Demo Data');
@@ -1376,6 +1399,7 @@
       registerPane: qs('#registerPane'),
       authStatus: qs('#authStatus'),
       demoBox: qs('#demoBox'),
+      openSettingsBtn: qs('#openSettingsBtn'),
       clearCacheBtn: qs('#clearCacheBtn'),
       clearCacheBtnMore: qs('#clearCacheBtnMore'),
       logoutBtn: qs('#logoutBtn'),
@@ -1393,6 +1417,7 @@
       openClosedJobsBtn: qs('#openClosedJobsBtn'),
       openClosedJobsFromMore: qs('#openClosedJobsFromMore'),
       openUsageLogFromMore: qs('#openUsageLogFromMore'),
+      openSettingsFromMore: qs('#openSettingsFromMore'),
       backToBoardBtn: qs('#backToBoardBtn'),
       issueTitle: qs('#issueTitle'),
       issueDescription: qs('#issueDescription'),
@@ -1442,6 +1467,16 @@
       modeBanner: qs('#modeBanner'),
       connectionBadge: qs('#connectionBadge'),
       teamMembersList: qs('#teamMembersList'),
+      settingsEmployeeId: qs('#settingsEmployeeId'),
+      settingsDepartment: qs('#settingsDepartment'),
+      settingsFullName: qs('#settingsFullName'),
+      settingsCurrentPassword: qs('#settingsCurrentPassword'),
+      settingsNewPassword: qs('#settingsNewPassword'),
+      settingsConfirmPassword: qs('#settingsConfirmPassword'),
+      settingsProfileStatus: qs('#settingsProfileStatus'),
+      settingsPasswordStatus: qs('#settingsPasswordStatus'),
+      saveProfileSettingsBtn: qs('#saveProfileSettingsBtn'),
+      savePasswordSettingsBtn: qs('#savePasswordSettingsBtn'),
     });
 
     populateDepartmentSelects();
@@ -1450,6 +1485,7 @@
   function bindEvents() {
     el.loginBtn.addEventListener('click', handleLogin);
     el.registerBtn.addEventListener('click', handleRegister);
+    if (el.openSettingsBtn) el.openSettingsBtn.addEventListener('click', () => switchView('settingsView'));
     if (el.clearCacheBtn) el.clearCacheBtn.addEventListener('click', handleClearCache);
     if (el.clearCacheBtnMore) el.clearCacheBtnMore.addEventListener('click', handleClearCache);
     el.logoutBtn.addEventListener('click', handleLogout);
@@ -1499,6 +1535,7 @@
     if (el.openClosedJobsBtn) el.openClosedJobsBtn.addEventListener('click', () => switchView('closedView'));
     if (el.openClosedJobsFromMore) el.openClosedJobsFromMore.addEventListener('click', () => switchView('closedView'));
     if (el.openUsageLogFromMore) el.openUsageLogFromMore.addEventListener('click', () => switchView('logView'));
+    if (el.openSettingsFromMore) el.openSettingsFromMore.addEventListener('click', () => switchView('settingsView'));
     if (el.backToBoardBtn) el.backToBoardBtn.addEventListener('click', () => switchView('boardView'));
     el.boardFilterChips.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');
@@ -1543,6 +1580,8 @@
       persist();
       renderAll();
     });
+    if (el.saveProfileSettingsBtn) el.saveProfileSettingsBtn.addEventListener('click', handleSaveProfileSettings);
+    if (el.savePasswordSettingsBtn) el.savePasswordSettingsBtn.addEventListener('click', handleSavePasswordSettings);
     if (el.addChecklistTemplateBtn) {
       el.addChecklistTemplateBtn.addEventListener('click', openChecklistTemplateBuilder);
     }
@@ -1913,6 +1952,126 @@
     const teamName = state.currentUser.department ? getDepartmentName(state.currentUser.department) : 'MOD';
     el.welcomeText.textContent = `${state.currentUser.full_name} • ${teamName} ${txt('ทีม', 'Team')}`;
     renderTeamMembers();
+    renderSettingsView();
+  }
+
+  function setSettingsStatus(kind, message = '', type = 'info') {
+    const node = kind === 'password' ? el.settingsPasswordStatus : el.settingsProfileStatus;
+    if (!node) return;
+    if (!message) {
+      node.textContent = '';
+      node.className = 'settings-status hidden';
+      return;
+    }
+    node.textContent = message;
+    node.className = `settings-status ${type}`;
+  }
+
+  function renderSettingsView() {
+    if (!state.currentUser) return;
+    if (el.settingsEmployeeId) el.settingsEmployeeId.value = state.currentUser.employee_id || '';
+    if (el.settingsDepartment) el.settingsDepartment.value = getDepartmentName(state.currentUser.department || 'MOD');
+    if (el.settingsFullName && document.activeElement !== el.settingsFullName) el.settingsFullName.value = state.currentUser.full_name || '';
+  }
+
+  async function handleSaveProfileSettings() {
+    if (!state.currentUser) return;
+    const fullName = String(el.settingsFullName?.value || '').trim();
+    if (!fullName) {
+      setSettingsStatus('profile', txt('กรุณากรอกชื่อ-นามสกุล', 'Please enter your full name'), 'error');
+      return;
+    }
+    if (fullName === String(state.currentUser.full_name || '').trim()) {
+      setSettingsStatus('profile', txt('ยังไม่มีการเปลี่ยนแปลงชื่อ', 'No profile changes detected'), 'info');
+      return;
+    }
+    try {
+      setSettingsStatus('profile', txt('กำลังบันทึกชื่อ...', 'Saving profile...'), 'info');
+      if (isFirebaseLive()) {
+        const fb = window.LAYA_FIREBASE;
+        const userRef = fb.sdk.doc(fb.db, 'users', state.currentUser.uid);
+        await fb.sdk.updateDoc(userRef, {
+          full_name: fullName,
+          updated_at: fb.sdk.serverTimestamp(),
+        });
+      }
+      const oldName = state.currentUser.full_name || '';
+      state.currentUser.full_name = fullName;
+      state.data.teamMembers = (state.data.teamMembers || []).map(member => member.uid === state.currentUser.uid ? { ...member, full_name: fullName } : member);
+      persist();
+      renderAll();
+      setSettingsStatus('profile', txt('บันทึกชื่อเรียบร้อยแล้ว', 'Profile updated successfully'), 'success');
+      try {
+        recordUsageLog({
+          category: 'account',
+          action: 'profile_update',
+          title: txt('เปลี่ยนชื่อผู้ใช้', 'Updated profile name'),
+          text: txt(`${fullName} เปลี่ยนชื่อจาก ${oldName || '-'} เป็น ${fullName}`, `${fullName} changed profile name from ${oldName || '-'} to ${fullName}`),
+          user_uid: state.currentUser.uid,
+          user_name: fullName,
+          ref_no: state.currentUser.employee_id || '',
+        });
+      } catch (_) {}
+    } catch (err) {
+      console.error(err);
+      setSettingsStatus('profile', txt('บันทึกชื่อไม่สำเร็จ', 'Failed to update profile'), 'error');
+    }
+  }
+
+  async function handleSavePasswordSettings() {
+    if (!state.currentUser) return;
+    const currentPassword = String(el.settingsCurrentPassword?.value || '').trim();
+    const newPassword = String(el.settingsNewPassword?.value || '').trim();
+    const confirmPassword = String(el.settingsConfirmPassword?.value || '').trim();
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setSettingsStatus('password', txt('กรุณากรอกรหัสผ่านให้ครบทุกช่อง', 'Please fill in all password fields'), 'error');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setSettingsStatus('password', txt('รหัสผ่านใหม่ต้องอย่างน้อย 6 ตัวอักษร', 'New password must be at least 6 characters'), 'error');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setSettingsStatus('password', txt('ยืนยันรหัสผ่านใหม่ไม่ตรงกัน', 'New password confirmation does not match'), 'error');
+      return;
+    }
+    if (!isFirebaseLive()) {
+      setSettingsStatus('password', txt('การเปลี่ยนรหัสผ่านใช้ได้เมื่อเชื่อม Firebase Live', 'Password change is available in Firebase Live mode'), 'error');
+      return;
+    }
+    try {
+      setSettingsStatus('password', txt('กำลังเปลี่ยนรหัสผ่าน...', 'Changing password...'), 'info');
+      const fb = window.LAYA_FIREBASE;
+      const authUser = fb.auth.currentUser;
+      if (!authUser) throw new Error('not_signed_in');
+      const email = authUser.email || employeeIdToEmail(state.currentUser.employee_id || '');
+      const credential = fb.sdk.EmailAuthProvider.credential(email, currentPassword);
+      await fb.sdk.reauthenticateWithCredential(authUser, credential);
+      await fb.sdk.updatePassword(authUser, newPassword);
+      if (el.settingsCurrentPassword) el.settingsCurrentPassword.value = '';
+      if (el.settingsNewPassword) el.settingsNewPassword.value = '';
+      if (el.settingsConfirmPassword) el.settingsConfirmPassword.value = '';
+      setSettingsStatus('password', txt('เปลี่ยนรหัสผ่านเรียบร้อยแล้ว', 'Password updated successfully'), 'success');
+      try {
+        recordUsageLog({
+          category: 'account',
+          action: 'password_update',
+          title: txt('เปลี่ยนรหัสผ่าน', 'Changed password'),
+          text: txt(`${state.currentUser.full_name} เปลี่ยนรหัสผ่านแล้ว`, `${state.currentUser.full_name} changed password`),
+          user_uid: state.currentUser.uid,
+          user_name: state.currentUser.full_name,
+          ref_no: state.currentUser.employee_id || '',
+        });
+      } catch (_) {}
+    } catch (err) {
+      console.error(err);
+      const code = String(err?.code || err?.message || '');
+      let message = txt('เปลี่ยนรหัสผ่านไม่สำเร็จ', 'Failed to change password');
+      if (code.includes('wrong-password') || code.includes('invalid-credential')) message = txt('รหัสผ่านปัจจุบันไม่ถูกต้อง', 'Current password is incorrect');
+      else if (code.includes('too-many-requests')) message = txt('ลองใหม่อีกครั้งในภายหลัง', 'Please try again later');
+      else if (code.includes('requires-recent-login')) message = txt('กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่ก่อนเปลี่ยนรหัสผ่าน', 'Please sign out and sign in again before changing password');
+      setSettingsStatus('password', message, 'error');
+    }
   }
 
   function switchView(viewId) {
@@ -1927,6 +2086,7 @@
     if (viewId === 'logView') renderUsageLogs();
     if (viewId === 'checklistView') renderTemplateCards();
     if (viewId === 'closedView') renderClosedJobs();
+    if (viewId === 'settingsView') renderSettingsView();
     if (viewId === 'moreView') renderTeamMembers();
   }
 
@@ -1940,6 +2100,7 @@
     renderUsageLogs();
     renderClosedJobs();
     renderTeamMembers();
+    renderSettingsView();
     switchView(state.ui.activeView);
   }
 

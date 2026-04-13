@@ -96,7 +96,9 @@
         <button class="nav-link" data-view="checklistView">Checklist</button>
         <button class="nav-link" data-view="activityView">Activity</button>
         <button class="nav-link" data-view="logView">Log</button>
+      <button class="nav-link" data-view="settingsView">Settings</button>
         <button class="nav-link" data-view="closedView">Closed Jobs</button>
+        <button class="nav-link" data-view="settingsView">Settings</button>
       </nav>
     </aside>
 
@@ -113,6 +115,7 @@
             <button class="lang-btn" type="button" data-lang-btn="en">EN</button>
           </div>
           <span class="badge success" id="connectionBadge">Ready</span>
+          <button id="openSettingsBtn" class="btn btn-ghost" type="button">Settings</button>
           <button id="clearCacheBtn" class="btn btn-ghost btn-cache" type="button">Clear Cache</button>
           <button id="logoutBtn" class="btn btn-ghost">Logout</button>
         </div>
@@ -294,6 +297,62 @@
         </div>
       </section>
 
+
+
+      <section id="settingsView" class="view">
+        <div class="settings-grid">
+          <div class="panel glass">
+            <div class="panel-header">
+              <h3>Profile Settings</h3>
+              <p class="muted">Update your display name used across this system.</p>
+            </div>
+            <div class="form-grid two-col settings-form-grid">
+              <div>
+                <label>Employee ID</label>
+                <input id="settingsEmployeeId" type="text" readonly />
+              </div>
+              <div>
+                <label>Department</label>
+                <input id="settingsDepartment" type="text" readonly />
+              </div>
+              <div class="full-span">
+                <label>Full Name</label>
+                <input id="settingsFullName" type="text" placeholder="Full Name" />
+              </div>
+            </div>
+            <div id="settingsProfileStatus" class="settings-status hidden"></div>
+            <div class="sticky-actions">
+              <button id="saveProfileSettingsBtn" class="btn btn-primary" type="button">Save Profile</button>
+            </div>
+          </div>
+
+          <div class="panel glass">
+            <div class="panel-header">
+              <h3>Password Settings</h3>
+              <p class="muted">Change your password for future sign in.</p>
+            </div>
+            <div class="form-grid settings-form-grid">
+              <div>
+                <label>Current Password</label>
+                <input id="settingsCurrentPassword" type="password" placeholder="Current password" />
+              </div>
+              <div>
+                <label>New Password</label>
+                <input id="settingsNewPassword" type="password" placeholder="At least 6 characters" />
+              </div>
+              <div>
+                <label>Confirm New Password</label>
+                <input id="settingsConfirmPassword" type="password" placeholder="Confirm new password" />
+              </div>
+            </div>
+            <div id="settingsPasswordStatus" class="settings-status hidden"></div>
+            <div class="sticky-actions">
+              <button id="savePasswordSettingsBtn" class="btn btn-secondary" type="button">Change Password</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="moreView" class="view">
         <div class="more-grid">
           <div class="panel glass">
@@ -303,6 +362,7 @@
             <div class="stack">
               <button id="openClosedJobsFromMore" class="btn btn-secondary">Open Closed Jobs</button>
               <button id="openUsageLogFromMore" class="btn btn-secondary">Open Usage Log</button>
+              <button id="openSettingsFromMore" class="btn btn-secondary">Open Settings</button>
               <button id="exportJsonBtn" class="btn btn-secondary">Export Local JSON</button>
               <label class="btn btn-ghost upload-btn">
                 Import Local JSON
@@ -332,6 +392,7 @@
       <button class="nav-link" data-view="checklistView">Checklist</button>
       <button class="nav-link" data-view="activityView">Activity</button>
       <button class="nav-link" data-view="logView">Log</button>
+      <button class="nav-link" data-view="settingsView">Settings</button>
     </nav>
   </div>
 

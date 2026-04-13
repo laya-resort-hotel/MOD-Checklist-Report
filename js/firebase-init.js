@@ -8,7 +8,10 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  deleteUser
+  deleteUser,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import {
   getFirestore,
@@ -75,6 +78,9 @@ async function boot() {
         createUserWithEmailAndPassword,
         signOut,
         deleteUser,
+        updatePassword,
+        EmailAuthProvider,
+        reauthenticateWithCredential,
         doc,
         getDoc,
         getDocs,
