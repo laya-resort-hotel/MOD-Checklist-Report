@@ -378,7 +378,11 @@
                   </div>
                   <div class="full-span">
                     <label>Full Name</label>
-                    <input id="settingsFullName" name="profile_full_name" type="text" placeholder="Full Name" autocomplete="off" autocapitalize="words" spellcheck="false" data-lpignore="true" />
+                    <div id="settingsFullNameReadout" class="settings-readout" data-kind="full-name">-</div>
+                    <div class="settings-inline-actions">
+                      <button id="openFullNameEditorBtn" class="btn btn-ghost" type="button">Edit Name</button>
+                    </div>
+                    <input id="settingsFullName" name="profile_full_name_hidden" type="text" placeholder="Full Name" autocomplete="off" autocapitalize="words" spellcheck="false" data-lpignore="true" class="settings-hidden-input" aria-hidden="true" tabindex="-1" />
                   </div>
                 </div>
               </div>
@@ -398,23 +402,15 @@
               <input type="text" tabindex="-1" autocomplete="username" />
               <input type="password" tabindex="-1" autocomplete="current-password" />
             </div>
-            <div class="form-grid settings-form-grid" autocomplete="off">
-              <div>
-                <label>Current Password</label>
-                <input id="settingsCurrentPassword" name="settings_current_password" type="password" placeholder="Current password" autocomplete="current-password" autocapitalize="off" spellcheck="false" data-lpignore="true" readonly />
-              </div>
-              <div>
-                <label>New Password</label>
-                <input id="settingsNewPassword" name="settings_new_password" type="password" placeholder="At least 6 characters" autocomplete="new-password" autocapitalize="off" spellcheck="false" data-lpignore="true" readonly />
-              </div>
-              <div>
-                <label>Confirm New Password</label>
-                <input id="settingsConfirmPassword" name="settings_confirm_password" type="password" placeholder="Confirm new password" autocomplete="new-password" autocapitalize="off" spellcheck="false" data-lpignore="true" readonly />
-              </div>
+            <div class="settings-password-helper muted" id="settingsPasswordHelper">For security, password fields open in a separate popup.</div>
+            <div class="settings-hidden-input-wrap" aria-hidden="true">
+              <input id="settingsCurrentPassword" name="settings_current_password_hidden" type="password" placeholder="Current password" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" readonly class="settings-hidden-input" tabindex="-1" />
+              <input id="settingsNewPassword" name="settings_new_password_hidden" type="password" placeholder="At least 6 characters" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" readonly class="settings-hidden-input" tabindex="-1" />
+              <input id="settingsConfirmPassword" name="settings_confirm_password_hidden" type="password" placeholder="Confirm new password" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" readonly class="settings-hidden-input" tabindex="-1" />
             </div>
             <div id="settingsPasswordStatus" class="settings-status hidden"></div>
             <div class="sticky-actions">
-              <button id="savePasswordSettingsBtn" class="btn btn-secondary" type="button">Change Password</button>
+              <button id="openPasswordEditorBtn" class="btn btn-secondary" type="button">Change Password</button>
             </div>
           </div>
         </div>
@@ -476,6 +472,56 @@
     <div class="modal-card glass mention-alert-card">
       <button id="closeMentionAlertModalBtn" class="modal-close" type="button">×</button>
       <div id="mentionAlertModalContent"></div>
+    </div>
+  </div>
+
+  <div id="fullNameEditorModal" class="modal hidden">
+    <div class="modal-backdrop" data-close-fullname-modal="true"></div>
+    <div class="modal-card glass settings-editor-card">
+      <button id="closeFullNameEditorModalBtn" class="modal-close" type="button">×</button>
+      <h3 id="fullNameEditorTitle">แก้ไขชื่อ-นามสกุล</h3>
+      <p id="fullNameEditorMessage" class="muted">อัปเดตชื่อที่ใช้แสดงในระบบ</p>
+      <div class="form-grid">
+        <div>
+          <label id="fullNameEditorLabel">ชื่อ-นามสกุล</label>
+          <input id="fullNameEditorInput" name="full_name_editor" type="text" placeholder="ชื่อ-นามสกุล" autocomplete="off" autocapitalize="words" spellcheck="false" data-lpignore="true" />
+        </div>
+      </div>
+      <div class="password-confirm-actions">
+        <button id="cancelFullNameEditorBtn" class="btn btn-ghost" type="button">ยกเลิก</button>
+        <button id="saveFullNameEditorBtn" class="btn btn-primary" type="button">บันทึกชื่อ</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="passwordEditorModal" class="modal hidden">
+    <div class="modal-backdrop" data-close-password-editor-modal="true"></div>
+    <div class="modal-card glass settings-editor-card">
+      <button id="closePasswordEditorModalBtn" class="modal-close" type="button">×</button>
+      <h3 id="passwordEditorTitle">เปลี่ยนรหัสผ่าน</h3>
+      <p id="passwordEditorMessage" class="muted">กรอกรหัสผ่านเดิมและรหัสผ่านใหม่ในหน้าต่างนี้</p>
+      <div class="autofill-trap" aria-hidden="true">
+        <input type="text" tabindex="-1" autocomplete="username" />
+        <input type="password" tabindex="-1" autocomplete="current-password" />
+      </div>
+      <div class="form-grid settings-form-grid" autocomplete="off">
+        <div>
+          <label id="passwordEditorCurrentLabel">รหัสผ่านปัจจุบัน</label>
+          <input id="passwordEditorCurrent" name="pw_editor_current" type="password" placeholder="Current password" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" />
+        </div>
+        <div>
+          <label id="passwordEditorNewLabel">รหัสผ่านใหม่</label>
+          <input id="passwordEditorNew" name="pw_editor_new" type="password" placeholder="At least 6 characters" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" />
+        </div>
+        <div>
+          <label id="passwordEditorConfirmLabel">ยืนยันรหัสผ่านใหม่</label>
+          <input id="passwordEditorConfirm" name="pw_editor_confirm" type="password" placeholder="Confirm new password" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" />
+        </div>
+      </div>
+      <div class="password-confirm-actions">
+        <button id="cancelPasswordEditorBtn" class="btn btn-ghost" type="button">ยกเลิก</button>
+        <button id="continuePasswordEditorBtn" class="btn btn-primary" type="button">ตรวจสอบก่อนยืนยัน</button>
+      </div>
     </div>
   </div>
 

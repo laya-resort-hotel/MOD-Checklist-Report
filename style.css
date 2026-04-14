@@ -2162,3 +2162,12 @@ input:not([type="checkbox"]):not([type="radio"]) {
   margin: 0;
   border: 0;
 }
+
+
+.settings-inline-actions{display:flex;justify-content:flex-end;margin-top:10px;}
+.settings-hidden-input-wrap,.settings-hidden-input{position:absolute !important;left:-9999px !important;top:auto !important;width:1px !important;height:1px !important;opacity:0 !important;pointer-events:none !important;}
+.settings-password-helper{padding:14px 16px;border:1px dashed rgba(38,67,50,.14);border-radius:16px;background:rgba(255,255,255,.46);margin-top:8px;}
+.settings-editor-card{width:min(560px,calc(100vw - 24px));padding:24px;}
+.settings-editor-card .form-grid{margin-top:12px;}
+.settings-editor-card input{width:100%;}
+@media (max-width: 920px){.settings-inline-actions .btn,.sticky-actions .btn{width:100%;justify-content:center;}}

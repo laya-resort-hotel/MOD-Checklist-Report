@@ -205,7 +205,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v59-topbar-avatar-account-menu';
+  const APP_VERSION = 'v65-settings-modal-hardfix';
 
   function safeClone(value) {
     try {
@@ -1214,15 +1214,30 @@
     ];
     settingsLabels.forEach((label, index) => { if (settingsTexts[index]) label.textContent = settingsTexts[index]; });
     setNodePlaceholder('#settingsFullName', 'ชื่อ-นามสกุล', 'Full Name');
-    setNodePlaceholder('#settingsCurrentPassword', 'รหัสผ่านปัจจุบัน', 'Current password');
-    setNodePlaceholder('#settingsNewPassword', 'อย่างน้อย 6 ตัวอักษร', 'At least 6 characters');
-    setNodePlaceholder('#settingsConfirmPassword', 'ยืนยันรหัสผ่านใหม่', 'Confirm new password');
+    setNodeText('#openFullNameEditorBtn', 'แก้ไขชื่อ', 'Edit Name');
     setNodeText('#saveProfileSettingsBtn', 'บันทึกโปรไฟล์', 'Save Profile');
-    setNodeText('#savePasswordSettingsBtn', 'เปลี่ยนรหัสผ่าน', 'Change Password');
+    setNodeText('#openPasswordEditorBtn', 'เปลี่ยนรหัสผ่าน', 'Change Password');
+    setNodeText('#settingsPasswordHelper', 'เพื่อความปลอดภัย ฟอร์มรหัสผ่านจะเปิดในหน้าต่างแยก', 'For security, password fields open in a separate popup.');
     setNodeText('#settingsAvatarPickBtn', 'เลือกรูปโปรไฟล์', 'Choose Photo');
     setNodeText('#settingsAvatarCameraBtn', 'ถ่ายรูปโปรไฟล์', 'Take Photo');
     setNodeText('#settingsAvatarRemoveBtn', 'ลบรูป', 'Remove Photo');
     setNodeText('#settingsAvatarHint', 'ระบบจะย่อรูปให้อัตโนมัติก่อนบันทึก', 'Your photo will be compressed automatically before saving.');
+    setNodeText('#fullNameEditorTitle', 'แก้ไขชื่อ-นามสกุล', 'Edit Full Name');
+    setNodeText('#fullNameEditorMessage', 'อัปเดตชื่อที่ใช้แสดงในระบบ', 'Update the display name used in the system.');
+    setNodeText('#fullNameEditorLabel', 'ชื่อ-นามสกุล', 'Full Name');
+    setNodePlaceholder('#fullNameEditorInput', 'ชื่อ-นามสกุล', 'Full Name');
+    setNodeText('#cancelFullNameEditorBtn', 'ยกเลิก', 'Cancel');
+    setNodeText('#saveFullNameEditorBtn', 'บันทึกชื่อ', 'Save Name');
+    setNodeText('#passwordEditorTitle', 'เปลี่ยนรหัสผ่าน', 'Change Password');
+    setNodeText('#passwordEditorMessage', 'กรอกรหัสผ่านเดิมและรหัสผ่านใหม่ในหน้าต่างนี้', 'Enter your current password and a new password in this popup.');
+    setNodeText('#passwordEditorCurrentLabel', 'รหัสผ่านปัจจุบัน', 'Current Password');
+    setNodeText('#passwordEditorNewLabel', 'รหัสผ่านใหม่', 'New Password');
+    setNodeText('#passwordEditorConfirmLabel', 'ยืนยันรหัสผ่านใหม่', 'Confirm New Password');
+    setNodePlaceholder('#passwordEditorCurrent', 'รหัสผ่านปัจจุบัน', 'Current password');
+    setNodePlaceholder('#passwordEditorNew', 'อย่างน้อย 6 ตัวอักษร', 'At least 6 characters');
+    setNodePlaceholder('#passwordEditorConfirm', 'ยืนยันรหัสผ่านใหม่', 'Confirm new password');
+    setNodeText('#cancelPasswordEditorBtn', 'ยกเลิก', 'Cancel');
+    setNodeText('#continuePasswordEditorBtn', 'ตรวจสอบก่อนยืนยัน', 'Review Before Confirm');
     setNodeText('#passwordConfirmTitle', 'ยืนยันการเปลี่ยนรหัสผ่าน', 'Confirm password change');
     setNodeText('#passwordConfirmMessage', 'ระบบจะอัปเดตรหัสผ่านใหม่ทันทีหลังยืนยัน', 'Your password will be updated immediately after confirmation.');
     setNodeText('#passwordConfirmSummaryLabel', 'บัญชี', 'Account');
@@ -1541,13 +1556,27 @@
       settingsRole: qs('#settingsRole'),
       settingsDepartment: qs('#settingsDepartment'),
       settingsFullName: qs('#settingsFullName'),
+      settingsFullNameReadout: qs('#settingsFullNameReadout'),
+      openFullNameEditorBtn: qs('#openFullNameEditorBtn'),
+      fullNameEditorModal: qs('#fullNameEditorModal'),
+      closeFullNameEditorModalBtn: qs('#closeFullNameEditorModalBtn'),
+      cancelFullNameEditorBtn: qs('#cancelFullNameEditorBtn'),
+      saveFullNameEditorBtn: qs('#saveFullNameEditorBtn'),
+      fullNameEditorInput: qs('#fullNameEditorInput'),
       settingsCurrentPassword: qs('#settingsCurrentPassword'),
       settingsNewPassword: qs('#settingsNewPassword'),
       settingsConfirmPassword: qs('#settingsConfirmPassword'),
       settingsProfileStatus: qs('#settingsProfileStatus'),
       settingsPasswordStatus: qs('#settingsPasswordStatus'),
       saveProfileSettingsBtn: qs('#saveProfileSettingsBtn'),
-      savePasswordSettingsBtn: qs('#savePasswordSettingsBtn'),
+      openPasswordEditorBtn: qs('#openPasswordEditorBtn'),
+      passwordEditorModal: qs('#passwordEditorModal'),
+      closePasswordEditorModalBtn: qs('#closePasswordEditorModalBtn'),
+      cancelPasswordEditorBtn: qs('#cancelPasswordEditorBtn'),
+      continuePasswordEditorBtn: qs('#continuePasswordEditorBtn'),
+      passwordEditorCurrent: qs('#passwordEditorCurrent'),
+      passwordEditorNew: qs('#passwordEditorNew'),
+      passwordEditorConfirm: qs('#passwordEditorConfirm'),
       passwordConfirmModal: qs('#passwordConfirmModal'),
       closePasswordConfirmModalBtn: qs('#closePasswordConfirmModalBtn'),
       passwordConfirmAccount: qs('#passwordConfirmAccount'),
@@ -1664,8 +1693,15 @@
       renderAll();
     });
     if (el.saveProfileSettingsBtn) el.saveProfileSettingsBtn.addEventListener('click', handleSaveProfileSettings);
+    if (el.openFullNameEditorBtn) el.openFullNameEditorBtn.addEventListener('click', openFullNameEditorModal);
+    if (el.closeFullNameEditorModalBtn) el.closeFullNameEditorModalBtn.addEventListener('click', () => closeFullNameEditorModal());
+    if (el.cancelFullNameEditorBtn) el.cancelFullNameEditorBtn.addEventListener('click', () => closeFullNameEditorModal());
+    if (el.saveFullNameEditorBtn) el.saveFullNameEditorBtn.addEventListener('click', saveFullNameFromModal);
     if (el.settingsFullName) el.settingsFullName.addEventListener('input', renderSettingsAvatar);
-    if (el.savePasswordSettingsBtn) el.savePasswordSettingsBtn.addEventListener('click', handleSavePasswordSettings);
+    if (el.openPasswordEditorBtn) el.openPasswordEditorBtn.addEventListener('click', openPasswordEditorModal);
+    if (el.closePasswordEditorModalBtn) el.closePasswordEditorModalBtn.addEventListener('click', () => closePasswordEditorModal());
+    if (el.cancelPasswordEditorBtn) el.cancelPasswordEditorBtn.addEventListener('click', () => closePasswordEditorModal());
+    if (el.continuePasswordEditorBtn) el.continuePasswordEditorBtn.addEventListener('click', handlePasswordEditorContinue);
     if (el.settingsAvatarInput) el.settingsAvatarInput.addEventListener('change', handleProfileAvatarPicked);
     if (el.settingsAvatarCameraInput) el.settingsAvatarCameraInput.addEventListener('change', handleProfileAvatarPicked);
     if (el.settingsAvatarPickBtn) el.settingsAvatarPickBtn.addEventListener('click', () => { if (el.settingsAvatarInput) el.settingsAvatarInput.value = ''; });
@@ -2149,7 +2185,7 @@
 
   function renderSettingsAvatar() {
     const previewUrl = getPendingAvatarPreviewUrl();
-    const initials = getUserInitials(el.settingsFullName?.value || state.currentUser?.full_name || 'M');
+    const initials = getUserInitials(el.settingsFullNameReadout?.textContent || el.settingsFullName?.value || state.currentUser?.full_name || 'M');
     if (el.settingsProfileInitials) el.settingsProfileInitials.textContent = initials;
     if (el.settingsProfileAvatarImg) {
       if (previewUrl) {
@@ -2165,6 +2201,51 @@
       }
     }
     if (el.settingsAvatarRemoveBtn) el.settingsAvatarRemoveBtn.disabled = !previewUrl;
+  }
+
+
+  function openFullNameEditorModal() {
+    if (!el.fullNameEditorModal || !state.currentUser) return;
+    if (el.fullNameEditorInput) el.fullNameEditorInput.value = String(state.currentUser.full_name || '');
+    el.fullNameEditorModal.classList.remove('hidden');
+    setTimeout(() => { try { el.fullNameEditorInput?.focus(); el.fullNameEditorInput?.select(); } catch (_) {} }, 30);
+  }
+
+  function closeFullNameEditorModal() {
+    if (el.fullNameEditorModal) el.fullNameEditorModal.classList.add('hidden');
+  }
+
+  async function saveFullNameFromModal() {
+    if (!el.fullNameEditorInput) return;
+    const nextName = String(el.fullNameEditorInput.value || '').trim();
+    if (!nextName) {
+      setSettingsStatus('profile', txt('กรุณากรอกชื่อ-นามสกุล', 'Please enter your full name'), 'error');
+      return;
+    }
+    if (el.settingsFullName) el.settingsFullName.value = nextName;
+    if (el.settingsFullNameReadout) el.settingsFullNameReadout.textContent = nextName;
+    closeFullNameEditorModal();
+    await handleSaveProfileSettings();
+  }
+
+  function openPasswordEditorModal() {
+    if (!el.passwordEditorModal) return;
+    ['passwordEditorCurrent','passwordEditorNew','passwordEditorConfirm'].forEach(key => { if (el[key]) el[key].value = ''; });
+    el.passwordEditorModal.classList.remove('hidden');
+    setTimeout(() => { try { el.passwordEditorCurrent?.focus(); } catch (_) {} }, 30);
+  }
+
+  function closePasswordEditorModal() {
+    if (el.passwordEditorModal) el.passwordEditorModal.classList.add('hidden');
+    ['passwordEditorCurrent','passwordEditorNew','passwordEditorConfirm'].forEach(key => { if (el[key]) el[key].value = ''; });
+  }
+
+  function handlePasswordEditorContinue() {
+    if (el.settingsCurrentPassword) el.settingsCurrentPassword.value = String(el.passwordEditorCurrent?.value || '');
+    if (el.settingsNewPassword) el.settingsNewPassword.value = String(el.passwordEditorNew?.value || '');
+    if (el.settingsConfirmPassword) el.settingsConfirmPassword.value = String(el.passwordEditorConfirm?.value || '');
+    closePasswordEditorModal();
+    handleSavePasswordSettings();
   }
 
   function clearSettingsPasswordInputs() {
@@ -2218,6 +2299,7 @@
     setFieldValue(el.settingsRole, roleName);
     setFieldValue(el.settingsDepartment, departmentName);
     setFieldValue(el.settingsFullName, fullName, { preserveActive, allowEmpty: true });
+    setFieldValue(el.settingsFullNameReadout, fullName, { preserveActive, allowEmpty: true });
     if (el.settingsProfileNameDisplay) el.settingsProfileNameDisplay.textContent = fullName || '-';
     if (el.settingsProfileMetaText) el.settingsProfileMetaText.textContent = `${employeeId || '-'} • ${roleName}`;
     if (el.settingsRoleBadge) el.settingsRoleBadge.textContent = roleName;
