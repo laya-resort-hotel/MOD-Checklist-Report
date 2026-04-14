@@ -2174,26 +2174,56 @@
       node.value = '';
       node.setAttribute('value', '');
       node.autocomplete = node.id === 'settingsCurrentPassword' ? 'current-password' : 'new-password';
+      node.setAttribute('readonly', 'readonly');
+    });
+  }
+
+  function setFieldValue(node, value, options = {}) {
+    if (!node) return;
+    const finalValue = value == null || value === '' ? '-' : String(value);
+    const tag = String(node.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+      if (!options.preserveActive || document.activeElement !== node) {
+        node.value = finalValue === '-' && options.allowEmpty ? '' : finalValue;
+      }
+      return;
+    }
+    node.textContent = finalValue;
+    node.dataset.value = finalValue === '-' ? '' : finalValue;
+  }
+
+  function hardenSettingsPasswordInputs() {
+    ['settingsCurrentPassword', 'settingsNewPassword', 'settingsConfirmPassword'].forEach(key => {
+      const node = el[key];
+      if (!node || node.dataset.hardened === '1') return;
+      node.dataset.hardened = '1';
+      const unlock = () => node.removeAttribute('readonly');
+      node.addEventListener('focus', unlock);
+      node.addEventListener('touchstart', unlock, { passive: true });
+      node.addEventListener('mousedown', unlock);
+      node.addEventListener('blur', () => {
+        if (!node.value) node.setAttribute('readonly', 'readonly');
+      });
     });
   }
 
   function enforceSettingsFieldValues(options = {}) {
     if (!state.currentUser) return;
     const preserveActive = options.preserveActive !== false;
-    const active = document.activeElement;
     const fullName = state.currentUser.full_name || '';
     const employeeId = state.currentUser.employee_id || '';
     const roleName = getRoleName(state.currentUser.role || 'dept_user');
     const departmentName = getDepartmentName(state.currentUser.department || 'MOD');
-    if (el.settingsEmployeeId && el.settingsEmployeeId.value !== employeeId) el.settingsEmployeeId.value = employeeId;
-    if (el.settingsRole && el.settingsRole.value !== roleName) el.settingsRole.value = roleName;
-    if (el.settingsDepartment && el.settingsDepartment.value !== departmentName) el.settingsDepartment.value = departmentName;
-    if (el.settingsFullName && (!preserveActive || active !== el.settingsFullName) && el.settingsFullName.value !== fullName) el.settingsFullName.value = fullName;
+    setFieldValue(el.settingsEmployeeId, employeeId);
+    setFieldValue(el.settingsRole, roleName);
+    setFieldValue(el.settingsDepartment, departmentName);
+    setFieldValue(el.settingsFullName, fullName, { preserveActive, allowEmpty: true });
     if (el.settingsProfileNameDisplay) el.settingsProfileNameDisplay.textContent = fullName || '-';
     if (el.settingsProfileMetaText) el.settingsProfileMetaText.textContent = `${employeeId || '-'} • ${roleName}`;
     if (el.settingsRoleBadge) el.settingsRoleBadge.textContent = roleName;
     if (el.settingsDepartmentBadge) el.settingsDepartmentBadge.textContent = departmentName;
     clearSettingsPasswordInputs();
+    hardenSettingsPasswordInputs();
   }
 
   function renderSettingsView() {

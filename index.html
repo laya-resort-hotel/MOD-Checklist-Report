@@ -366,19 +366,19 @@
                 <div class="form-grid two-col settings-form-grid compact" autocomplete="off">
                   <div>
                     <label>Employee ID</label>
-                    <input id="settingsEmployeeId" type="text" readonly autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" />
+                    <div id="settingsEmployeeId" class="settings-readout" data-kind="employee-id">-</div>
                   </div>
                   <div>
                     <label>Role</label>
-                    <input id="settingsRole" type="text" readonly autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" />
+                    <div id="settingsRole" class="settings-readout" data-kind="role">-</div>
                   </div>
                   <div class="full-span">
                     <label>Department</label>
-                    <input id="settingsDepartment" type="text" readonly autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" />
+                    <div id="settingsDepartment" class="settings-readout" data-kind="department">-</div>
                   </div>
                   <div class="full-span">
                     <label>Full Name</label>
-                    <input id="settingsFullName" type="text" placeholder="Full Name" autocomplete="off" autocapitalize="words" spellcheck="false" data-lpignore="true" />
+                    <input id="settingsFullName" name="profile_full_name" type="text" placeholder="Full Name" autocomplete="off" autocapitalize="words" spellcheck="false" data-lpignore="true" />
                   </div>
                 </div>
               </div>
@@ -401,15 +401,15 @@
             <div class="form-grid settings-form-grid" autocomplete="off">
               <div>
                 <label>Current Password</label>
-                <input id="settingsCurrentPassword" name="settings_current_password" type="password" placeholder="Current password" autocomplete="current-password" autocapitalize="off" spellcheck="false" data-lpignore="true" />
+                <input id="settingsCurrentPassword" name="settings_current_password" type="password" placeholder="Current password" autocomplete="current-password" autocapitalize="off" spellcheck="false" data-lpignore="true" readonly />
               </div>
               <div>
                 <label>New Password</label>
-                <input id="settingsNewPassword" name="settings_new_password" type="password" placeholder="At least 6 characters" autocomplete="new-password" autocapitalize="off" spellcheck="false" data-lpignore="true" />
+                <input id="settingsNewPassword" name="settings_new_password" type="password" placeholder="At least 6 characters" autocomplete="new-password" autocapitalize="off" spellcheck="false" data-lpignore="true" readonly />
               </div>
               <div>
                 <label>Confirm New Password</label>
-                <input id="settingsConfirmPassword" name="settings_confirm_password" type="password" placeholder="Confirm new password" autocomplete="new-password" autocapitalize="off" spellcheck="false" data-lpignore="true" />
+                <input id="settingsConfirmPassword" name="settings_confirm_password" type="password" placeholder="Confirm new password" autocomplete="new-password" autocapitalize="off" spellcheck="false" data-lpignore="true" readonly />
               </div>
             </div>
             <div id="settingsPasswordStatus" class="settings-status hidden"></div>

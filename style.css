@@ -2091,6 +2091,11 @@ input:not([type="checkbox"]):not([type="radio"]) {
 .settings-badge.role{background:rgba(38,67,50,.12);color:#264332;}
 .settings-badge.department{background:rgba(181,151,96,.16);color:#7a6232;}
 .settings-form-grid.compact{margin-top:4px;}
+.settings-readout{min-height:56px;border:1px solid rgba(38,67,50,.12);border-radius:18px;background:rgba(0,0,0,.03);padding:16px 18px;display:flex;align-items:center;color:#435149;font-weight:700;line-height:1.35;word-break:break-word;}
+.settings-readout[data-kind="department"]{color:#7a6232;background:rgba(181,151,96,.08);}
+.settings-readout[data-kind="role"]{color:#264332;background:rgba(38,67,50,.06);}
+.settings-readout[data-kind="employee-id"]{font-variant-numeric:tabular-nums;}
+
 .password-confirm-card{width:min(560px,calc(100vw - 24px));padding:28px;text-align:center;}
 .password-confirm-icon{width:72px;height:72px;border-radius:24px;margin:4px auto 14px;display:grid;place-items:center;font-size:34px;background:linear-gradient(135deg,rgba(181,151,96,.22),rgba(38,67,50,.12));}
 .password-confirm-summary{margin:18px 0;padding:16px;border-radius:20px;background:rgba(255,255,255,.55);display:grid;gap:8px;text-align:left;}
