@@ -2137,3 +2137,23 @@ input:not([type="checkbox"]):not([type="radio"]) {
     font-size: 17px;
   }
 }
+
+
+.autofill-trap {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.autofill-trap input {
+  width: 1px;
+  height: 1px;
+  min-height: 1px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}

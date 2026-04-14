@@ -2167,21 +2167,51 @@
     if (el.settingsAvatarRemoveBtn) el.settingsAvatarRemoveBtn.disabled = !previewUrl;
   }
 
-  function renderSettingsView() {
+  function clearSettingsPasswordInputs() {
+    ['settingsCurrentPassword', 'settingsNewPassword', 'settingsConfirmPassword'].forEach(key => {
+      const node = el[key];
+      if (!node) return;
+      node.value = '';
+      node.setAttribute('value', '');
+      node.autocomplete = node.id === 'settingsCurrentPassword' ? 'current-password' : 'new-password';
+    });
+  }
+
+  function enforceSettingsFieldValues(options = {}) {
     if (!state.currentUser) return;
+    const preserveActive = options.preserveActive !== false;
+    const active = document.activeElement;
     const fullName = state.currentUser.full_name || '';
     const employeeId = state.currentUser.employee_id || '';
     const roleName = getRoleName(state.currentUser.role || 'dept_user');
     const departmentName = getDepartmentName(state.currentUser.department || 'MOD');
-    if (el.settingsEmployeeId) el.settingsEmployeeId.value = employeeId;
-    if (el.settingsRole) el.settingsRole.value = roleName;
-    if (el.settingsDepartment) el.settingsDepartment.value = departmentName;
-    if (el.settingsFullName && document.activeElement !== el.settingsFullName) el.settingsFullName.value = fullName;
+    if (el.settingsEmployeeId && el.settingsEmployeeId.value !== employeeId) el.settingsEmployeeId.value = employeeId;
+    if (el.settingsRole && el.settingsRole.value !== roleName) el.settingsRole.value = roleName;
+    if (el.settingsDepartment && el.settingsDepartment.value !== departmentName) el.settingsDepartment.value = departmentName;
+    if (el.settingsFullName && (!preserveActive || active !== el.settingsFullName) && el.settingsFullName.value !== fullName) el.settingsFullName.value = fullName;
     if (el.settingsProfileNameDisplay) el.settingsProfileNameDisplay.textContent = fullName || '-';
     if (el.settingsProfileMetaText) el.settingsProfileMetaText.textContent = `${employeeId || '-'} • ${roleName}`;
     if (el.settingsRoleBadge) el.settingsRoleBadge.textContent = roleName;
     if (el.settingsDepartmentBadge) el.settingsDepartmentBadge.textContent = departmentName;
+    clearSettingsPasswordInputs();
+  }
+
+  function renderSettingsView() {
+    if (!state.currentUser) return;
+    enforceSettingsFieldValues();
     renderSettingsAvatar();
+    setTimeout(() => {
+      if (state.ui.currentView === 'settingsView') {
+        enforceSettingsFieldValues();
+        renderSettingsAvatar();
+      }
+    }, 80);
+    setTimeout(() => {
+      if (state.ui.currentView === 'settingsView') {
+        enforceSettingsFieldValues();
+        renderSettingsAvatar();
+      }
+    }, 300);
   }
 
   async function handleProfileAvatarPicked(event) {

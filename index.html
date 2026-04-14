@@ -359,22 +359,26 @@
                   <span id="settingsRoleBadge" class="settings-badge role">MOD</span>
                   <span id="settingsDepartmentBadge" class="settings-badge department">MOD</span>
                 </div>
-                <div class="form-grid two-col settings-form-grid compact">
+                <div class="autofill-trap" aria-hidden="true">
+                  <input type="text" tabindex="-1" autocomplete="username" />
+                  <input type="password" tabindex="-1" autocomplete="current-password" />
+                </div>
+                <div class="form-grid two-col settings-form-grid compact" autocomplete="off">
                   <div>
                     <label>Employee ID</label>
-                    <input id="settingsEmployeeId" type="text" readonly />
+                    <input id="settingsEmployeeId" type="text" readonly autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" />
                   </div>
                   <div>
                     <label>Role</label>
-                    <input id="settingsRole" type="text" readonly />
+                    <input id="settingsRole" type="text" readonly autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" />
                   </div>
                   <div class="full-span">
                     <label>Department</label>
-                    <input id="settingsDepartment" type="text" readonly />
+                    <input id="settingsDepartment" type="text" readonly autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" />
                   </div>
                   <div class="full-span">
                     <label>Full Name</label>
-                    <input id="settingsFullName" type="text" placeholder="Full Name" />
+                    <input id="settingsFullName" type="text" placeholder="Full Name" autocomplete="off" autocapitalize="words" spellcheck="false" data-lpignore="true" />
                   </div>
                 </div>
               </div>
@@ -390,18 +394,22 @@
               <h3>Password Settings</h3>
               <p class="muted">Change your password for future sign in.</p>
             </div>
-            <div class="form-grid settings-form-grid">
+            <div class="autofill-trap" aria-hidden="true">
+              <input type="text" tabindex="-1" autocomplete="username" />
+              <input type="password" tabindex="-1" autocomplete="current-password" />
+            </div>
+            <div class="form-grid settings-form-grid" autocomplete="off">
               <div>
                 <label>Current Password</label>
-                <input id="settingsCurrentPassword" type="password" placeholder="Current password" />
+                <input id="settingsCurrentPassword" name="settings_current_password" type="password" placeholder="Current password" autocomplete="current-password" autocapitalize="off" spellcheck="false" data-lpignore="true" />
               </div>
               <div>
                 <label>New Password</label>
-                <input id="settingsNewPassword" type="password" placeholder="At least 6 characters" />
+                <input id="settingsNewPassword" name="settings_new_password" type="password" placeholder="At least 6 characters" autocomplete="new-password" autocapitalize="off" spellcheck="false" data-lpignore="true" />
               </div>
               <div>
                 <label>Confirm New Password</label>
-                <input id="settingsConfirmPassword" type="password" placeholder="Confirm new password" />
+                <input id="settingsConfirmPassword" name="settings_confirm_password" type="password" placeholder="Confirm new password" autocomplete="new-password" autocapitalize="off" spellcheck="false" data-lpignore="true" />
               </div>
             </div>
             <div id="settingsPasswordStatus" class="settings-status hidden"></div>
