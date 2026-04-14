@@ -1202,17 +1202,10 @@
     setNodeText('#settingsView .panel:nth-of-type(1) .panel-header p', 'เปลี่ยนชื่อ รูปโปรไฟล์ และดูข้อมูลบัญชีของคุณ', 'Update your display name, profile photo, and account details.');
     setNodeText('#settingsView .panel:nth-of-type(2) .panel-header h3', 'ตั้งค่ารหัสผ่าน', 'Password Settings');
     setNodeText('#settingsView .panel:nth-of-type(2) .panel-header p', 'เปลี่ยนรหัสผ่านสำหรับการเข้าสู่ระบบครั้งถัดไป', 'Change your password for future sign in.');
-    const settingsLabels = qsa('#settingsView label');
-    const settingsTexts = [
-      txt('รหัสพนักงาน', 'Employee ID'),
-      txt('สิทธิ์การใช้งาน', 'Role'),
-      txt('แผนก', 'Department'),
-      txt('ชื่อ-นามสกุล', 'Full Name'),
-      txt('รหัสผ่านปัจจุบัน', 'Current Password'),
-      txt('รหัสผ่านใหม่', 'New Password'),
-      txt('ยืนยันรหัสผ่านใหม่', 'Confirm New Password'),
-    ];
-    settingsLabels.forEach((label, index) => { if (settingsTexts[index]) label.textContent = settingsTexts[index]; });
+    setNodeText('#settingsView .settings-form-grid.compact > div:nth-child(1) > label', 'รหัสพนักงาน', 'Employee ID');
+    setNodeText('#settingsView .settings-form-grid.compact > div:nth-child(2) > label', 'สิทธิ์การใช้งาน', 'Role');
+    setNodeText('#settingsView .settings-form-grid.compact > div:nth-child(3) > label', 'แผนก', 'Department');
+    setNodeText('#settingsView .settings-form-grid.compact > div:nth-child(4) > label', 'ชื่อ-นามสกุล', 'Full Name');
     setNodePlaceholder('#settingsFullName', 'ชื่อ-นามสกุล', 'Full Name');
     setNodeText('#openFullNameEditorBtn', 'แก้ไขชื่อ', 'Edit Name');
     setNodeText('#saveProfileSettingsBtn', 'บันทึกโปรไฟล์', 'Save Profile');
