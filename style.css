@@ -475,6 +475,34 @@ input:focus, select:focus, textarea:focus {
   border-color: rgba(47,122,88,0.24);
   box-shadow: 0 10px 26px rgba(47,122,88,0.08);
 }
+
+.issue-thumb-trigger {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-self: start;
+}
+.issue-thumb-trigger:focus-visible {
+  outline: 2px solid rgba(143,112,62,0.45);
+  outline-offset: 4px;
+  border-radius: 22px;
+}
+.issue-thumb-trigger .issue-thumb,
+.issue-thumb-trigger .issue-thumb.placeholder {
+  transition: transform .16s ease, box-shadow .16s ease, opacity .16s ease;
+}
+.issue-thumb-trigger:hover .issue-thumb,
+.issue-thumb-trigger:hover .issue-thumb.placeholder,
+.issue-thumb-trigger:active .issue-thumb,
+.issue-thumb-trigger:active .issue-thumb.placeholder {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(36,53,44,0.14);
+}
 .issue-thumb-wrap {
   position: relative;
 }

@@ -2633,10 +2633,10 @@
       const deptName = getDepartmentName(issue.assigned_department);
       const { thumb, full: fullCover, hasVideo, videoPreviewUrl } = getIssueCoverMedia(issue);
       const thumbHtml = thumb
-        ? `<div class="issue-thumb-wrap">${thumb ? `<img class="issue-thumb" src="${thumb}" alt="Closed issue media" />` : ''}${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div>`
+        ? `<button type="button" class="issue-thumb-trigger" data-open-issue-thumb="${issue.id}" aria-label="${txt('เปิดรายละเอียดงาน', 'Open issue detail')}"><div class="issue-thumb-wrap">${thumb ? `<img class="issue-thumb" src="${thumb}" alt="Closed issue media" />` : ''}${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div></button>`
         : videoPreviewUrl
-          ? `<div class="issue-thumb-wrap"><video class="issue-thumb" src="${videoPreviewUrl}" muted playsinline preload="metadata"></video><span class="media-badge">VIDEO</span></div>`
-          : `<div class="issue-thumb placeholder">DONE</div>`;
+          ? `<button type="button" class="issue-thumb-trigger" data-open-issue-thumb="${issue.id}" aria-label="${txt('เปิดรายละเอียดงาน', 'Open issue detail')}"><div class="issue-thumb-wrap"><video class="issue-thumb" src="${videoPreviewUrl}" muted playsinline preload="metadata"></video><span class="media-badge">VIDEO</span></div></button>`
+          : `<button type="button" class="issue-thumb-trigger" data-open-issue-thumb="${issue.id}" aria-label="${txt('เปิดรายละเอียดงาน', 'Open issue detail')}"><div class="issue-thumb placeholder">DONE</div></button>`;
       const closedMeta = issue.closed_at ? `<span>•</span><span>${txt('ปิดเมื่อ', 'Closed')} ${formatDateTime(issue.closed_at)}</span>` : '';
       return `
         <article class="issue-card issue-tone-closed">
@@ -2672,6 +2672,7 @@
     }).join('');
 
     qsa('[data-open-issue]', el.closedList).forEach(btn => btn.addEventListener('click', () => openIssueModal(btn.dataset.openIssue)));
+    qsa('[data-open-issue-thumb]', el.closedList).forEach(btn => btn.addEventListener('click', () => openIssueModal(btn.dataset.openIssueThumb)));
     qsa('[data-status-action]', el.closedList).forEach(btn => btn.addEventListener('click', () => {
       updateIssueStatus(btn.dataset.issueId, btn.dataset.statusAction);
     }));
@@ -2700,10 +2701,10 @@
       if (videoCount > 0) mediaBits.push(`<span>${videoCount} ${txt('วิดีโอ', `video${videoCount > 1 ? 's' : ''}`)}</span>`);
       const mediaNote = mediaBits.length ? `<span>•</span>${mediaBits.join('<span>•</span>')}` : '';
       const thumbHtml = thumb
-        ? `<div class="issue-thumb-wrap">${fullCover ? `<img class="issue-thumb" src="${thumb}" alt="Issue photo" />` : `<img class="issue-thumb" src="${thumb}" alt="Issue media poster" />`} ${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div>`
+        ? `<button type="button" class="issue-thumb-trigger" data-open-issue-thumb="${issue.id}" aria-label="${txt('เปิดรายละเอียดงาน', 'Open issue detail')}"><div class="issue-thumb-wrap">${fullCover ? `<img class="issue-thumb" src="${thumb}" alt="Issue photo" />` : `<img class="issue-thumb" src="${thumb}" alt="Issue media poster" />`} ${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div></button>`
         : videoPreviewUrl
-          ? `<div class="issue-thumb-wrap"><video class="issue-thumb" src="${videoPreviewUrl}" muted playsinline preload="metadata"></video><span class="media-badge">VIDEO</span></div>`
-          : `<div class="issue-thumb placeholder">${hasVideo ? 'VIDEO' : (issue.issue_type === 'checklist_submission' ? 'CHECKLIST' : 'NO PHOTO')}</div>`;
+          ? `<button type="button" class="issue-thumb-trigger" data-open-issue-thumb="${issue.id}" aria-label="${txt('เปิดรายละเอียดงาน', 'Open issue detail')}"><div class="issue-thumb-wrap"><video class="issue-thumb" src="${videoPreviewUrl}" muted playsinline preload="metadata"></video><span class="media-badge">VIDEO</span></div></button>`
+          : `<button type="button" class="issue-thumb-trigger" data-open-issue-thumb="${issue.id}" aria-label="${txt('เปิดรายละเอียดงาน', 'Open issue detail')}"><div class="issue-thumb placeholder">${hasVideo ? 'VIDEO' : (issue.issue_type === 'checklist_submission' ? 'CHECKLIST' : 'NO PHOTO')}</div></button>`;
       return `
         <article class="issue-card ${getIssueCardToneClass(issue)}">
           ${thumbHtml}
@@ -2743,6 +2744,7 @@
     }).join('');
 
     qsa('[data-open-issue]', el.boardList).forEach(btn => btn.addEventListener('click', () => openIssueModal(btn.dataset.openIssue)));
+    qsa('[data-open-issue-thumb]', el.boardList).forEach(btn => btn.addEventListener('click', () => openIssueModal(btn.dataset.openIssueThumb)));
     qsa('[data-status-action]', el.boardList).forEach(btn => btn.addEventListener('click', () => {
       updateIssueStatus(btn.dataset.issueId, btn.dataset.statusAction);
     }));
