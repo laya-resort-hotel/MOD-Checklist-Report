@@ -207,7 +207,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v68-media-preview-modal';
+  const APP_VERSION = 'v69-media-preview-fullscreen-detail';
 
   function safeClone(value) {
     try {
@@ -1528,6 +1528,7 @@
       mediaPreviewBody: qs('#mediaPreviewBody'),
       mediaPreviewTitle: qs('#mediaPreviewTitle'),
       mediaPreviewMeta: qs('#mediaPreviewMeta'),
+      mediaPreviewDescription: qs('#mediaPreviewDescription'),
       mediaPreviewOpenDetailBtn: qs('#mediaPreviewOpenDetailBtn'),
       closeMediaPreviewModalBtn: qs('#closeMediaPreviewModalBtn'),
       mentionAlertModal: qs('#mentionAlertModal'),
@@ -3028,16 +3029,21 @@
       poster: media.poster || '',
       issueId: issue.id,
       title: issue.title || txt('ดูสื่อ', 'Media preview'),
-      meta: `${getDepartmentName(issue.assigned_department)} • ${issue.location_text || '-'} • ${formatDateTime(issue.created_at)}`
+      meta: `${getDepartmentName(issue.assigned_department)} • ${issue.location_text || '-'} • ${formatDateTime(issue.created_at)}`,
+      description: issue.description || ''
     });
   }
 
-  function openMediaPreviewModal({ type = 'image', src = '', poster = '', issueId = '', title = '', meta = '' } = {}) {
+  function openMediaPreviewModal({ type = 'image', src = '', poster = '', issueId = '', title = '', meta = '', description = '' } = {}) {
     if (!el.mediaPreviewModal || !el.mediaPreviewBody || !src) return;
     state.ui.mediaPreviewOpen = true;
     state.ui.mediaPreviewIssueId = issueId || null;
     if (el.mediaPreviewTitle) el.mediaPreviewTitle.textContent = title || txt('ดูรูปขนาดใหญ่', 'Large preview');
     if (el.mediaPreviewMeta) el.mediaPreviewMeta.textContent = meta || '';
+    if (el.mediaPreviewDescription) {
+      el.mediaPreviewDescription.textContent = description || '';
+      el.mediaPreviewDescription.classList.toggle('hidden', !description);
+    }
     if (el.mediaPreviewOpenDetailBtn) el.mediaPreviewOpenDetailBtn.classList.toggle('hidden', !issueId);
     if (type === 'video') {
       el.mediaPreviewBody.innerHTML = `<video src="${escapeHtml(src)}" ${poster ? `poster="${escapeHtml(poster)}"` : ''} controls autoplay playsinline preload="metadata"></video>`;
@@ -3051,6 +3057,10 @@
     state.ui.mediaPreviewOpen = false;
     state.ui.mediaPreviewIssueId = null;
     if (el.mediaPreviewBody) el.mediaPreviewBody.innerHTML = '';
+    if (el.mediaPreviewDescription) {
+      el.mediaPreviewDescription.textContent = '';
+      el.mediaPreviewDescription.classList.add('hidden');
+    }
     if (el.mediaPreviewModal) el.mediaPreviewModal.classList.add('hidden');
   }
 
