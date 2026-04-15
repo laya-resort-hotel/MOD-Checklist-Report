@@ -210,7 +210,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v69-media-preview-fullscreen-detail';
+  const APP_VERSION = 'v71-media-preview-layout-polish';
 
   function safeClone(value) {
     try {
