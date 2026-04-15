@@ -2243,6 +2243,25 @@ input:not([type="checkbox"]):not([type="radio"]) {
   background: rgba(36,53,44,0.06);
   box-shadow: 0 14px 36px rgba(36,53,44,0.14);
 }
+.media-preview-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.media-preview-nav {
+  min-width: 56px;
+  min-height: 48px;
+  font-size: 28px;
+  line-height: 1;
+  padding: 0 14px;
+}
+.media-preview-counter {
+  min-width: 96px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--text);
+}
 .issue-thumb-trigger.media-open-immediate {
   cursor: zoom-in;
 }
@@ -2274,5 +2293,17 @@ input:not([type="checkbox"]):not([type="radio"]) {
     height: auto;
     max-height: 100%;
     border-radius: 18px;
+  }
+  .media-preview-footer {
+    padding-bottom: 2px;
+  }
+  .media-preview-nav {
+    min-width: 52px;
+    min-height: 44px;
+    font-size: 26px;
+  }
+  .media-preview-counter {
+    min-width: 84px;
+    font-size: 14px;
   }
 }

@@ -192,6 +192,9 @@
       accountMenuOpen: false,
       mediaPreviewOpen: false,
       mediaPreviewIssueId: null,
+      mediaPreviewItems: [],
+      mediaPreviewIndex: 0,
+      mediaPreviewTouchStartX: 0,
     },
     data: {
       issues: [],
@@ -1530,6 +1533,9 @@
       mediaPreviewMeta: qs('#mediaPreviewMeta'),
       mediaPreviewDescription: qs('#mediaPreviewDescription'),
       mediaPreviewOpenDetailBtn: qs('#mediaPreviewOpenDetailBtn'),
+      mediaPreviewPrevBtn: qs('#mediaPreviewPrevBtn'),
+      mediaPreviewNextBtn: qs('#mediaPreviewNextBtn'),
+      mediaPreviewCounter: qs('#mediaPreviewCounter'),
       closeMediaPreviewModalBtn: qs('#closeMediaPreviewModalBtn'),
       mentionAlertModal: qs('#mentionAlertModal'),
       mentionAlertModalContent: qs('#mentionAlertModalContent'),
@@ -1683,6 +1689,12 @@
       if (e.target.dataset.closeModal) closeIssueModal();
     });
     if (el.closeMediaPreviewModalBtn) el.closeMediaPreviewModalBtn.addEventListener('click', closeMediaPreviewModal);
+    if (el.mediaPreviewPrevBtn) el.mediaPreviewPrevBtn.addEventListener('click', showPrevMediaPreviewItem);
+    if (el.mediaPreviewNextBtn) el.mediaPreviewNextBtn.addEventListener('click', showNextMediaPreviewItem);
+    if (el.mediaPreviewBody) {
+      el.mediaPreviewBody.addEventListener('touchstart', handleMediaPreviewTouchStart, { passive: true });
+      el.mediaPreviewBody.addEventListener('touchend', handleMediaPreviewTouchEnd, { passive: true });
+    }
     if (el.mediaPreviewModal) el.mediaPreviewModal.addEventListener('click', (e) => {
       if (e.target.dataset.closeMediaPreviewModal) closeMediaPreviewModal();
     });
@@ -2173,6 +2185,16 @@
   }
 
   function handleGlobalKeydown(event) {
+    if (state.ui.mediaPreviewOpen && event.key === 'ArrowLeft') {
+      event.preventDefault();
+      showPrevMediaPreviewItem();
+      return;
+    }
+    if (state.ui.mediaPreviewOpen && event.key === 'ArrowRight') {
+      event.preventDefault();
+      showNextMediaPreviewItem();
+      return;
+    }
     if (event.key !== 'Escape') return;
     if (state.ui.mediaPreviewOpen) { closeMediaPreviewModal(); return; }
     if (state.ui.accountMenuOpen) closeAccountMiniMenu(true);
@@ -3015,18 +3037,60 @@
     return null;
   }
 
+  function getIssueMediaItems(issue) {
+    const items = [];
+    const pushPhotoGroup = (list = [], phase = 'before') => {
+      list.filter(Boolean).forEach((photo, index) => {
+        const src = photo.url || photo.fullDataUrl || photo.previewDataUrl || photo.thumb_url || photo.thumbDataUrl || '';
+        if (!src) return;
+        items.push({
+          type: 'image',
+          src,
+          poster: '',
+          thumb: photo.thumb_url || photo.thumbDataUrl || photo.url || src || '',
+          phase,
+          index,
+          label: phase === 'after' ? txt('หลักฐานรูป', 'After photo') : txt('รูปแจ้งงาน', 'Before photo')
+        });
+      });
+    };
+    const pushVideoGroup = (list = [], phase = 'before') => {
+      list.filter(Boolean).forEach((video, index) => {
+        const src = video.url || video.preview_url || '';
+        if (!src) return;
+        items.push({
+          type: 'video',
+          src,
+          poster: video.poster_url || video.thumb_url || '',
+          thumb: video.poster_url || video.thumb_url || '',
+          phase,
+          index,
+          label: phase === 'after' ? txt('หลักฐานวิดีโอ', 'After video') : txt('วิดีโอแจ้งงาน', 'Before video')
+        });
+      });
+    };
+    pushPhotoGroup(Array.isArray(issue.before_photos) ? issue.before_photos : [], 'before');
+    pushVideoGroup(Array.isArray(issue.before_videos) ? issue.before_videos : [], 'before');
+    pushPhotoGroup(Array.isArray(issue.after_photos) ? issue.after_photos : [], 'after');
+    pushVideoGroup(Array.isArray(issue.after_videos) ? issue.after_videos : [], 'after');
+    return items;
+  }
+
   function openIssueMediaPreview(issueId) {
     const issue = state.data.issues.find(i => i.id === issueId);
     if (!issue) return;
-    const media = getIssuePrimaryMedia(issue);
-    if (!media?.src) {
-      openIssueModal(issueId);
-      return;
+    const items = getIssueMediaItems(issue);
+    if (!items.length) {
+      const media = getIssuePrimaryMedia(issue);
+      if (!media?.src) {
+        openIssueModal(issueId);
+        return;
+      }
+      items.push({ type: media.type, src: media.src, poster: media.poster || '', thumb: media.poster || media.src || '', phase: 'before', index: 0, label: media.type === 'video' ? txt('วิดีโอ', 'Video') : txt('รูป', 'Photo') });
     }
     openMediaPreviewModal({
-      type: media.type,
-      src: media.src,
-      poster: media.poster || '',
+      items,
+      startIndex: 0,
       issueId: issue.id,
       title: issue.title || txt('ดูสื่อ', 'Media preview'),
       meta: `${getDepartmentName(issue.assigned_department)} • ${issue.location_text || '-'} • ${formatDateTime(issue.created_at)}`,
@@ -3034,10 +3098,71 @@
     });
   }
 
-  function openMediaPreviewModal({ type = 'image', src = '', poster = '', issueId = '', title = '', meta = '', description = '' } = {}) {
-    if (!el.mediaPreviewModal || !el.mediaPreviewBody || !src) return;
+  function renderMediaPreviewItem() {
+    if (!el.mediaPreviewBody) return;
+    const items = Array.isArray(state.ui.mediaPreviewItems) ? state.ui.mediaPreviewItems : [];
+    if (!items.length) {
+      el.mediaPreviewBody.innerHTML = '';
+      if (el.mediaPreviewCounter) el.mediaPreviewCounter.textContent = '0 / 0';
+      if (el.mediaPreviewPrevBtn) el.mediaPreviewPrevBtn.disabled = true;
+      if (el.mediaPreviewNextBtn) el.mediaPreviewNextBtn.disabled = true;
+      return;
+    }
+    const current = items[state.ui.mediaPreviewIndex] || items[0];
+    const itemLabel = current.label ? ` • ${current.label} ${current.index + 1}` : '';
+    if (el.mediaPreviewCounter) el.mediaPreviewCounter.textContent = `${state.ui.mediaPreviewIndex + 1} / ${items.length}${itemLabel}`;
+    if (el.mediaPreviewPrevBtn) el.mediaPreviewPrevBtn.disabled = items.length <= 1;
+    if (el.mediaPreviewNextBtn) el.mediaPreviewNextBtn.disabled = items.length <= 1;
+    if (current.type === 'video') {
+      el.mediaPreviewBody.innerHTML = `<video src="${escapeHtml(current.src)}" ${current.poster ? `poster="${escapeHtml(current.poster)}"` : ''} controls autoplay playsinline preload="metadata"></video>`;
+    } else {
+      el.mediaPreviewBody.innerHTML = `<img src="${escapeHtml(current.src)}" alt="${escapeHtml(current.label || 'Preview')}" />`;
+    }
+  }
+
+  function setMediaPreviewIndex(nextIndex = 0) {
+    const items = Array.isArray(state.ui.mediaPreviewItems) ? state.ui.mediaPreviewItems : [];
+    if (!items.length) return;
+    const total = items.length;
+    state.ui.mediaPreviewIndex = ((nextIndex % total) + total) % total;
+    renderMediaPreviewItem();
+  }
+
+  function showPrevMediaPreviewItem() {
+    if (!state.ui.mediaPreviewOpen) return;
+    setMediaPreviewIndex(state.ui.mediaPreviewIndex - 1);
+  }
+
+  function showNextMediaPreviewItem() {
+    if (!state.ui.mediaPreviewOpen) return;
+    setMediaPreviewIndex(state.ui.mediaPreviewIndex + 1);
+  }
+
+  function handleMediaPreviewTouchStart(event) {
+    const touch = event.touches?.[0];
+    state.ui.mediaPreviewTouchStartX = touch ? touch.clientX : 0;
+  }
+
+  function handleMediaPreviewTouchEnd(event) {
+    const touch = event.changedTouches?.[0];
+    if (!touch || !state.ui.mediaPreviewTouchStartX) return;
+    const deltaX = touch.clientX - state.ui.mediaPreviewTouchStartX;
+    state.ui.mediaPreviewTouchStartX = 0;
+    if (Math.abs(deltaX) < 50) return;
+    if (deltaX < 0) showNextMediaPreviewItem();
+    else showPrevMediaPreviewItem();
+  }
+
+  function openMediaPreviewModal({ items = [], startIndex = 0, type = 'image', src = '', poster = '', issueId = '', title = '', meta = '', description = '' } = {}) {
+    if (!el.mediaPreviewModal || !el.mediaPreviewBody) return;
+    const normalizedItems = Array.isArray(items) && items.length
+      ? items.filter(item => item && item.src)
+      : (src ? [{ type, src, poster, thumb: poster || src, phase: 'before', index: 0, label: type === 'video' ? txt('วิดีโอ', 'Video') : txt('รูป', 'Photo') }] : []);
+    if (!normalizedItems.length) return;
     state.ui.mediaPreviewOpen = true;
     state.ui.mediaPreviewIssueId = issueId || null;
+    state.ui.mediaPreviewItems = normalizedItems;
+    state.ui.mediaPreviewIndex = 0;
     if (el.mediaPreviewTitle) el.mediaPreviewTitle.textContent = title || txt('ดูรูปขนาดใหญ่', 'Large preview');
     if (el.mediaPreviewMeta) el.mediaPreviewMeta.textContent = meta || '';
     if (el.mediaPreviewDescription) {
@@ -3045,18 +3170,18 @@
       el.mediaPreviewDescription.classList.toggle('hidden', !description);
     }
     if (el.mediaPreviewOpenDetailBtn) el.mediaPreviewOpenDetailBtn.classList.toggle('hidden', !issueId);
-    if (type === 'video') {
-      el.mediaPreviewBody.innerHTML = `<video src="${escapeHtml(src)}" ${poster ? `poster="${escapeHtml(poster)}"` : ''} controls autoplay playsinline preload="metadata"></video>`;
-    } else {
-      el.mediaPreviewBody.innerHTML = `<img src="${escapeHtml(src)}" alt="${escapeHtml(title || 'Preview')}" />`;
-    }
+    setMediaPreviewIndex(startIndex);
     el.mediaPreviewModal.classList.remove('hidden');
   }
 
   function closeMediaPreviewModal() {
     state.ui.mediaPreviewOpen = false;
     state.ui.mediaPreviewIssueId = null;
+    state.ui.mediaPreviewItems = [];
+    state.ui.mediaPreviewIndex = 0;
+    state.ui.mediaPreviewTouchStartX = 0;
     if (el.mediaPreviewBody) el.mediaPreviewBody.innerHTML = '';
+    if (el.mediaPreviewCounter) el.mediaPreviewCounter.textContent = '1 / 1';
     if (el.mediaPreviewDescription) {
       el.mediaPreviewDescription.textContent = '';
       el.mediaPreviewDescription.classList.add('hidden');
