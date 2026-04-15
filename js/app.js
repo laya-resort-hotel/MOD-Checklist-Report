@@ -190,6 +190,8 @@
       passwordChangeDraft: null,
       passwordChangeBusy: false,
       accountMenuOpen: false,
+      mediaPreviewOpen: false,
+      mediaPreviewIssueId: null,
     },
     data: {
       issues: [],
@@ -205,7 +207,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v65-settings-modal-hardfix';
+  const APP_VERSION = 'v68-media-preview-modal';
 
   function safeClone(value) {
     try {
@@ -1522,6 +1524,12 @@
       exportUsageLogExcelBtn: qs('#exportUsageLogExcelBtn'),
       issueModal: qs('#issueModal'),
       issueModalContent: qs('#issueModalContent'),
+      mediaPreviewModal: qs('#mediaPreviewModal'),
+      mediaPreviewBody: qs('#mediaPreviewBody'),
+      mediaPreviewTitle: qs('#mediaPreviewTitle'),
+      mediaPreviewMeta: qs('#mediaPreviewMeta'),
+      mediaPreviewOpenDetailBtn: qs('#mediaPreviewOpenDetailBtn'),
+      closeMediaPreviewModalBtn: qs('#closeMediaPreviewModalBtn'),
       mentionAlertModal: qs('#mentionAlertModal'),
       mentionAlertModalContent: qs('#mentionAlertModalContent'),
       closeMentionAlertModalBtn: qs('#closeMentionAlertModalBtn'),
@@ -1672,6 +1680,15 @@
     el.closeIssueModalBtn.addEventListener('click', closeIssueModal);
     el.issueModal.addEventListener('click', (e) => {
       if (e.target.dataset.closeModal) closeIssueModal();
+    });
+    if (el.closeMediaPreviewModalBtn) el.closeMediaPreviewModalBtn.addEventListener('click', closeMediaPreviewModal);
+    if (el.mediaPreviewModal) el.mediaPreviewModal.addEventListener('click', (e) => {
+      if (e.target.dataset.closeMediaPreviewModal) closeMediaPreviewModal();
+    });
+    if (el.mediaPreviewOpenDetailBtn) el.mediaPreviewOpenDetailBtn.addEventListener('click', () => {
+      const issueId = state.ui.mediaPreviewIssueId;
+      closeMediaPreviewModal();
+      if (issueId) openIssueModal(issueId);
     });
     if (el.closeMentionAlertModalBtn) el.closeMentionAlertModalBtn.addEventListener('click', () => closeMentionAlertModal());
     if (el.mentionAlertModal) el.mentionAlertModal.addEventListener('click', (e) => {
@@ -2155,7 +2172,9 @@
   }
 
   function handleGlobalKeydown(event) {
-    if (event.key === 'Escape' && state.ui.accountMenuOpen) closeAccountMiniMenu(true);
+    if (event.key !== 'Escape') return;
+    if (state.ui.mediaPreviewOpen) { closeMediaPreviewModal(); return; }
+    if (state.ui.accountMenuOpen) closeAccountMiniMenu(true);
   }
 
   function setSettingsStatus(kind, message = '', type = 'info') {
@@ -2633,10 +2652,10 @@
       const deptName = getDepartmentName(issue.assigned_department);
       const { thumb, full: fullCover, hasVideo, videoPreviewUrl } = getIssueCoverMedia(issue);
       const thumbHtml = thumb
-        ? `<button type="button" class="issue-thumb-trigger" data-open-issue-thumb="${issue.id}" aria-label="${txt('เปิดรายละเอียดงาน', 'Open issue detail')}"><div class="issue-thumb-wrap">${thumb ? `<img class="issue-thumb" src="${thumb}" alt="Closed issue media" />` : ''}${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div></button>`
+        ? `<button type="button" class="issue-thumb-trigger media-open-immediate" data-open-issue-thumb="${issue.id}" aria-label="${txt('ดูรูปใหญ่', 'Open media preview')}"><div class="issue-thumb-wrap">${thumb ? `<img class="issue-thumb" src="${thumb}" alt="Closed issue media" />` : ''}${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div></button>`
         : videoPreviewUrl
-          ? `<button type="button" class="issue-thumb-trigger" data-open-issue-thumb="${issue.id}" aria-label="${txt('เปิดรายละเอียดงาน', 'Open issue detail')}"><div class="issue-thumb-wrap"><video class="issue-thumb" src="${videoPreviewUrl}" muted playsinline preload="metadata"></video><span class="media-badge">VIDEO</span></div></button>`
-          : `<button type="button" class="issue-thumb-trigger" data-open-issue-thumb="${issue.id}" aria-label="${txt('เปิดรายละเอียดงาน', 'Open issue detail')}"><div class="issue-thumb placeholder">DONE</div></button>`;
+          ? `<button type="button" class="issue-thumb-trigger media-open-immediate" data-open-issue-thumb="${issue.id}" aria-label="${txt('ดูรูปใหญ่', 'Open media preview')}"><div class="issue-thumb-wrap"><video class="issue-thumb" src="${videoPreviewUrl}" muted playsinline preload="metadata"></video><span class="media-badge">VIDEO</span></div></button>`
+          : `<button type="button" class="issue-thumb-trigger media-open-immediate" data-open-issue-thumb="${issue.id}" aria-label="${txt('ดูรูปใหญ่', 'Open media preview')}"><div class="issue-thumb placeholder">DONE</div></button>`;
       const closedMeta = issue.closed_at ? `<span>•</span><span>${txt('ปิดเมื่อ', 'Closed')} ${formatDateTime(issue.closed_at)}</span>` : '';
       return `
         <article class="issue-card issue-tone-closed">
@@ -2672,7 +2691,7 @@
     }).join('');
 
     qsa('[data-open-issue]', el.closedList).forEach(btn => btn.addEventListener('click', () => openIssueModal(btn.dataset.openIssue)));
-    qsa('[data-open-issue-thumb]', el.closedList).forEach(btn => btn.addEventListener('click', () => openIssueModal(btn.dataset.openIssueThumb)));
+    qsa('[data-open-issue-thumb]', el.closedList).forEach(btn => btn.addEventListener('click', () => openIssueMediaPreview(btn.dataset.openIssueThumb)));
     qsa('[data-status-action]', el.closedList).forEach(btn => btn.addEventListener('click', () => {
       updateIssueStatus(btn.dataset.issueId, btn.dataset.statusAction);
     }));
@@ -2701,10 +2720,10 @@
       if (videoCount > 0) mediaBits.push(`<span>${videoCount} ${txt('วิดีโอ', `video${videoCount > 1 ? 's' : ''}`)}</span>`);
       const mediaNote = mediaBits.length ? `<span>•</span>${mediaBits.join('<span>•</span>')}` : '';
       const thumbHtml = thumb
-        ? `<button type="button" class="issue-thumb-trigger" data-open-issue-thumb="${issue.id}" aria-label="${txt('เปิดรายละเอียดงาน', 'Open issue detail')}"><div class="issue-thumb-wrap">${fullCover ? `<img class="issue-thumb" src="${thumb}" alt="Issue photo" />` : `<img class="issue-thumb" src="${thumb}" alt="Issue media poster" />`} ${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div></button>`
+        ? `<button type="button" class="issue-thumb-trigger media-open-immediate" data-open-issue-thumb="${issue.id}" aria-label="${txt('ดูรูปใหญ่', 'Open media preview')}"><div class="issue-thumb-wrap">${fullCover ? `<img class="issue-thumb" src="${thumb}" alt="Issue photo" />` : `<img class="issue-thumb" src="${thumb}" alt="Issue media poster" />`} ${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div></button>`
         : videoPreviewUrl
-          ? `<button type="button" class="issue-thumb-trigger" data-open-issue-thumb="${issue.id}" aria-label="${txt('เปิดรายละเอียดงาน', 'Open issue detail')}"><div class="issue-thumb-wrap"><video class="issue-thumb" src="${videoPreviewUrl}" muted playsinline preload="metadata"></video><span class="media-badge">VIDEO</span></div></button>`
-          : `<button type="button" class="issue-thumb-trigger" data-open-issue-thumb="${issue.id}" aria-label="${txt('เปิดรายละเอียดงาน', 'Open issue detail')}"><div class="issue-thumb placeholder">${hasVideo ? 'VIDEO' : (issue.issue_type === 'checklist_submission' ? 'CHECKLIST' : 'NO PHOTO')}</div></button>`;
+          ? `<button type="button" class="issue-thumb-trigger media-open-immediate" data-open-issue-thumb="${issue.id}" aria-label="${txt('ดูรูปใหญ่', 'Open media preview')}"><div class="issue-thumb-wrap"><video class="issue-thumb" src="${videoPreviewUrl}" muted playsinline preload="metadata"></video><span class="media-badge">VIDEO</span></div></button>`
+          : `<button type="button" class="issue-thumb-trigger media-open-immediate" data-open-issue-thumb="${issue.id}" aria-label="${txt('ดูรูปใหญ่', 'Open media preview')}"><div class="issue-thumb placeholder">${hasVideo ? 'VIDEO' : (issue.issue_type === 'checklist_submission' ? 'CHECKLIST' : 'NO PHOTO')}</div></button>`;
       return `
         <article class="issue-card ${getIssueCardToneClass(issue)}">
           ${thumbHtml}
@@ -2744,7 +2763,7 @@
     }).join('');
 
     qsa('[data-open-issue]', el.boardList).forEach(btn => btn.addEventListener('click', () => openIssueModal(btn.dataset.openIssue)));
-    qsa('[data-open-issue-thumb]', el.boardList).forEach(btn => btn.addEventListener('click', () => openIssueModal(btn.dataset.openIssueThumb)));
+    qsa('[data-open-issue-thumb]', el.boardList).forEach(btn => btn.addEventListener('click', () => openIssueMediaPreview(btn.dataset.openIssueThumb)));
     qsa('[data-status-action]', el.boardList).forEach(btn => btn.addEventListener('click', () => {
       updateIssueStatus(btn.dataset.issueId, btn.dataset.statusAction);
     }));
@@ -2968,6 +2987,71 @@
     const videoCount = beforeVideos.length + afterVideos.length;
     const videoPreviewUrl = firstVideo?.url || '';
     return { thumb, full, hasVideo, photoCount, videoCount, videoPreviewUrl };
+  }
+
+
+  function getIssuePrimaryMedia(issue = {}) {
+    const beforePhotos = Array.isArray(issue.before_photos) ? issue.before_photos.filter(Boolean) : [];
+    const beforeVideos = Array.isArray(issue.before_videos) ? issue.before_videos.filter(Boolean) : [];
+    const afterPhotos = Array.isArray(issue.after_photos) ? issue.after_photos.filter(Boolean) : [];
+    const afterVideos = Array.isArray(issue.after_videos) ? issue.after_videos.filter(Boolean) : [];
+    const firstPhoto = beforePhotos[0] || afterPhotos[0] || null;
+    const firstVideo = beforeVideos[0] || afterVideos[0] || null;
+    if (firstPhoto?.url || issue.cover_photo_url) {
+      return {
+        type: 'image',
+        src: issue.cover_photo_url || firstPhoto?.url || firstPhoto?.thumb_url || '',
+        poster: '',
+      };
+    }
+    if (firstVideo?.url) {
+      return {
+        type: 'video',
+        src: firstVideo.url,
+        poster: firstVideo.poster_url || firstVideo.thumb_url || '',
+      };
+    }
+    return null;
+  }
+
+  function openIssueMediaPreview(issueId) {
+    const issue = state.data.issues.find(i => i.id === issueId);
+    if (!issue) return;
+    const media = getIssuePrimaryMedia(issue);
+    if (!media?.src) {
+      openIssueModal(issueId);
+      return;
+    }
+    openMediaPreviewModal({
+      type: media.type,
+      src: media.src,
+      poster: media.poster || '',
+      issueId: issue.id,
+      title: issue.title || txt('ดูสื่อ', 'Media preview'),
+      meta: `${getDepartmentName(issue.assigned_department)} • ${issue.location_text || '-'} • ${formatDateTime(issue.created_at)}`
+    });
+  }
+
+  function openMediaPreviewModal({ type = 'image', src = '', poster = '', issueId = '', title = '', meta = '' } = {}) {
+    if (!el.mediaPreviewModal || !el.mediaPreviewBody || !src) return;
+    state.ui.mediaPreviewOpen = true;
+    state.ui.mediaPreviewIssueId = issueId || null;
+    if (el.mediaPreviewTitle) el.mediaPreviewTitle.textContent = title || txt('ดูรูปขนาดใหญ่', 'Large preview');
+    if (el.mediaPreviewMeta) el.mediaPreviewMeta.textContent = meta || '';
+    if (el.mediaPreviewOpenDetailBtn) el.mediaPreviewOpenDetailBtn.classList.toggle('hidden', !issueId);
+    if (type === 'video') {
+      el.mediaPreviewBody.innerHTML = `<video src="${escapeHtml(src)}" ${poster ? `poster="${escapeHtml(poster)}"` : ''} controls autoplay playsinline preload="metadata"></video>`;
+    } else {
+      el.mediaPreviewBody.innerHTML = `<img src="${escapeHtml(src)}" alt="${escapeHtml(title || 'Preview')}" />`;
+    }
+    el.mediaPreviewModal.classList.remove('hidden');
+  }
+
+  function closeMediaPreviewModal() {
+    state.ui.mediaPreviewOpen = false;
+    state.ui.mediaPreviewIssueId = null;
+    if (el.mediaPreviewBody) el.mediaPreviewBody.innerHTML = '';
+    if (el.mediaPreviewModal) el.mediaPreviewModal.classList.add('hidden');
   }
 
   async function handleIssuePhotoPicked(event) {
