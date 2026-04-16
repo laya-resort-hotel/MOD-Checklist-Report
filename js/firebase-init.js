@@ -4,6 +4,8 @@ import {
   getAuth,
   setPersistence,
   browserLocalPersistence,
+  browserSessionPersistence,
+  inMemoryPersistence,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -54,7 +56,19 @@ async function boot() {
     const auth = getAuth(app);
     const db = getFirestore(app);
     const storage = getStorage(app);
-    await setPersistence(auth, browserLocalPersistence);
+
+    let persistenceMode = 'local';
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+    } catch (persistLocalErr) {
+      try {
+        await setPersistence(auth, browserSessionPersistence);
+        persistenceMode = 'session';
+      } catch (persistSessionErr) {
+        await setPersistence(auth, inMemoryPersistence);
+        persistenceMode = 'memory';
+      }
+    }
 
     let analytics = null;
     try {
@@ -72,6 +86,7 @@ async function boot() {
       analytics,
       config: cfg,
       projectId: cfg.projectId || '',
+      persistenceMode,
       sdk: {
         onAuthStateChanged,
         signInWithEmailAndPassword,

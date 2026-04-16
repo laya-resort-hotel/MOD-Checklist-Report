@@ -2359,3 +2359,6 @@ input:not([type="checkbox"]):not([type="radio"]) {
 .force-password-banner{display:none;align-items:flex-start;gap:10px;margin:12px 0 6px;padding:12px 14px;border-radius:16px;background:rgba(181,151,96,.16);border:1px solid rgba(181,151,96,.28);font-size:13px;line-height:1.55;color:#24352c;}
 .force-password-banner strong{display:block;margin-bottom:2px;}
 .team-member-actions .btn.btn-primary{box-shadow:0 10px 24px rgba(36,53,44,.10);}
+
+.auth-login-tools{display:flex;justify-content:center;margin-top:12px;}
+.btn-login-cache{min-width:160px;border-radius:999px;padding:10px 16px;}

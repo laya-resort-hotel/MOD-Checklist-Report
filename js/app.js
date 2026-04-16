@@ -211,7 +211,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v76-login-stabilized';
+  const APP_VERSION = 'v77-desktop-login-compat';
 
   function safeClone(value) {
     try {
@@ -994,7 +994,8 @@
     }
 
     if (window.LAYA_FIREBASE_CONFIG_PRESENT) {
-      if (el.modeBanner) el.modeBanner.textContent = txt('เพิ่ม Firebase Config แล้ว • รอ Auth / fallback เป็นเดโมในเครื่อง', 'Firebase Config Added • Waiting for Auth / fallback to Local Demo');
+      if (el.modeBanner) el.modeBanner.textContent = txt('เพิ่ม Firebase Config แล้ว • รอ Auth', 'Firebase Config Added • Waiting for Auth');
+      setAuthStatus(describeFirebaseUnavailable(), 'error');
       if (el.connectionBadge) {
         el.connectionBadge.textContent = txt('ข้อมูลเดโม', 'Demo Data');
         el.connectionBadge.classList.remove('success');
@@ -1078,6 +1079,7 @@
 
     setNodePlaceholder('#loginEmployeeId', 'เช่น 9901', 'e.g. 9901');
     setNodePlaceholder('#loginPassword', 'รหัสผ่าน', 'Password');
+    setNodeText('#loginClearCacheBtn', 'ล้างแคช', 'Clear Cache');
     setNodeText('#loginPasswordHelp', 'หากลืมรหัสผ่าน ให้ติดต่อ Admin เพื่อขอรหัสชั่วคราว', 'If you forgot your password, ask an admin for a temporary password.');
     setNodePlaceholder('#registerEmployeeId', 'เช่น 5521', 'e.g. 5521');
     setNodePlaceholder('#registerFullName', 'ชื่อ-นามสกุล', 'Full name');
@@ -1369,6 +1371,22 @@
   function isFirebaseLive() {
     return !!(window.LAYA_FIREBASE && window.LAYA_FIREBASE.ready && window.LAYA_FIREBASE.auth && window.LAYA_FIREBASE.db);
   }
+  function isFirebaseConfiguredButUnavailable() {
+    return !!(window.LAYA_FIREBASE_CONFIG_PRESENT && !isFirebaseLive());
+  }
+
+  function getFirebaseUnavailableReason() {
+    const raw = String(window.LAYA_FIREBASE?.error || '').trim();
+    if (!raw) return '';
+    return raw;
+  }
+
+  function describeFirebaseUnavailable() {
+    const reason = getFirebaseUnavailableReason();
+    const base = txt('Firebase ยังไม่พร้อมบนเบราว์เซอร์นี้ กรุณากดล้างแคชแล้วลองใหม่', 'Firebase is not ready on this browser. Please clear cache and try again.');
+    return reason ? `${base} (${reason})` : base;
+  }
+
 
   function resetSignedOutState() {
     state.currentUser = null;
@@ -1660,6 +1678,7 @@
 
   function bindEvents() {
     el.loginBtn.addEventListener('click', handleLogin);
+    if (el.loginClearCacheBtn) el.loginClearCacheBtn.addEventListener('click', handleClearCache);
     el.registerBtn.addEventListener('click', handleRegister);
     if (el.openSettingsBtn) el.openSettingsBtn.addEventListener('click', () => switchView('settingsView'));
     if (el.topbarAccountBtn) el.topbarAccountBtn.addEventListener('click', handleToggleAccountMenu);
@@ -1974,6 +1993,11 @@
         console.error(err);
         setAuthStatus(describeFirebaseLoginError(err), 'error');
       }
+      return;
+    }
+
+    if (isFirebaseConfiguredButUnavailable()) {
+      setAuthStatus(describeFirebaseUnavailable(), 'error');
       return;
     }
 
