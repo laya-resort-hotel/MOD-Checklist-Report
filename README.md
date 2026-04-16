@@ -1,117 +1,65 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import { getAnalytics, isSupported as analyticsSupported } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics.js';
-import {
-  getAuth,
-  setPersistence,
-  browserLocalPersistence,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  deleteUser,
-  updatePassword,
-  EmailAuthProvider,
-  reauthenticateWithCredential
-} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
-  collection,
-  collectionGroup,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  runTransaction,
-  increment
-} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
-import {
-  getStorage,
-  ref as storageRef,
-  uploadString,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject
-} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js';
+# MOD Checklist Report — GitHub Ready + Firebase Employee ID Auth
 
-const cfg = window.LAYA_FIREBASE_CONFIG;
+เวอร์ชันนี้รองรับ:
+- Sign In ด้วย **Employee ID + Password**
+- Register ด้วย **Employee ID** โดยระบบจะสร้าง email ภายในแบบซ่อนหลังบ้านอัตโนมัติ
+- เลือก **Access Type** ได้ทั้ง `MOD` และ `Department User`
+- เลือก **Department** ได้ครบ: Engineering, Housekeeping, Front Office, Food & Beverage, Security, HR, Reservation, Sales, Recreation, Kitchen
+- บันทึกโปรไฟล์ผู้ใช้ลง `users/{uid}` ใน Firestore
+- Local Demo Mode ยังอยู่ เผื่อใช้ตอน Firebase ยังไม่พร้อม
 
-async function boot() {
-  if (!cfg) {
-    window.LAYA_FIREBASE = { ready: false, mode: 'demo', error: 'missing_config' };
-    window.dispatchEvent(new CustomEvent('laya-firebase-error', { detail: window.LAYA_FIREBASE }));
-    return;
-  }
+## การสมัครสมาชิก
+ผู้ใช้กรอก:
+- Employee ID
+- Full Name
+- Access Type (`MOD` หรือ `Department User`)
+- Department (ถ้าเลือก Department User)
+- Password
 
-  try {
-    const app = initializeApp(cfg);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const storage = getStorage(app);
-    await setPersistence(auth, browserLocalPersistence);
+ระบบจะสร้าง Firebase Auth account ด้วยรูปแบบ email ภายใน เช่น:
+- `9901@employee.mod-checklist-report.local`
 
-    let analytics = null;
-    try {
-      const ok = await analyticsSupported();
-      if (ok) analytics = getAnalytics(app);
-    } catch (_) {}
+ผู้ใช้จะเห็นแค่ **Employee ID** ไม่ต้องรู้หรือใช้ email นี้
 
-    window.LAYA_FIREBASE = {
-      ready: true,
-      mode: 'configured',
-      app,
-      auth,
-      db,
-      storage,
-      analytics,
-      config: cfg,
-      projectId: cfg.projectId || '',
-      sdk: {
-        onAuthStateChanged,
-        signInWithEmailAndPassword,
-        createUserWithEmailAndPassword,
-        signOut,
-        deleteUser,
-        updatePassword,
-        EmailAuthProvider,
-        reauthenticateWithCredential,
-        doc,
-        getDoc,
-        getDocs,
-        setDoc,
-        updateDoc,
-        deleteDoc,
-        serverTimestamp,
-        collection,
-        collectionGroup,
-        query,
-        where,
-        orderBy,
-        onSnapshot,
-        runTransaction,
-        increment,
-        storageRef,
-        uploadString,
-        uploadBytes,
-        getDownloadURL,
-        deleteObject,
-      }
-    };
-    window.dispatchEvent(new CustomEvent('laya-firebase-ready', { detail: window.LAYA_FIREBASE }));
-  } catch (error) {
-    window.LAYA_FIREBASE = {
-      ready: false,
-      mode: 'config_error',
-      error: error?.message || String(error)
-    };
-    window.dispatchEvent(new CustomEvent('laya-firebase-error', { detail: window.LAYA_FIREBASE }));
-  }
-}
+## หมายเหตุเรื่องสิทธิ์
+เวอร์ชันนี้เปิด self-register ได้สำหรับ role:
+- `mod`
+- `dept_user`
 
-boot();
+จะ **ไม่** อนุญาตให้สมัครเป็น `admin` เอง
+
+## ใช้งานจริง
+1. Deploy ขึ้น GitHub Pages
+2. เปิด Email/Password ใน Firebase Authentication
+3. Deploy `firestore.rules`
+4. เปิดหน้าเว็บแล้วสมัครสมาชิกด้วย Employee ID ได้ทันที
+
+## ข้อควรทราบ
+- data issue/checklist ในเวอร์ชันนี้ยังเป็น Local Demo Flow เป็นหลัก
+- แต่ระบบ Sign In / Register ใช้ Firebase Auth + Firestore จริงแล้ว
+- รอบถัดไปสามารถย้าย issue board / comments / checklist runs ไป Firestore live ได้ต่อทันที
+
+
+## Mobile photo picker fix
+- แยกปุ่ม "เลือกรูปจากเครื่อง" และ "ถ่ายรูป"
+- ไม่บังคับ `capture` กับการเลือกรูปจากเครื่องอีกต่อไป
+- รองรับมือถือได้เสถียรกว่าเดิม
+
+
+## Patch note v5
+- New Issue now writes to Firestore when Firebase is live
+- Board reads issues from Firestore via onSnapshot
+- Status changes and comments also write to Firestore
+- Mobile image resize flow remains enabled before save
+
+
+## Firebase Storage
+- Publish ไฟล์ `storage.rules` ใน Firebase Storage Rules
+- เวอร์ชันนี้อัปภาพ issue ไปที่ `issue_photos/{uid}/{issueId}/before/...`
+- Firestore จะเก็บเฉพาะ URL และ path ของรูป ไม่เก็บ base64 ลง issue document
+
+
+## v33 dropdown fix
+- แยก WORK departments ออกจาก system departments ชัดเจน
+- Dropdown สำหรับ Create Issue / Checklist fail issue / Register (Department User) ใช้เฉพาะ: ENG, HK, FO, FB, SEC, HR, RSV, SALES, REC, KIT
+- MOD และ Admin ยังอยู่ในระบบ แต่จะไม่โผล่ใน dropdown ที่ใช้ assign งานหรือสมัคร Department User
