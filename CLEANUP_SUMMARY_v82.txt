@@ -1,0 +1,21 @@
+Cleanup version v82
+
+What was cleaned:
+1. Root app.js replaced with a placeholder note.
+   - Real file: js/app.js
+2. Root firebase-config.js replaced with a placeholder note.
+   - Real file: js/firebase-config.js
+3. Root checklist_templates.json replaced with a placeholder note.
+   - Real file: data/checklist_templates.json
+4. Service worker cache name updated to: laya-mod-v82-cleanup
+
+Why:
+- Reduce wrong-file edits.
+- Reduce duplicate-source confusion.
+- Reduce cache-stale issues after deploy.
+
+Recommended after upload:
+- Push to GitHub
+- Open the app
+- Use Clear Cache once
+- Then hard refresh (Ctrl + F5)
