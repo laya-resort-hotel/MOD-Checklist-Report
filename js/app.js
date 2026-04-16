@@ -95,6 +95,14 @@
   const WORK_DEPARTMENT_CODES = ['ENG', 'HK', 'FO', 'FB', 'SEC', 'HR', 'RSV', 'SALES', 'REC', 'KIT'];
   const ALL_DEPARTMENT_CODES = DEPARTMENTS.map(dept => dept.code);
 
+  const DEMO_USERS = [
+    { uid: 'demo-9901', employee_id: '9901', full_name: 'Somchai MOD', role: 'mod', department: 'MOD', password: '9901', is_active: true },
+    { uid: 'demo-9902', employee_id: '9902', full_name: 'Nok MOD', role: 'mod', department: 'MOD', password: '9902', is_active: true },
+    { uid: 'demo-9903', employee_id: '9903', full_name: 'Brown MOD', role: 'mod', department: 'MOD', password: '9903', is_active: true },
+    { uid: 'demo-9904', employee_id: '9904', full_name: 'Mint MOD', role: 'mod', department: 'MOD', password: '9904', is_active: true },
+    { uid: 'demo-25381', employee_id: '25381', full_name: 'Wuttichai KOJI-NOI-FB', role: 'admin', department: 'MOD', password: '25381', is_active: true }
+  ];
+
   const PRIORITIES = ['low', 'medium', 'high', 'critical'];
   const STATUS_ORDER = { open: 1, in_progress: 2, waiting: 3, closed: 4 };
 
@@ -212,7 +220,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v77-desktop-login-compat';
+  const APP_VERSION = 'v80-stability-recovery'; // 'v77-desktop-login-compat';
 
   function safeClone(value) {
     try {
@@ -2314,6 +2322,19 @@
       openAccountMiniMenu();
     }
   }
+
+  function handleOpenTeamMembersShortcut() {
+    closeAccountMiniMenu();
+    switchView('moreView');
+    if (el.teamMembersList && typeof el.teamMembersList.scrollIntoView === 'function') {
+      setTimeout(() => {
+        try {
+          el.teamMembersList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (_) {}
+      }, 60);
+    }
+  }
+
 
   function handleOpenSettingsFromAccountMenu() {
     closeAccountMiniMenu(true);
