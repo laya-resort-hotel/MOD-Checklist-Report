@@ -36,6 +36,7 @@
         <input id="loginPassword" type="password" placeholder="รหัสผ่าน" />
 
         <button id="loginBtn" class="btn btn-primary btn-block">Sign In</button>
+        <div id="loginPasswordHelp" class="auth-help-text">Forgot your password? Ask an admin for a temporary password.</div>
       </div>
 
       <div id="registerPane" class="auth-pane hidden">
@@ -527,7 +528,7 @@
         <input type="password" tabindex="-1" autocomplete="current-password" />
       </div>
       <div class="form-grid settings-form-grid" autocomplete="off">
-        <div>
+        <div id="passwordEditorCurrentField">
           <label id="passwordEditorCurrentLabel">รหัสผ่านปัจจุบัน</label>
           <input id="passwordEditorCurrent" name="pw_editor_current" type="password" placeholder="Current password" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" />
         </div>
