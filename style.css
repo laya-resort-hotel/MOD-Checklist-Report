@@ -2362,3 +2362,7 @@ input:not([type="checkbox"]):not([type="radio"]) {
 
 .auth-login-tools{display:flex;justify-content:center;margin-top:12px;}
 .btn-login-cache{min-width:160px;border-radius:999px;padding:10px 16px;}
+
+.login-card{position:relative;}
+.auth-lang-switch,.auth-tabs,.auth-pane,.auth-login-tools,.demo-box{position:relative;z-index:2;}
+.auth-status{position:relative;z-index:1;}

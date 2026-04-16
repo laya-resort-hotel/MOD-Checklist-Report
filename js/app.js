@@ -156,6 +156,7 @@
   const state = {
     currentUser: null,
     firebaseAuthBound: false,
+    authSurfaceBound: false,
     firebaseIssuesUnsub: null,
     firebaseIssueCommentsUnsub: null,
     firebaseTemplatesUnsub: null,
@@ -1677,9 +1678,65 @@
   }
 
   function bindEvents() {
-    el.loginBtn.addEventListener('click', handleLogin);
-    if (el.loginClearCacheBtn) el.loginClearCacheBtn.addEventListener('click', handleClearCache);
-    el.registerBtn.addEventListener('click', handleRegister);
+    bindAuthSurfaceControls();
+
+
+  function bindAuthSurfaceControls() {
+    if (!el.loginScreen || state.authSurfaceBound) return;
+    state.authSurfaceBound = true;
+
+    const authClickHandler = (event) => {
+      const target = event.target.closest('button, [data-lang-btn], .demo-user');
+      if (!target || !el.loginScreen.contains(target)) return;
+      if (target.id === 'loginBtn') {
+        event.preventDefault();
+        handleLogin();
+        return;
+      }
+      if (target.id === 'loginClearCacheBtn') {
+        event.preventDefault();
+        handleClearCache();
+        return;
+      }
+      if (target.id === 'registerBtn') {
+        event.preventDefault();
+        handleRegister();
+        return;
+      }
+      if (target.id === 'showSignInTab') {
+        event.preventDefault();
+        showAuthTab('signin');
+        return;
+      }
+      if (target.id === 'showRegisterTab') {
+        event.preventDefault();
+        showAuthTab('register');
+        return;
+      }
+      if (target.matches('[data-lang-btn]')) {
+        event.preventDefault();
+        setLanguage(target.dataset.langBtn || 'th');
+        return;
+      }
+      if (target.classList.contains('demo-user')) {
+        event.preventDefault();
+        if (el.loginEmployeeId) el.loginEmployeeId.value = target.dataset.id || '';
+        if (el.loginPassword) el.loginPassword.value = target.dataset.pass || '';
+        handleLogin();
+      }
+    };
+
+    el.loginScreen.addEventListener('click', authClickHandler, true);
+    [el.loginEmployeeId, el.loginPassword].forEach((node) => {
+      if (!node) return;
+      node.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          handleLogin();
+        }
+      });
+    });
+  }
     if (el.openSettingsBtn) el.openSettingsBtn.addEventListener('click', () => switchView('settingsView'));
     if (el.topbarAccountBtn) el.topbarAccountBtn.addEventListener('click', handleToggleAccountMenu);
     if (el.accountMenuOpenTeamMembers) el.accountMenuOpenTeamMembers.addEventListener('click', handleOpenTeamMembersShortcut);
@@ -1691,15 +1748,7 @@
     if (el.accountMenuLogout) el.accountMenuLogout.addEventListener('click', handleLogout);
     document.addEventListener('click', handleDocumentClickForAccountMenu);
     document.addEventListener('keydown', handleGlobalKeydown);
-    el.showSignInTab.addEventListener('click', () => showAuthTab('signin'));
-    el.showRegisterTab.addEventListener('click', () => showAuthTab('register'));
     if (el.registerRole) el.registerRole.addEventListener('change', syncRegisterRoleDepartment);
-    qsa('[data-lang-btn]').forEach(btn => btn.addEventListener('click', () => setLanguage(btn.dataset.langBtn)));
-    qsa('.demo-user').forEach(btn => btn.addEventListener('click', () => {
-      el.loginEmployeeId.value = btn.dataset.id;
-      el.loginPassword.value = btn.dataset.pass;
-      handleLogin();
-    }));
     qsa('.nav-link').forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
     el.fabNewIssue.addEventListener('click', () => switchView('newIssueView'));
     el.boardSearch.addEventListener('input', (e) => {
