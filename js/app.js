@@ -189,6 +189,7 @@
       pendingProfileAvatar: null,
       passwordChangeDraft: null,
       passwordChangeBusy: false,
+      passwordEditorMode: 'normal',
       accountMenuOpen: false,
       mediaPreviewOpen: false,
       mediaPreviewIssueId: null,
@@ -210,7 +211,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v71-media-preview-layout-polish';
+  const APP_VERSION = 'v74-temp-password-admin-reset';
 
   function safeClone(value) {
     try {
@@ -1077,6 +1078,7 @@
 
     setNodePlaceholder('#loginEmployeeId', 'เช่น 9901', 'e.g. 9901');
     setNodePlaceholder('#loginPassword', 'รหัสผ่าน', 'Password');
+    setNodeText('#loginPasswordHelp', 'หากลืมรหัสผ่าน ให้ติดต่อ Admin เพื่อขอรหัสชั่วคราว', 'If you forgot your password, ask an admin for a temporary password.');
     setNodePlaceholder('#registerEmployeeId', 'เช่น 5521', 'e.g. 5521');
     setNodePlaceholder('#registerFullName', 'ชื่อ-นามสกุล', 'Full name');
     setNodePlaceholder('#registerPassword', 'อย่างน้อย 6 ตัวอักษร', 'At least 6 characters');
@@ -1107,11 +1109,15 @@
     setNodeText('#openSettingsBtn', 'ตั้งค่า', 'Settings');
     setNodeText('#clearCacheBtn', 'ล้างแคช', 'Clear Cache');
     setNodeText('#clearCacheBtnMore', 'ล้างแคช', 'Clear Cache');
+    setNodeText('#settingsAdminToolsPanel .panel-header h3', 'เครื่องมือแอดมิน', 'Admin Tools');
+    setNodeText('#settingsAdminToolsPanel .panel-header p', 'เปิดรายชื่อสมาชิกทีมและออกรหัสชั่วคราวให้พนักงาน', 'Open team members and issue temporary passwords for staff.');
+    setNodeText('#openTeamMembersFromSettings', 'เปิดสมาชิกทีม', 'Open Team Members');
     setNodeText('#logoutBtn', 'ออกจากระบบ', 'Logout');
     setNodeText('#topbarAccountName', 'บัญชีของฉัน', 'My Account');
     setNodeText('#topbarAccountMeta', 'ทีม MOD', 'MOD Team');
     setNodeText('#accountMenuName', 'บัญชีของฉัน', 'My Account');
     setNodeText('#accountMenuMeta', '0000 • MOD', '0000 • MOD');
+    setNodeText('#accountMenuOpenTeamMembers', 'สมาชิกทีม', 'Team Members');
     setNodeText('#accountMenuOpenSettings', 'เปิดตั้งค่า', 'Open Settings');
     setNodeText('#accountMenuClearCache', 'ล้างแคช', 'Clear Cache');
     setNodeText('#accountMenuLogout', 'ออกจากระบบ', 'Logout');
@@ -1331,6 +1337,9 @@
       email,
       avatar_url: '',
       avatar_storage_path: '',
+      password_change_required: false,
+      temporary_password_issued_at: null,
+      temporary_password_issued_by_uid: '',
       created_at: window.LAYA_FIREBASE.sdk.serverTimestamp(),
       updated_at: window.LAYA_FIREBASE.sdk.serverTimestamp(),
       last_login_at: window.LAYA_FIREBASE.sdk.serverTimestamp()
@@ -1408,7 +1417,7 @@
         }
 
         const profile = snap.data();
-        state.currentUser = { uid: user.uid, ...profile };
+        state.currentUser = { uid: user.uid, password_change_required: false, temporary_password_issued_at: null, temporary_password_issued_by_uid: '', ...profile };
         startTemplatesSync();
         startChecklistRunsSync();
         startUsersSync();
@@ -1421,10 +1430,14 @@
           });
         } catch (_) {}
 
-        setAuthStatus('เข้าสู่ระบบสำเร็จ', 'success');
+        const needsTempPasswordChange = !!profile.password_change_required;
+        setAuthStatus(needsTempPasswordChange ? txt('เข้าสู่ระบบสำเร็จ • กรุณาเปลี่ยนรหัสผ่านชั่วคราวก่อนใช้งานต่อ', 'Signed in. Please change your temporary password before continuing.') : txt('เข้าสู่ระบบสำเร็จ', 'Signed in successfully'), needsTempPasswordChange ? 'info' : 'success');
         state.ui.didInitialMentionCheck = false;
         startIssuesSync();
         renderAll();
+        if (needsTempPasswordChange) {
+          setTimeout(() => openPasswordEditorModal('force'), 120);
+        }
       } catch (err) {
         console.error(err);
         setAuthStatus('โหลดข้อมูลผู้ใช้จาก Firestore ไม่สำเร็จ', 'error');
@@ -1468,6 +1481,7 @@
       accountMenuMeta: qs('#accountMenuMeta'),
       accountMenuRoleBadge: qs('#accountMenuRoleBadge'),
       accountMenuDepartmentBadge: qs('#accountMenuDepartmentBadge'),
+      accountMenuOpenTeamMembers: qs('#accountMenuOpenTeamMembers'),
       accountMenuOpenSettings: qs('#accountMenuOpenSettings'),
       accountMenuClearCache: qs('#accountMenuClearCache'),
       accountMenuLogout: qs('#accountMenuLogout'),
@@ -1548,6 +1562,8 @@
       modeBanner: qs('#modeBanner'),
       connectionBadge: qs('#connectionBadge'),
       teamMembersList: qs('#teamMembersList'),
+      settingsAdminToolsPanel: qs('#settingsAdminToolsPanel'),
+      openTeamMembersFromSettings: qs('#openTeamMembersFromSettings'),
       settingsProfileAvatarPreview: qs('#settingsProfileAvatarPreview'),
       settingsProfileAvatarImg: qs('#settingsProfileAvatarImg'),
       settingsProfileInitials: qs('#settingsProfileInitials'),
@@ -1579,6 +1595,9 @@
       saveProfileSettingsBtn: qs('#saveProfileSettingsBtn'),
       openPasswordEditorBtn: qs('#openPasswordEditorBtn'),
       passwordEditorModal: qs('#passwordEditorModal'),
+      passwordEditorTitle: qs('#passwordEditorTitle'),
+      passwordEditorMessage: qs('#passwordEditorMessage'),
+      passwordEditorCurrentField: qs('#passwordEditorCurrentField'),
       closePasswordEditorModalBtn: qs('#closePasswordEditorModalBtn'),
       cancelPasswordEditorBtn: qs('#cancelPasswordEditorBtn'),
       continuePasswordEditorBtn: qs('#continuePasswordEditorBtn'),
@@ -1586,6 +1605,8 @@
       passwordEditorNew: qs('#passwordEditorNew'),
       passwordEditorConfirm: qs('#passwordEditorConfirm'),
       passwordConfirmModal: qs('#passwordConfirmModal'),
+      passwordConfirmTitle: qs('#passwordConfirmTitle'),
+      passwordConfirmMessage: qs('#passwordConfirmMessage'),
       closePasswordConfirmModalBtn: qs('#closePasswordConfirmModalBtn'),
       passwordConfirmAccount: qs('#passwordConfirmAccount'),
       passwordConfirmLength: qs('#passwordConfirmLength'),
@@ -1601,6 +1622,7 @@
     el.registerBtn.addEventListener('click', handleRegister);
     if (el.openSettingsBtn) el.openSettingsBtn.addEventListener('click', () => switchView('settingsView'));
     if (el.topbarAccountBtn) el.topbarAccountBtn.addEventListener('click', handleToggleAccountMenu);
+    if (el.accountMenuOpenTeamMembers) el.accountMenuOpenTeamMembers.addEventListener('click', handleOpenTeamMembersShortcut);
     if (el.accountMenuOpenSettings) el.accountMenuOpenSettings.addEventListener('click', handleOpenSettingsFromAccountMenu);
     if (el.clearCacheBtn) el.clearCacheBtn.addEventListener('click', handleClearCache);
     if (el.clearCacheBtnMore) el.clearCacheBtnMore.addEventListener('click', handleClearCache);
@@ -1656,6 +1678,7 @@
     if (el.openClosedJobsFromMore) el.openClosedJobsFromMore.addEventListener('click', () => switchView('closedView'));
     if (el.openUsageLogFromMore) el.openUsageLogFromMore.addEventListener('click', () => switchView('logView'));
     if (el.openSettingsFromMore) el.openSettingsFromMore.addEventListener('click', () => switchView('settingsView'));
+    if (el.openTeamMembersFromSettings) el.openTeamMembersFromSettings.addEventListener('click', handleOpenTeamMembersShortcut);
     if (el.backToBoardBtn) el.backToBoardBtn.addEventListener('click', () => switchView('boardView'));
     el.boardFilterChips.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');
@@ -1730,6 +1753,7 @@
     if (el.settingsAvatarPickBtn) el.settingsAvatarPickBtn.addEventListener('click', () => { if (el.settingsAvatarInput) el.settingsAvatarInput.value = ''; });
     if (el.settingsAvatarCameraBtn) el.settingsAvatarCameraBtn.addEventListener('click', () => { if (el.settingsAvatarCameraInput) el.settingsAvatarCameraInput.value = ''; });
     if (el.settingsAvatarRemoveBtn) el.settingsAvatarRemoveBtn.addEventListener('click', handleRemoveProfileAvatar);
+    if (el.teamMembersList) el.teamMembersList.addEventListener('click', handleTeamMemberListClick);
     if (el.closePasswordConfirmModalBtn) el.closePasswordConfirmModalBtn.addEventListener('click', closePasswordConfirmModal);
     if (el.cancelPasswordChangeBtn) el.cancelPasswordChangeBtn.addEventListener('click', closePasswordConfirmModal);
     if (el.confirmPasswordChangeBtn) el.confirmPasswordChangeBtn.addEventListener('click', confirmPasswordChange);
@@ -2263,23 +2287,114 @@
     await handleSaveProfileSettings();
   }
 
-  function openPasswordEditorModal() {
-    if (!el.passwordEditorModal) return;
-    ['passwordEditorCurrent','passwordEditorNew','passwordEditorConfirm'].forEach(key => { if (el[key]) el[key].value = ''; });
-    el.passwordEditorModal.classList.remove('hidden');
-    setTimeout(() => { try { el.passwordEditorCurrent?.focus(); } catch (_) {} }, 30);
+
+  function canIssueTemporaryPassword() {
+    return String(state.currentUser?.role || '').toLowerCase() === 'admin' && isFirebaseLive();
   }
 
-  function closePasswordEditorModal() {
+  function getIssueTemporaryPasswordFunctionUrl() {
+    const cfg = window.LAYA_FIREBASE_CONFIG || {};
+    const projectId = cfg.projectId || '';
+    if (!projectId) return '';
+    const region = 'us-central1';
+    return `https://${region}-${projectId}.cloudfunctions.net/issueTemporaryPassword`;
+  }
+
+  async function issueTemporaryPasswordForUser(targetUid) {
+    if (!canIssueTemporaryPassword()) {
+      alert(txt('เฉพาะผู้ดูแลระบบที่เชื่อม Firebase Live เท่านั้นที่ออกรหัสชั่วคราวได้', 'Only admins in Firebase Live can issue temporary passwords'));
+      return;
+    }
+    const member = getTeamMembers().find(item => item.uid === targetUid);
+    if (!member) return;
+    const message = txt(`ออกรหัสชั่วคราวให้ ${member.full_name} ?
+ผู้ใช้จะต้องเปลี่ยนรหัสผ่านทันทีหลังล็อกอิน`, `Issue a temporary password for ${member.full_name}?
+The user will be forced to change it on next sign in.`);
+    if (!window.confirm(message)) return;
+    try {
+      const authUser = window.LAYA_FIREBASE?.auth?.currentUser;
+      if (!authUser) throw new Error('not_signed_in');
+      const token = await authUser.getIdToken();
+      const url = getIssueTemporaryPasswordFunctionUrl();
+      if (!url) throw new Error('function_not_ready');
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ targetUid }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || payload?.ok === false) throw new Error(payload?.message || `http_${res.status}`);
+      alert(txt(`รหัสชั่วคราวของ ${payload.fullName || member.full_name}
+
+${payload.tempPassword}
+
+ให้พนักงานใช้รหัสนี้เพื่อเข้าสู่ระบบครั้งเดียว และระบบจะบังคับเปลี่ยนรหัสผ่านทันที`, `Temporary password for ${payload.fullName || member.full_name}
+
+${payload.tempPassword}
+
+The employee can use this once to sign in, then the app will force a password change immediately.`));
+    } catch (err) {
+      console.error(err);
+      const msg = String(err?.message || err || '');
+      let friendly = txt('ออกรหัสชั่วคราวไม่สำเร็จ', 'Failed to issue a temporary password');
+      if (msg.includes('forbidden')) friendly = txt('เฉพาะ Admin เท่านั้นที่ออกรหัสชั่วคราวได้', 'Only admins can issue a temporary password');
+      else if (msg.includes('function_not_ready') || msg.includes('404')) friendly = txt('ยังไม่ได้ deploy Cloud Function สำหรับรหัสชั่วคราว', 'The temporary password Cloud Function is not deployed yet');
+      else if (msg.includes('user_not_found')) friendly = txt('ไม่พบผู้ใช้ปลายทาง', 'Target user not found');
+      alert(friendly);
+    }
+  }
+
+  function handleTeamMemberListClick(event) {
+    const btn = event.target.closest('[data-issue-temp-password]');
+    if (!btn) return;
+    issueTemporaryPasswordForUser(btn.dataset.issueTempPassword || '');
+  }
+
+  function refreshPasswordEditorPresentation() {
+    const forceMode = state.ui.passwordEditorMode === 'force';
+    if (el.passwordEditorModal) el.passwordEditorModal.classList.toggle('password-editor-force', forceMode);
+    if (el.passwordEditorCurrentField) el.passwordEditorCurrentField.classList.toggle('hidden', forceMode);
+    if (el.closePasswordEditorModalBtn) el.closePasswordEditorModalBtn.classList.toggle('hidden', forceMode);
+    if (el.cancelPasswordEditorBtn) {
+      el.cancelPasswordEditorBtn.classList.toggle('hidden', forceMode);
+      el.cancelPasswordEditorBtn.disabled = forceMode;
+    }
+    if (el.passwordEditorTitle) el.passwordEditorTitle.textContent = forceMode ? txt('ตั้งรหัสผ่านใหม่', 'Set a New Password') : txt('เปลี่ยนรหัสผ่าน', 'Change Password');
+    if (el.passwordEditorMessage) el.passwordEditorMessage.textContent = forceMode ? txt('รหัสนี้เป็นรหัสชั่วคราวจากผู้ดูแลระบบ กรุณาตั้งรหัสใหม่ก่อนใช้งานต่อ', 'This is a temporary password issued by an admin. Please set a new password before continuing.') : txt('กรอกรหัสผ่านเดิมและรหัสผ่านใหม่ในหน้าต่างนี้', 'Enter your current password and a new password in this popup.');
+    if (el.continuePasswordEditorBtn) el.continuePasswordEditorBtn.textContent = forceMode ? txt('บันทึกรหัสผ่านใหม่', 'Save New Password') : txt('ตรวจสอบก่อนยืนยัน', 'Review Before Confirm');
+  }
+
+  function isTemporaryPasswordChangeRequired() {
+    return !!state.currentUser?.password_change_required;
+  }
+
+  
+function openPasswordEditorModal(mode = 'normal') {
+    if (!el.passwordEditorModal) return;
+    state.ui.passwordEditorMode = mode === 'force' ? 'force' : 'normal';
+    ['passwordEditorCurrent','passwordEditorNew','passwordEditorConfirm'].forEach(key => { if (el[key]) el[key].value = ''; });
+    refreshPasswordEditorPresentation();
+    el.passwordEditorModal.classList.remove('hidden');
+    setTimeout(() => { try { (state.ui.passwordEditorMode === 'force' ? el.passwordEditorNew : el.passwordEditorCurrent)?.focus(); } catch (_) {} }, 30);
+  }
+
+  function closePasswordEditorModal(force = false) {
+    if (!force && state.ui.passwordEditorMode === 'force') return;
     if (el.passwordEditorModal) el.passwordEditorModal.classList.add('hidden');
     ['passwordEditorCurrent','passwordEditorNew','passwordEditorConfirm'].forEach(key => { if (el[key]) el[key].value = ''; });
+    if (!isTemporaryPasswordChangeRequired() || force) state.ui.passwordEditorMode = 'normal';
+    refreshPasswordEditorPresentation();
   }
 
   function handlePasswordEditorContinue() {
-    if (el.settingsCurrentPassword) el.settingsCurrentPassword.value = String(el.passwordEditorCurrent?.value || '');
+    const forceMode = state.ui.passwordEditorMode === 'force';
+    if (el.settingsCurrentPassword) el.settingsCurrentPassword.value = forceMode ? '__TEMP_PASSWORD__' : String(el.passwordEditorCurrent?.value || '');
     if (el.settingsNewPassword) el.settingsNewPassword.value = String(el.passwordEditorNew?.value || '');
     if (el.settingsConfirmPassword) el.settingsConfirmPassword.value = String(el.passwordEditorConfirm?.value || '');
-    closePasswordEditorModal();
+    closePasswordEditorModal(forceMode);
     handleSavePasswordSettings();
   }
 
@@ -2343,235 +2458,275 @@
     hardenSettingsPasswordInputs();
   }
 
-  function renderSettingsView() {
-    if (!state.currentUser) return;
-    enforceSettingsFieldValues();
-    renderSettingsAvatar();
-    setTimeout(() => {
-      if (state.ui.currentView === 'settingsView') {
-        enforceSettingsFieldValues();
-        renderSettingsAvatar();
-      }
-    }, 80);
-    setTimeout(() => {
-      if (state.ui.currentView === 'settingsView') {
-        enforceSettingsFieldValues();
-        renderSettingsAvatar();
-      }
-    }, 300);
-  }
 
-  async function handleProfileAvatarPicked(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    try {
-      const optimized = await optimizeIssuePhoto(file);
-      state.ui.pendingProfileAvatar = {
-        previewDataUrl: optimized.previewDataUrl || optimized.fullDataUrl,
-        fullDataUrl: optimized.fullDataUrl,
-        thumbDataUrl: optimized.thumbDataUrl,
-        mimeType: 'image/jpeg',
-        originalBytes: file.size || 0,
-        removed: false,
-      };
+function renderSettingsView() {
+  refreshPasswordEditorPresentation();
+  if (!state.currentUser) return;
+  const canManageTeam = state.currentUser.role === 'admin';
+  if (el.settingsAdminToolsPanel) el.settingsAdminToolsPanel.classList.toggle('hidden', !canManageTeam);
+  if (el.accountMenuOpenTeamMembers) el.accountMenuOpenTeamMembers.classList.toggle('hidden', !canManageTeam);
+  enforceSettingsFieldValues();
+  renderSettingsAvatar();
+  setTimeout(() => {
+    if (state.ui.activeView === 'settingsView') {
+      enforceSettingsFieldValues();
       renderSettingsAvatar();
-      setSettingsStatus('profile', txt('เลือกรูปโปรไฟล์แล้ว กดบันทึกโปรไฟล์เพื่ออัปเดต', 'Profile photo selected. Tap Save Profile to update.'), 'info');
-    } catch (err) {
-      console.error(err);
-      setSettingsStatus('profile', txt('เลือกรูปโปรไฟล์ไม่สำเร็จ', 'Could not process the selected profile photo'), 'error');
-    } finally {
-      if (event.target) event.target.value = '';
     }
-  }
+  }, 80);
+  setTimeout(() => {
+    if (state.ui.activeView === 'settingsView') {
+      enforceSettingsFieldValues();
+      renderSettingsAvatar();
+    }
+  }, 300);
+}
 
-  function handleRemoveProfileAvatar() {
-    state.ui.pendingProfileAvatar = { removed: true, previewDataUrl: '', fullDataUrl: '', thumbDataUrl: '', mimeType: 'image/jpeg' };
+async function handleProfileAvatarPicked(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    const optimized = await optimizeIssuePhoto(file);
+    state.ui.pendingProfileAvatar = {
+      previewDataUrl: optimized.previewDataUrl || optimized.fullDataUrl,
+      fullDataUrl: optimized.fullDataUrl,
+      thumbDataUrl: optimized.thumbDataUrl,
+      mimeType: 'image/jpeg',
+      originalBytes: file.size || 0,
+      removed: false,
+    };
     renderSettingsAvatar();
-    setSettingsStatus('profile', txt('เลือกลบรูปโปรไฟล์แล้ว กดบันทึกโปรไฟล์เพื่อยืนยัน', 'Profile photo removal is ready. Tap Save Profile to confirm.'), 'info');
+    setSettingsStatus('profile', txt('เลือกรูปโปรไฟล์แล้ว กดบันทึกโปรไฟล์เพื่ออัปเดต', 'Profile photo selected. Tap Save Profile to update.'), 'info');
+  } catch (err) {
+    console.error(err);
+    setSettingsStatus('profile', txt('เลือกรูปโปรไฟล์ไม่สำเร็จ', 'Could not process the selected profile photo'), 'error');
+  } finally {
+    if (event.target) event.target.value = '';
   }
+}
 
-  async function uploadProfileAvatarAsset(uid, avatar) {
-    const fb = window.LAYA_FIREBASE;
-    if (!fb?.ready || !fb.storage || !fb.sdk?.storageRef || !fb.sdk?.uploadString || !fb.sdk?.getDownloadURL) throw new Error('storage_not_ready');
-    const ts = Date.now();
-    const storagePath = `profile_photos/${uid}/avatar_${ts}.jpg`;
-    const avatarRef = fb.sdk.storageRef(fb.storage, storagePath);
-    await fb.sdk.uploadString(avatarRef, avatar.fullDataUrl, 'data_url', {
-      contentType: avatar.mimeType || 'image/jpeg',
-      cacheControl: 'public,max-age=3600'
-    });
-    const avatarUrl = await fb.sdk.getDownloadURL(avatarRef);
-    return { avatarUrl, storagePath };
+function handleRemoveProfileAvatar() {
+  state.ui.pendingProfileAvatar = { removed: true, previewDataUrl: '', fullDataUrl: '', thumbDataUrl: '', mimeType: 'image/jpeg' };
+  renderSettingsAvatar();
+  setSettingsStatus('profile', txt('เลือกลบรูปโปรไฟล์แล้ว กดบันทึกโปรไฟล์เพื่อยืนยัน', 'Profile photo removal is ready. Tap Save Profile to confirm.'), 'info');
+}
+
+async function uploadProfileAvatarAsset(uid, avatar) {
+  const fb = window.LAYA_FIREBASE;
+  if (!fb?.ready || !fb.storage || !fb.sdk?.storageRef || !fb.sdk?.uploadString || !fb.sdk?.getDownloadURL) throw new Error('storage_not_ready');
+  const ts = Date.now();
+  const storagePath = `profile_photos/${uid}/avatar_${ts}.jpg`;
+  const avatarRef = fb.sdk.storageRef(fb.storage, storagePath);
+  await fb.sdk.uploadString(avatarRef, avatar.fullDataUrl, 'data_url', {
+    contentType: avatar.mimeType || 'image/jpeg',
+    cacheControl: 'public,max-age=3600'
+  });
+  const avatarUrl = await fb.sdk.getDownloadURL(avatarRef);
+  return { avatarUrl, storagePath };
+}
+
+async function handleSaveProfileSettings() {
+  if (!state.currentUser) return;
+  const fullName = String(el.settingsFullName?.value || '').trim();
+  const avatarDraft = state.ui.pendingProfileAvatar;
+  const currentName = String(state.currentUser.full_name || '').trim();
+  const currentAvatarUrl = String(state.currentUser.avatar_url || '');
+  const nameChanged = !!fullName && fullName !== currentName;
+  const avatarChanged = !!avatarDraft;
+  if (!fullName) {
+    setSettingsStatus('profile', txt('กรุณากรอกชื่อ-นามสกุล', 'Please enter your full name'), 'error');
+    return;
   }
-
-  async function handleSaveProfileSettings() {
-    if (!state.currentUser) return;
-    const fullName = String(el.settingsFullName?.value || '').trim();
-    const avatarDraft = state.ui.pendingProfileAvatar;
-    const currentName = String(state.currentUser.full_name || '').trim();
-    const currentAvatarUrl = String(state.currentUser.avatar_url || '');
-    const nameChanged = !!fullName && fullName !== currentName;
-    const avatarChanged = !!avatarDraft;
-    if (!fullName) {
-      setSettingsStatus('profile', txt('กรุณากรอกชื่อ-นามสกุล', 'Please enter your full name'), 'error');
-      return;
-    }
-    if (!nameChanged && !avatarChanged) {
-      setSettingsStatus('profile', txt('ยังไม่มีการเปลี่ยนแปลงโปรไฟล์', 'No profile changes detected'), 'info');
-      return;
-    }
-    try {
-      setSettingsStatus('profile', txt('กำลังบันทึกโปรไฟล์...', 'Saving profile...'), 'info');
-      let nextAvatarUrl = currentAvatarUrl;
-      let nextAvatarPath = String(state.currentUser.avatar_storage_path || '');
-      let oldAvatarPath = nextAvatarPath;
-      if (avatarDraft?.removed) {
-        nextAvatarUrl = '';
-        nextAvatarPath = '';
-      } else if (avatarDraft?.fullDataUrl) {
-        if (isFirebaseLive()) {
-          const uploaded = await uploadProfileAvatarAsset(state.currentUser.uid, avatarDraft);
-          nextAvatarUrl = uploaded.avatarUrl;
-          nextAvatarPath = uploaded.storagePath;
-        } else {
-          nextAvatarUrl = avatarDraft.previewDataUrl || avatarDraft.fullDataUrl || '';
-          nextAvatarPath = '';
-        }
-      }
-
+  if (!nameChanged && !avatarChanged) {
+    setSettingsStatus('profile', txt('ยังไม่มีการเปลี่ยนแปลงโปรไฟล์', 'No profile changes detected'), 'info');
+    return;
+  }
+  try {
+    setSettingsStatus('profile', txt('กำลังบันทึกโปรไฟล์...', 'Saving profile...'), 'info');
+    let nextAvatarUrl = currentAvatarUrl;
+    let nextAvatarPath = String(state.currentUser.avatar_storage_path || '');
+    let oldAvatarPath = nextAvatarPath;
+    if (avatarDraft?.removed) {
+      nextAvatarUrl = '';
+      nextAvatarPath = '';
+    } else if (avatarDraft?.fullDataUrl) {
       if (isFirebaseLive()) {
-        const fb = window.LAYA_FIREBASE;
-        const userRef = fb.sdk.doc(fb.db, 'users', state.currentUser.uid);
-        await fb.sdk.updateDoc(userRef, {
-          full_name: fullName,
-          avatar_url: nextAvatarUrl,
-          avatar_storage_path: nextAvatarPath,
-          updated_at: fb.sdk.serverTimestamp(),
-        });
-        if (oldAvatarPath && oldAvatarPath !== nextAvatarPath && fb.sdk?.deleteObject && fb.sdk?.storageRef && fb.storage) {
-          try {
-            await fb.sdk.deleteObject(fb.sdk.storageRef(fb.storage, oldAvatarPath));
-          } catch (deleteErr) {
-            console.warn('Failed to delete previous avatar asset', deleteErr);
-          }
+        const uploaded = await uploadProfileAvatarAsset(state.currentUser.uid, avatarDraft);
+        nextAvatarUrl = uploaded.avatarUrl;
+        nextAvatarPath = uploaded.storagePath;
+      } else {
+        nextAvatarUrl = avatarDraft.previewDataUrl || avatarDraft.fullDataUrl || '';
+        nextAvatarPath = '';
+      }
+    }
+
+    if (isFirebaseLive()) {
+      const fb = window.LAYA_FIREBASE;
+      const userRef = fb.sdk.doc(fb.db, 'users', state.currentUser.uid);
+      await fb.sdk.updateDoc(userRef, {
+        full_name: fullName,
+        avatar_url: nextAvatarUrl,
+        avatar_storage_path: nextAvatarPath,
+        updated_at: fb.sdk.serverTimestamp(),
+      });
+      if (oldAvatarPath && oldAvatarPath !== nextAvatarPath && fb.sdk?.deleteObject && fb.sdk?.storageRef && fb.storage) {
+        try {
+          await fb.sdk.deleteObject(fb.sdk.storageRef(fb.storage, oldAvatarPath));
+        } catch (deleteErr) {
+          console.warn('Failed to delete previous avatar asset', deleteErr);
         }
       }
-      const oldName = state.currentUser.full_name || '';
-      state.currentUser.full_name = fullName;
-      state.currentUser.avatar_url = nextAvatarUrl;
-      state.currentUser.avatar_storage_path = nextAvatarPath;
-      state.data.teamMembers = (state.data.teamMembers || []).map(member => member.uid === state.currentUser.uid ? { ...member, full_name: fullName, avatar_url: nextAvatarUrl, avatar_storage_path: nextAvatarPath } : member);
-      state.ui.pendingProfileAvatar = null;
-      persist();
-      renderAll();
-      setSettingsStatus('profile', txt('บันทึกโปรไฟล์เรียบร้อยแล้ว', 'Profile updated successfully'), 'success');
-      try {
-        recordUsageLog({
-          category: 'account',
-          action: 'profile_update',
-          title: txt('อัปเดตโปรไฟล์', 'Updated profile'),
-          text: txt(`${fullName} อัปเดตโปรไฟล์${nameChanged ? ` จาก ${oldName || '-'}` : ''}${avatarChanged ? ' และเปลี่ยนรูปโปรไฟล์' : ''}`, `${fullName} updated the profile${nameChanged ? ` from ${oldName || '-'}` : ''}${avatarChanged ? ' and changed the profile photo' : ''}`),
-          user_uid: state.currentUser.uid,
-          user_name: fullName,
-          ref_no: state.currentUser.employee_id || '',
-        });
-      } catch (_) {}
-    } catch (err) {
-      console.error(err);
-      setSettingsStatus('profile', txt('บันทึกโปรไฟล์ไม่สำเร็จ', 'Failed to update profile'), 'error');
     }
-  }
-
-  async function handleSavePasswordSettings() {
-    if (!state.currentUser) return;
-    const currentPassword = String(el.settingsCurrentPassword?.value || '').trim();
-    const newPassword = String(el.settingsNewPassword?.value || '').trim();
-    const confirmPassword = String(el.settingsConfirmPassword?.value || '').trim();
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setSettingsStatus('password', txt('กรุณากรอกรหัสผ่านให้ครบทุกช่อง', 'Please fill in all password fields'), 'error');
-      return;
-    }
-    if (newPassword.length < 6) {
-      setSettingsStatus('password', txt('รหัสผ่านใหม่ต้องอย่างน้อย 6 ตัวอักษร', 'New password must be at least 6 characters'), 'error');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setSettingsStatus('password', txt('ยืนยันรหัสผ่านใหม่ไม่ตรงกัน', 'New password confirmation does not match'), 'error');
-      return;
-    }
-    if (!isFirebaseLive()) {
-      setSettingsStatus('password', txt('การเปลี่ยนรหัสผ่านใช้ได้เมื่อเชื่อม Firebase Live', 'Password change is available in Firebase Live mode'), 'error');
-      return;
-    }
-    state.ui.passwordChangeDraft = { currentPassword, newPassword };
-    openPasswordConfirmModal();
-  }
-
-  function openPasswordConfirmModal() {
-    if (!el.passwordConfirmModal || !state.currentUser || !state.ui.passwordChangeDraft) return;
-    if (el.passwordConfirmAccount) el.passwordConfirmAccount.textContent = `${state.currentUser.full_name || '-'} (${state.currentUser.employee_id || '-'})`;
-    if (el.passwordConfirmLength) el.passwordConfirmLength.textContent = `${String(state.ui.passwordChangeDraft.newPassword || '').length} ${txt('ตัวอักษร', 'characters')}`;
-    el.passwordConfirmModal.classList.remove('hidden');
-  }
-
-  function closePasswordConfirmModal(force = false) {
-    if (!force && state.ui.passwordChangeBusy) return;
-    if (el.passwordConfirmModal) el.passwordConfirmModal.classList.add('hidden');
-    if (!state.ui.passwordChangeBusy) state.ui.passwordChangeDraft = null;
-    if (el.confirmPasswordChangeBtn) el.confirmPasswordChangeBtn.disabled = false;
-  }
-
-  async function confirmPasswordChange() {
-    if (!state.currentUser || !state.ui.passwordChangeDraft || !isFirebaseLive()) return;
+    const oldName = state.currentUser.full_name || '';
+    state.currentUser.full_name = fullName;
+    state.currentUser.avatar_url = nextAvatarUrl;
+    state.currentUser.avatar_storage_path = nextAvatarPath;
+    state.data.teamMembers = (state.data.teamMembers || []).map(member => member.uid === state.currentUser.uid ? { ...member, full_name: fullName, avatar_url: nextAvatarUrl, avatar_storage_path: nextAvatarPath } : member);
+    state.ui.pendingProfileAvatar = null;
+    persist();
+    renderAll();
+    setSettingsStatus('profile', txt('บันทึกโปรไฟล์เรียบร้อยแล้ว', 'Profile updated successfully'), 'success');
     try {
-      state.ui.passwordChangeBusy = true;
-      if (el.confirmPasswordChangeBtn) {
-        el.confirmPasswordChangeBtn.disabled = true;
-        el.confirmPasswordChangeBtn.textContent = txt('กำลังเปลี่ยนรหัสผ่าน...', 'Changing password...');
-      }
-      setSettingsStatus('password', txt('กำลังเปลี่ยนรหัสผ่าน...', 'Changing password...'), 'info');
-      const fb = window.LAYA_FIREBASE;
-      const authUser = fb.auth.currentUser;
-      if (!authUser) throw new Error('not_signed_in');
+      recordUsageLog({
+        category: 'account',
+        action: 'profile_update',
+        title: txt('อัปเดตโปรไฟล์', 'Updated profile'),
+        text: txt(`${fullName} อัปเดตโปรไฟล์${nameChanged ? ` จาก ${oldName || '-'}` : ''}${avatarChanged ? ' และเปลี่ยนรูปโปรไฟล์' : ''}`, `${fullName} updated the profile${nameChanged ? ` from ${oldName || '-'}` : ''}${avatarChanged ? ' and changed the profile photo' : ''}`),
+        user_uid: state.currentUser.uid,
+        user_name: fullName,
+        ref_no: state.currentUser.employee_id || '',
+      });
+    } catch (_) {}
+  } catch (err) {
+    console.error(err);
+    setSettingsStatus('profile', txt('บันทึกโปรไฟล์ไม่สำเร็จ', 'Failed to update profile'), 'error');
+  }
+}
+
+async function handleSavePasswordSettings() {
+  if (!state.currentUser) return;
+  const forceMode = state.ui.passwordEditorMode === 'force' || isTemporaryPasswordChangeRequired();
+  const currentPassword = String(el.settingsCurrentPassword?.value || '').trim();
+  const newPassword = String(el.settingsNewPassword?.value || '').trim();
+  const confirmPassword = String(el.settingsConfirmPassword?.value || '').trim();
+  if ((!forceMode && !currentPassword) || !newPassword || !confirmPassword) {
+    setSettingsStatus('password', txt('กรุณากรอกรหัสผ่านให้ครบทุกช่อง', 'Please fill in all password fields'), 'error');
+    return;
+  }
+  if (newPassword.length < 6) {
+    setSettingsStatus('password', txt('รหัสผ่านใหม่ต้องอย่างน้อย 6 ตัวอักษร', 'New password must be at least 6 characters'), 'error');
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    setSettingsStatus('password', txt('ยืนยันรหัสผ่านใหม่ไม่ตรงกัน', 'New password confirmation does not match'), 'error');
+    return;
+  }
+  if (!isFirebaseLive()) {
+    setSettingsStatus('password', txt('การเปลี่ยนรหัสผ่านใช้ได้เมื่อเชื่อม Firebase Live', 'Password change is available in Firebase Live mode'), 'error');
+    return;
+  }
+  state.ui.passwordChangeDraft = { currentPassword, newPassword, forceMode };
+  openPasswordConfirmModal();
+}
+
+function openPasswordConfirmModal() {
+  if (!el.passwordConfirmModal || !state.currentUser || !state.ui.passwordChangeDraft) return;
+  const forceMode = !!state.ui.passwordChangeDraft.forceMode || isTemporaryPasswordChangeRequired();
+  if (el.passwordConfirmAccount) el.passwordConfirmAccount.textContent = `${state.currentUser.full_name || '-'} (${state.currentUser.employee_id || '-'})`;
+  if (el.passwordConfirmLength) el.passwordConfirmLength.textContent = `${String(state.ui.passwordChangeDraft.newPassword || '').length} ${txt('ตัวอักษร', 'characters')}`;
+  if (el.passwordConfirmTitle) el.passwordConfirmTitle.textContent = forceMode ? txt('ยืนยันรหัสผ่านใหม่', 'Confirm new password') : txt('ยืนยันการเปลี่ยนรหัสผ่าน', 'Confirm password change');
+  if (el.passwordConfirmMessage) el.passwordConfirmMessage.textContent = forceMode ? txt('หลังยืนยัน ระบบจะบันทึกรหัสใหม่และปลดสถานะรหัสชั่วคราวทันที', 'After confirmation, the app will save your new password and clear the temporary-password status immediately.') : txt('ระบบจะอัปเดตรหัสผ่านใหม่ทันทีหลังยืนยัน', 'Your password will be updated immediately after confirmation.');
+  if (el.cancelPasswordChangeBtn) {
+    el.cancelPasswordChangeBtn.classList.toggle('hidden', forceMode);
+    el.cancelPasswordChangeBtn.disabled = forceMode;
+  }
+  if (el.closePasswordConfirmModalBtn) el.closePasswordConfirmModalBtn.classList.toggle('hidden', forceMode);
+  el.passwordConfirmModal.classList.remove('hidden');
+}
+
+function closePasswordConfirmModal(force = false) {
+  if (!force && (state.ui.passwordChangeBusy || isTemporaryPasswordChangeRequired())) return;
+  if (el.passwordConfirmModal) el.passwordConfirmModal.classList.add('hidden');
+  if (el.cancelPasswordChangeBtn) {
+    el.cancelPasswordChangeBtn.classList.remove('hidden');
+    el.cancelPasswordChangeBtn.disabled = false;
+  }
+  if (el.closePasswordConfirmModalBtn) el.closePasswordConfirmModalBtn.classList.remove('hidden');
+  if (!state.ui.passwordChangeBusy) state.ui.passwordChangeDraft = null;
+  if (el.confirmPasswordChangeBtn) el.confirmPasswordChangeBtn.disabled = false;
+}
+
+async function confirmPasswordChange() {
+  if (!state.currentUser || !state.ui.passwordChangeDraft || !isFirebaseLive()) return;
+  try {
+    state.ui.passwordChangeBusy = true;
+    if (el.confirmPasswordChangeBtn) {
+      el.confirmPasswordChangeBtn.disabled = true;
+      el.confirmPasswordChangeBtn.textContent = txt('กำลังเปลี่ยนรหัสผ่าน...', 'Changing password...');
+    }
+    setSettingsStatus('password', txt('กำลังเปลี่ยนรหัสผ่าน...', 'Changing password...'), 'info');
+    const fb = window.LAYA_FIREBASE;
+    const authUser = fb.auth.currentUser;
+    if (!authUser) throw new Error('not_signed_in');
+    const forceMode = !!state.ui.passwordChangeDraft.forceMode || isTemporaryPasswordChangeRequired();
+    if (!forceMode) {
       const email = authUser.email || employeeIdToEmail(state.currentUser.employee_id || '');
       const credential = fb.sdk.EmailAuthProvider.credential(email, state.ui.passwordChangeDraft.currentPassword);
       await fb.sdk.reauthenticateWithCredential(authUser, credential);
-      await fb.sdk.updatePassword(authUser, state.ui.passwordChangeDraft.newPassword);
-      if (el.settingsCurrentPassword) el.settingsCurrentPassword.value = '';
-      if (el.settingsNewPassword) el.settingsNewPassword.value = '';
-      if (el.settingsConfirmPassword) el.settingsConfirmPassword.value = '';
-      setSettingsStatus('password', txt('เปลี่ยนรหัสผ่านเรียบร้อยแล้ว', 'Password updated successfully'), 'success');
-      try {
-        recordUsageLog({
-          category: 'account',
-          action: 'password_update',
-          title: txt('เปลี่ยนรหัสผ่าน', 'Changed password'),
-          text: txt(`${state.currentUser.full_name} เปลี่ยนรหัสผ่านแล้ว`, `${state.currentUser.full_name} changed password`),
-          user_uid: state.currentUser.uid,
-          user_name: state.currentUser.full_name,
-          ref_no: state.currentUser.employee_id || '',
-        });
-      } catch (_) {}
-      state.ui.passwordChangeDraft = null;
-      closePasswordConfirmModal(true);
-    } catch (err) {
-      console.error(err);
-      const code = String(err?.code || err?.message || '');
-      let message = txt('เปลี่ยนรหัสผ่านไม่สำเร็จ', 'Failed to change password');
-      if (code.includes('wrong-password') || code.includes('invalid-credential')) message = txt('รหัสผ่านปัจจุบันไม่ถูกต้อง', 'Current password is incorrect');
-      else if (code.includes('too-many-requests')) message = txt('ลองใหม่อีกครั้งในภายหลัง', 'Please try again later');
-      else if (code.includes('requires-recent-login')) message = txt('กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่ก่อนเปลี่ยนรหัสผ่าน', 'Please sign out and sign in again before changing password');
-      setSettingsStatus('password', message, 'error');
-    } finally {
-      state.ui.passwordChangeBusy = false;
-      if (el.confirmPasswordChangeBtn) {
-        el.confirmPasswordChangeBtn.disabled = false;
-        el.confirmPasswordChangeBtn.textContent = txt('ยืนยันเปลี่ยนรหัสผ่าน', 'Confirm password change');
-      }
+    }
+    await fb.sdk.updatePassword(authUser, state.ui.passwordChangeDraft.newPassword);
+    try {
+      await fb.sdk.updateDoc(fb.sdk.doc(fb.db, 'users', state.currentUser.uid), {
+        password_change_required: false,
+        temporary_password_issued_at: null,
+        temporary_password_issued_by_uid: '',
+        updated_at: fb.sdk.serverTimestamp(),
+      });
+    } catch (profileErr) {
+      console.warn('Failed to clear temporary password flags', profileErr);
+    }
+    state.currentUser.password_change_required = false;
+    state.currentUser.temporary_password_issued_at = null;
+    state.currentUser.temporary_password_issued_by_uid = '';
+    clearSettingsPasswordInputs();
+    setSettingsStatus('password', forceMode ? txt('ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว', 'Your new password has been saved') : txt('เปลี่ยนรหัสผ่านเรียบร้อยแล้ว', 'Password updated successfully'), 'success');
+    try {
+      recordUsageLog({
+        category: 'account',
+        action: forceMode ? 'password_update_after_temp' : 'password_update',
+        title: forceMode ? txt('ตั้งรหัสผ่านใหม่', 'Set a new password') : txt('เปลี่ยนรหัสผ่าน', 'Changed password'),
+        text: forceMode ? txt(`${state.currentUser.full_name} เปลี่ยนจากรหัสชั่วคราวเป็นรหัสใหม่แล้ว`, `${state.currentUser.full_name} replaced the temporary password with a new password`) : txt(`${state.currentUser.full_name} เปลี่ยนรหัสผ่านแล้ว`, `${state.currentUser.full_name} changed password`),
+        user_uid: state.currentUser.uid,
+        user_name: state.currentUser.full_name,
+        ref_no: state.currentUser.employee_id || '',
+      });
+    } catch (_) {}
+    state.ui.passwordChangeDraft = null;
+    state.ui.passwordEditorMode = 'normal';
+    closePasswordConfirmModal(true);
+    closePasswordEditorModal(true);
+    renderSettingsView();
+  } catch (err) {
+    console.error(err);
+    const code = String(err?.code || err?.message || '');
+    let message = txt('เปลี่ยนรหัสผ่านไม่สำเร็จ', 'Failed to change password');
+    if (code.includes('wrong-password') || code.includes('invalid-credential')) message = txt('รหัสผ่านปัจจุบันไม่ถูกต้อง', 'Current password is incorrect');
+    else if (code.includes('too-many-requests')) message = txt('ลองใหม่อีกครั้งในภายหลัง', 'Please try again later');
+    else if (code.includes('requires-recent-login')) message = txt('กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่ก่อนเปลี่ยนรหัสผ่าน', 'Please sign out and sign in again before changing password');
+    setSettingsStatus('password', message, 'error');
+    if (isTemporaryPasswordChangeRequired()) {
+      setTimeout(() => openPasswordEditorModal('force'), 120);
+    }
+  } finally {
+    state.ui.passwordChangeBusy = false;
+    if (el.confirmPasswordChangeBtn) {
+      el.confirmPasswordChangeBtn.disabled = false;
+      el.confirmPasswordChangeBtn.textContent = txt('ยืนยันเปลี่ยนรหัสผ่าน', 'Confirm password change');
     }
   }
+}
 
-  function switchView(viewId) {
+function switchView(viewId) {
+
     state.ui.activeView = viewId;
     closeAccountMiniMenu(true);
     if (viewId === 'activityView') viewId = 'logView';

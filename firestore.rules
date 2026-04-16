@@ -418,6 +418,9 @@ service cloud.firestore {
           'email',
           'avatar_url',
           'avatar_storage_path',
+          'password_change_required',
+          'temporary_password_issued_at',
+          'temporary_password_issued_by_uid',
           'created_at',
           'updated_at',
           'last_login_at'
@@ -433,6 +436,9 @@ service cloud.firestore {
           'email',
           'avatar_url',
           'avatar_storage_path',
+          'password_change_required',
+          'temporary_password_issued_at',
+          'temporary_password_issued_by_uid',
           'created_at',
           'updated_at',
           'last_login_at'
@@ -456,7 +462,14 @@ service cloud.firestore {
         request.resource.data.phone is string &&
         request.resource.data.email is string &&
         request.resource.data.avatar_url is string &&
-        request.resource.data.avatar_storage_path is string
+        request.resource.data.avatar_storage_path is string &&
+        request.resource.data.password_change_required is bool &&
+        (
+          request.resource.data.temporary_password_issued_at == null ||
+          request.resource.data.temporary_password_issued_at is timestamp ||
+          request.resource.data.temporary_password_issued_at is string
+        ) &&
+        request.resource.data.temporary_password_issued_by_uid is string
       );
 
       allow update: if isAdmin() || (
@@ -467,12 +480,17 @@ service cloud.firestore {
           'avatar_url',
           'avatar_storage_path',
           'updated_at',
-          'last_login_at'
+          'last_login_at',
+          'password_change_required',
+          'temporary_password_issued_at',
+          'temporary_password_issued_by_uid'
         ]) &&
         request.resource.data.role == resource.data.role &&
         request.resource.data.employee_id == resource.data.employee_id &&
         request.resource.data.is_active == resource.data.is_active &&
-        request.resource.data.avatar_storage_path is string
+        request.resource.data.avatar_storage_path is string &&
+        request.resource.data.password_change_required is bool &&
+        request.resource.data.temporary_password_issued_by_uid is string
       );
 
       allow delete: if isAdmin();

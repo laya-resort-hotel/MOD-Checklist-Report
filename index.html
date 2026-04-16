@@ -142,6 +142,7 @@
                 </div>
               </div>
               <div class="account-mini-actions">
+                <button id="accountMenuOpenTeamMembers" class="account-menu-item" type="button">Team Members</button>
                 <button id="accountMenuOpenSettings" class="account-menu-item" type="button">Open Settings</button>
                 <button id="accountMenuClearCache" class="account-menu-item" type="button">Clear Cache</button>
                 <button id="accountMenuLogout" class="account-menu-item danger" type="button">Logout</button>
@@ -412,6 +413,16 @@
             <div id="settingsPasswordStatus" class="settings-status hidden"></div>
             <div class="sticky-actions">
               <button id="openPasswordEditorBtn" class="btn btn-secondary" type="button">Change Password</button>
+            </div>
+          </div>
+
+          <div id="settingsAdminToolsPanel" class="panel glass hidden">
+            <div class="panel-header">
+              <h3>Admin Tools</h3>
+              <p class="muted">Open team members and issue temporary passwords for staff.</p>
+            </div>
+            <div class="stack">
+              <button id="openTeamMembersFromSettings" class="btn btn-secondary" type="button">Open Team Members</button>
             </div>
           </div>
         </div>
