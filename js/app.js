@@ -211,7 +211,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v74-temp-password-admin-reset';
+  const APP_VERSION = 'v76-login-stabilized';
 
   function safeClone(value) {
     try {
@@ -1370,6 +1370,108 @@
     return !!(window.LAYA_FIREBASE && window.LAYA_FIREBASE.ready && window.LAYA_FIREBASE.auth && window.LAYA_FIREBASE.db);
   }
 
+  function resetSignedOutState() {
+    state.currentUser = null;
+    stopIssueSync();
+    stopIssueCommentsSync();
+    stopTemplatesSync();
+    stopChecklistRunsSync();
+    stopUsersSync();
+    stopUsageLogsSync();
+    state.data.teamMembers = [];
+    state.data.usageLogs = [];
+    state.ui.liveIssueComments = [];
+    state.ui.didInitialMentionCheck = false;
+    state.ui.pendingMentionItems = [];
+    closeMentionAlertModal(true);
+    closePasswordConfirmModal(true);
+    renderAuthState();
+  }
+
+  function describeFirebaseLoginError(err) {
+    const code = String(err?.code || '').toLowerCase();
+    const message = String(err?.message || '').toLowerCase();
+    if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found') || code.includes('invalid-login-credentials')) {
+      return txt('Employee ID หรือ Password ไม่ถูกต้อง', 'Employee ID or Password is incorrect');
+    }
+    if (code.includes('too-many-requests')) {
+      return txt('ลองเข้าสู่ระบบหลายครั้งเกินไป กรุณารอสักครู่แล้วลองใหม่', 'Too many login attempts. Please wait a moment and try again.');
+    }
+    if (code.includes('network-request-failed') || message.includes('network request failed')) {
+      return txt('เชื่อมต่อ Firebase ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', 'Could not reach Firebase. Please check your internet connection and try again.');
+    }
+    if (code.includes('permission-denied') || message.includes('permission')) {
+      return txt('เข้าสู่ระบบได้ แต่ไม่มีสิทธิ์อ่านข้อมูลผู้ใช้จาก Firestore', 'Signed in, but the app could not read the user profile from Firestore.');
+    }
+    return txt('เข้าสู่ระบบไม่สำเร็จ', 'Could not sign in');
+  }
+
+  async function finishFirebaseUserBootstrap(user, options = {}) {
+    if (!user) return false;
+    const fb = window.LAYA_FIREBASE;
+    const userRef = fb.sdk.doc(fb.db, 'users', user.uid);
+
+    try {
+      let snap = await fb.sdk.getDoc(userRef);
+
+      if (!snap.exists()) {
+        const pending = getPendingRegistration();
+        if (pending && pending.email === user.email) {
+          await fb.sdk.setDoc(userRef, buildUserProfile(pending));
+          clearPendingRegistration();
+          snap = await fb.sdk.getDoc(userRef);
+        }
+      }
+
+      if (!snap.exists()) {
+        setAuthStatus(txt('พบผู้ใช้ใน Authentication แล้ว แต่ยังไม่มีโปรไฟล์ใน Firestore', 'Signed in to Authentication, but no Firestore profile was found yet.'), 'error');
+        resetSignedOutState();
+        return false;
+      }
+
+      const profile = snap.data();
+      state.currentUser = { uid: user.uid, password_change_required: false, temporary_password_issued_at: null, temporary_password_issued_by_uid: '', ...profile };
+
+      stopIssueSync();
+      stopIssueCommentsSync();
+      stopTemplatesSync();
+      stopChecklistRunsSync();
+      stopUsersSync();
+      stopUsageLogsSync();
+      startTemplatesSync();
+      startChecklistRunsSync();
+      startUsersSync();
+      startUsageLogsSync();
+
+      try {
+        await fb.sdk.updateDoc(userRef, {
+          last_login_at: fb.sdk.serverTimestamp(),
+          updated_at: fb.sdk.serverTimestamp()
+        });
+      } catch (_) {}
+
+      const needsTempPasswordChange = !!profile.password_change_required;
+      setAuthStatus(
+        needsTempPasswordChange
+          ? txt('เข้าสู่ระบบสำเร็จ • กรุณาเปลี่ยนรหัสผ่านชั่วคราวก่อนใช้งานต่อ', 'Signed in. Please change your temporary password before continuing.')
+          : txt('เข้าสู่ระบบสำเร็จ', 'Signed in successfully'),
+        needsTempPasswordChange ? 'info' : 'success'
+      );
+      state.ui.didInitialMentionCheck = false;
+      startIssuesSync();
+      renderAll();
+      if (needsTempPasswordChange) {
+        setTimeout(() => openPasswordEditorModal('force'), 120);
+      }
+      return true;
+    } catch (err) {
+      console.error(err);
+      setAuthStatus(describeFirebaseLoginError(err) || txt('โหลดข้อมูลผู้ใช้จาก Firestore ไม่สำเร็จ', 'Could not load the user profile from Firestore'), 'error');
+      resetSignedOutState();
+      return false;
+    }
+  }
+
   function bootstrapFirebaseAuth() {
     if (!isFirebaseLive() || state.firebaseAuthBound) return;
     state.firebaseAuthBound = true;
@@ -1377,71 +1479,10 @@
     const fb = window.LAYA_FIREBASE;
     fb.sdk.onAuthStateChanged(fb.auth, async (user) => {
       if (!user) {
-        state.currentUser = null;
-        stopIssueSync();
-        stopIssueCommentsSync();
-        stopTemplatesSync();
-        stopChecklistRunsSync();
-        stopUsersSync();
-        stopUsageLogsSync();
-        state.data.teamMembers = [];
-        state.data.usageLogs = [];
-        state.ui.liveIssueComments = [];
-        state.ui.didInitialMentionCheck = false;
-        state.ui.pendingMentionItems = [];
-        closeMentionAlertModal(true);
-    closePasswordConfirmModal(true);
-        renderAuthState();
+        resetSignedOutState();
         return;
       }
-
-      const userRef = fb.sdk.doc(fb.db, 'users', user.uid);
-
-      try {
-        let snap = await fb.sdk.getDoc(userRef);
-
-        if (!snap.exists()) {
-          const pending = getPendingRegistration();
-          if (pending && pending.email === user.email) {
-            await fb.sdk.setDoc(userRef, buildUserProfile(pending));
-            clearPendingRegistration();
-            snap = await fb.sdk.getDoc(userRef);
-          }
-        }
-
-        if (!snap.exists()) {
-          setAuthStatus('พบผู้ใช้ใน Authentication แล้ว แต่ยังไม่มีโปรไฟล์ใน Firestore', 'error');
-          state.currentUser = null;
-          renderAuthState();
-          return;
-        }
-
-        const profile = snap.data();
-        state.currentUser = { uid: user.uid, password_change_required: false, temporary_password_issued_at: null, temporary_password_issued_by_uid: '', ...profile };
-        startTemplatesSync();
-        startChecklistRunsSync();
-        startUsersSync();
-        startUsageLogsSync();
-
-        try {
-          await fb.sdk.updateDoc(userRef, {
-            last_login_at: fb.sdk.serverTimestamp(),
-            updated_at: fb.sdk.serverTimestamp()
-          });
-        } catch (_) {}
-
-        const needsTempPasswordChange = !!profile.password_change_required;
-        setAuthStatus(needsTempPasswordChange ? txt('เข้าสู่ระบบสำเร็จ • กรุณาเปลี่ยนรหัสผ่านชั่วคราวก่อนใช้งานต่อ', 'Signed in. Please change your temporary password before continuing.') : txt('เข้าสู่ระบบสำเร็จ', 'Signed in successfully'), needsTempPasswordChange ? 'info' : 'success');
-        state.ui.didInitialMentionCheck = false;
-        startIssuesSync();
-        renderAll();
-        if (needsTempPasswordChange) {
-          setTimeout(() => openPasswordEditorModal('force'), 120);
-        }
-      } catch (err) {
-        console.error(err);
-        setAuthStatus('โหลดข้อมูลผู้ใช้จาก Firestore ไม่สำเร็จ', 'error');
-      }
+      await finishFirebaseUserBootstrap(user, { source: 'listener' });
     });
   }
 
@@ -1921,12 +1962,17 @@
 
     if (isFirebaseLive()) {
       try {
-        setAuthStatus('กำลังเข้าสู่ระบบ...', 'info');
+        setAuthStatus(txt('กำลังเข้าสู่ระบบ...', 'Signing in...'), 'info');
         const fb = window.LAYA_FIREBASE;
-        await fb.sdk.signInWithEmailAndPassword(fb.auth, employeeIdToEmail(employeeId), password);
+        const cred = await fb.sdk.signInWithEmailAndPassword(fb.auth, employeeIdToEmail(employeeId), password);
+        const authUser = cred?.user || fb.auth.currentUser;
+        if (authUser) {
+          const ok = await finishFirebaseUserBootstrap(authUser, { source: 'direct_login' });
+          if (!ok) return;
+        }
       } catch (err) {
         console.error(err);
-        setAuthStatus(txt('Employee ID หรือ Password ไม่ถูกต้อง', 'Employee ID or Password is incorrect'), 'error');
+        setAuthStatus(describeFirebaseLoginError(err), 'error');
       }
       return;
     }
