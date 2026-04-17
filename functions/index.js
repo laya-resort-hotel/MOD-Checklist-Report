@@ -52,7 +52,15 @@ exports.issueTemporaryPassword = onRequest({ region: 'us-central1' }, (req, res)
       }
       const target = targetSnap.data() || {};
       const tempPassword = buildTempPassword();
-      await admin.auth().updateUser(targetUid, { password: tempPassword });
+      try {
+        await admin.auth().updateUser(targetUid, { password: tempPassword });
+      } catch (authErr) {
+        const code = String(authErr && authErr.code || '');
+        if (code.includes('user-not-found')) {
+          return res.status(404).json({ ok: false, message: 'target_auth_user_not_found' });
+        }
+        throw authErr;
+      }
       await targetRef.update({
         password_change_required: true,
         temporary_password_issued_at: admin.firestore.FieldValue.serverTimestamp(),

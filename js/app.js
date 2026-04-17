@@ -2520,8 +2520,14 @@ The user will be forced to change it on next sign in.`);
       let friendly = txt('ออกรหัสชั่วคราวไม่สำเร็จ', 'Failed to issue a temporary password');
       if (msg.includes('forbidden')) friendly = txt('เฉพาะ Admin เท่านั้นที่ออกรหัสชั่วคราวได้', 'Only admins can issue a temporary password');
       else if (msg.includes('function_not_ready') || msg.includes('404')) friendly = txt('ยังไม่ได้ deploy Cloud Function สำหรับรหัสชั่วคราว', 'The temporary password Cloud Function is not deployed yet');
-      else if (msg.includes('user_not_found')) friendly = txt('ไม่พบผู้ใช้ปลายทาง', 'Target user not found');
-      alert(friendly);
+      else if (msg.includes('user_not_found')) friendly = txt('ไม่พบผู้ใช้ปลายทางใน Firestore', 'Target user not found in Firestore');
+      else if (msg.includes('target_auth_user_not_found')) friendly = txt('พบรายชื่อพนักงานในระบบ แต่ไม่พบบัญชีล็อกอินของคนนี้ใน Firebase Auth', 'The staff profile exists, but the Firebase Auth login for this user was not found');
+      else if (msg.includes('missing_auth') || msg.includes('401')) friendly = txt('เซสชันแอดมินหมดอายุแล้ว กรุณาออกและเข้าสู่ระบบใหม่', 'Your admin session expired. Please sign out and sign in again');
+      else if (msg.includes('permission') || msg.includes('insufficient')) friendly = txt('บัญชีนี้ไม่มีสิทธิ์ใช้งานฟังก์ชันรีเซ็ตรหัส', 'This account does not have permission to issue temporary passwords');
+      else if (msg.includes('server_error') || msg.includes('500')) friendly = txt('Cloud Function ตอบกลับผิดพลาด • ตรวจสอบว่า deploy functions ล่าสุดแล้ว', 'The Cloud Function returned an error. Please deploy the latest functions');
+      alert(friendly + (msg ? `
+
+[debug] ${msg}` : ''));
     }
   }
 
