@@ -6278,7 +6278,7 @@ function humanizeLogAction(action) {
       el.teamMembersList.innerHTML = `<div class="empty-state">${txt('ยังไม่มีรายชื่อผู้ใช้', 'No team members yet')}</div>`;
       return;
     }
-    const canIssueTempPassword = state.mode === 'live' && isCurrentUserAdmin();
+    const canIssueTempPassword = isFirebaseLive() && isCurrentUserAdmin();
     el.teamMembersList.innerHTML = members.map(member => {
       const isSelf = state.currentUser && member.uid === state.currentUser.uid;
       const statusChips = [];
