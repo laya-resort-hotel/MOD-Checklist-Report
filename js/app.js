@@ -1680,6 +1680,15 @@
       passwordConfirmLength: qs('#passwordConfirmLength'),
       cancelPasswordChangeBtn: qs('#cancelPasswordChangeBtn'),
       confirmPasswordChangeBtn: qs('#confirmPasswordChangeBtn'),
+      tempPasswordResultModal: qs('#tempPasswordResultModal'),
+      closeTempPasswordResultModalBtn: qs('#closeTempPasswordResultModalBtn'),
+      tempPasswordResultTitle: qs('#tempPasswordResultTitle'),
+      tempPasswordResultMessage: qs('#tempPasswordResultMessage'),
+      tempPasswordResultName: qs('#tempPasswordResultName'),
+      tempPasswordResultCode: qs('#tempPasswordResultCode'),
+      copyTempPasswordBtn: qs('#copyTempPasswordBtn'),
+      tempPasswordCopyStatus: qs('#tempPasswordCopyStatus'),
+      tempPasswordDoneBtn: qs('#tempPasswordDoneBtn'),
     });
 
     populateDepartmentSelects();
@@ -1875,6 +1884,10 @@
     if (el.cancelPasswordChangeBtn) el.cancelPasswordChangeBtn.addEventListener('click', closePasswordConfirmModal);
     if (el.confirmPasswordChangeBtn) el.confirmPasswordChangeBtn.addEventListener('click', confirmPasswordChange);
     if (el.passwordConfirmModal) el.passwordConfirmModal.addEventListener('click', (e) => { if (e.target.dataset.closePasswordModal) closePasswordConfirmModal(); });
+    if (el.closeTempPasswordResultModalBtn) el.closeTempPasswordResultModalBtn.addEventListener('click', closeTempPasswordResultModal);
+    if (el.tempPasswordDoneBtn) el.tempPasswordDoneBtn.addEventListener('click', closeTempPasswordResultModal);
+    if (el.copyTempPasswordBtn) el.copyTempPasswordBtn.addEventListener('click', copyTempPasswordToClipboard);
+    if (el.tempPasswordResultModal) el.tempPasswordResultModal.addEventListener('click', (e) => { if (e.target.dataset.closeTempPasswordModal) closeTempPasswordResultModal(); });
     if (el.addChecklistTemplateBtn) {
       el.addChecklistTemplateBtn.addEventListener('click', openChecklistTemplateBuilder);
     }
@@ -2440,6 +2453,54 @@
     return `https://${region}-${projectId}.cloudfunctions.net/issueTemporaryPassword`;
   }
 
+  function setTempPasswordCopyStatus(message, tone = 'success') {
+    if (!el.tempPasswordCopyStatus) return;
+    el.tempPasswordCopyStatus.textContent = message || '';
+    el.tempPasswordCopyStatus.classList.toggle('is-error', tone === 'error');
+  }
+
+  function openTempPasswordResultModal(memberName, tempPassword) {
+    if (!el.tempPasswordResultModal) {
+      alert(`${memberName}
+
+${tempPassword}`);
+      return;
+    }
+    if (el.tempPasswordResultName) el.tempPasswordResultName.textContent = memberName || '-';
+    if (el.tempPasswordResultCode) el.tempPasswordResultCode.textContent = tempPassword || '------';
+    setTempPasswordCopyStatus('');
+    el.tempPasswordResultModal.classList.remove('hidden');
+  }
+
+  function closeTempPasswordResultModal() {
+    if (!el.tempPasswordResultModal) return;
+    el.tempPasswordResultModal.classList.add('hidden');
+    if (el.tempPasswordResultCode) el.tempPasswordResultCode.textContent = '------';
+    if (el.tempPasswordResultName) el.tempPasswordResultName.textContent = '-';
+    setTempPasswordCopyStatus('');
+  }
+
+  async function copyTempPasswordToClipboard() {
+    const code = String(el.tempPasswordResultCode?.textContent || '').trim();
+    if (!code || code === '------') return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(code);
+      } else {
+        const input = document.createElement('input');
+        input.value = code;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        input.remove();
+      }
+      setTempPasswordCopyStatus(txt('คัดลอกรหัสชั่วคราวแล้ว', 'Temporary password copied'));
+    } catch (err) {
+      console.error(err);
+      setTempPasswordCopyStatus(txt('คัดลอกรหัสไม่สำเร็จ ลองคัดลอกด้วยตนเอง', 'Copy failed. Please copy it manually'), 'error');
+    }
+  }
+
   async function issueTemporaryPasswordForUser(targetUid) {
     if (!canIssueTemporaryPassword()) {
       alert(txt('เฉพาะผู้ดูแลระบบที่เชื่อม Firebase Live เท่านั้นที่ออกรหัสชั่วคราวได้', 'Only admins in Firebase Live can issue temporary passwords'));
@@ -2467,15 +2528,7 @@ The user will be forced to change it on next sign in.`);
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok || payload?.ok === false) throw new Error(payload?.message || `http_${res.status}`);
-      alert(txt(`รหัสชั่วคราวของ ${payload.fullName || member.full_name}
-
-${payload.tempPassword}
-
-ให้พนักงานใช้รหัสนี้เพื่อเข้าสู่ระบบครั้งเดียว และระบบจะบังคับเปลี่ยนรหัสผ่านทันที`, `Temporary password for ${payload.fullName || member.full_name}
-
-${payload.tempPassword}
-
-The employee can use this once to sign in, then the app will force a password change immediately.`));
+      openTempPasswordResultModal(payload.fullName || member.full_name, payload.tempPassword || '------');
     } catch (err) {
       console.error(err);
       const msg = String(err?.message || err || '');
