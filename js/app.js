@@ -6187,15 +6187,30 @@ function humanizeLogAction(action) {
       el.teamMembersList.innerHTML = `<div class="empty-state">${txt('ยังไม่มีรายชื่อผู้ใช้', 'No team members yet')}</div>`;
       return;
     }
-    el.teamMembersList.innerHTML = members.map(member => `
+    const canIssueTempPassword = state.mode === 'live' && state.currentUser && state.currentUser.role === 'admin';
+    el.teamMembersList.innerHTML = members.map(member => {
+      const isSelf = state.currentUser && member.uid === state.currentUser.uid;
+      const statusChips = [];
+      if (member.password_change_required) {
+        statusChips.push(`<span class="mini-chip mini-chip-warn">${txt('ต้องเปลี่ยนรหัส', 'Must change password')}</span>`);
+      }
+      if (member.temporary_password_issued_at) {
+        statusChips.push(`<span class="mini-chip">${txt('มีรหัสชั่วคราว', 'Temp password active')}</span>`);
+      }
+      const actionButton = canIssueTempPassword
+        ? `<button class="btn btn-primary btn-sm" type="button" data-issue-temp-password="${escapeHtml(member.uid || '')}" ${isSelf ? 'disabled' : ''}>${txt('ตั้งรหัสชั่วคราว', 'Issue Temp Password')}</button>`
+        : '';
+      return `
       <div class="team-member-item">
         <div class="team-member-avatar">${member.avatar_url ? `<img src="${escapeHtml(member.avatar_url)}" alt="${escapeHtml(member.full_name || 'User')}" />` : escapeHtml(getUserInitials(member.full_name || '?'))}</div>
-        <div>
+        <div class="team-member-main">
           <div class="team-member-name">${escapeHtml(member.full_name || '-')}</div>
-          <div class="team-member-meta">${escapeHtml(getDepartmentName(member.department || 'MOD'))} • ${escapeHtml(member.employee_id || '')}</div>
+          <div class="team-member-meta">${escapeHtml(getDepartmentName(member.department || 'MOD'))} • ${escapeHtml(member.employee_id || '')} • ${escapeHtml(getRoleName(member.role || 'dept_user'))}</div>
+          ${statusChips.length ? `<div class="team-member-status">${statusChips.join('')}</div>` : ''}
         </div>
+        ${actionButton ? `<div class="team-member-actions">${actionButton}${isSelf ? `<div class="team-member-action-note">${txt('ไม่สามารถออกรหัสให้ตัวเอง', 'You cannot issue a temp password for yourself')}</div>` : `<div class="team-member-action-note">${txt('กดเพื่อสุ่มรหัสชั่วคราวให้ผู้ใช้นี้', 'Generate a temporary password for this user')}</div>`}</div>` : ''}
       </div>
-    `).join('');
+    `;}).join('');
   }
 
   function getMentionContext(text, caretPos) {
