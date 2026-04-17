@@ -131,6 +131,28 @@
     return currentLang() === 'en' ? entry.en : entry.th;
   }
 
+  function normalizeRoleValue(role) {
+    const raw = String(role || '').trim().toLowerCase();
+    if (!raw) return 'dept_user';
+    if (['admin', 'administrator', 'ผู้ดูแลระบบ'].includes(raw)) return 'admin';
+    if (['mod'].includes(raw)) return 'mod';
+    if (['dept_user', 'department user', 'department_user', 'ผู้ใช้แผนก'].includes(raw)) return 'dept_user';
+    return raw;
+  }
+
+  function normalizeDepartmentValue(department) {
+    const raw = String(department || '').trim();
+    if (!raw) return 'MOD';
+    const upper = raw.toUpperCase();
+    if (ALL_DEPARTMENT_CODES.includes(upper)) return upper;
+    const found = DEPARTMENTS.find(dept => [String(dept.code || '').toUpperCase(), String(dept.name || '').toUpperCase(), String(dept.name_th || '').toUpperCase()].includes(upper));
+    return found ? found.code : raw;
+  }
+
+  function isCurrentUserAdmin() {
+    return normalizeRoleValue(state?.currentUser?.role) === 'admin';
+  }
+
   function getUserInitials(name) {
     const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
     if (!parts.length) return 'M';
@@ -1457,7 +1479,15 @@
       }
 
       const profile = snap.data();
-      state.currentUser = { uid: user.uid, password_change_required: false, temporary_password_issued_at: null, temporary_password_issued_by_uid: '', ...profile };
+      state.currentUser = {
+        uid: user.uid,
+        password_change_required: false,
+        temporary_password_issued_at: null,
+        temporary_password_issued_by_uid: '',
+        ...profile,
+        role: normalizeRoleValue(profile.role),
+        department: normalizeDepartmentValue(profile.department),
+      };
 
       stopIssueSync();
       stopIssueCommentsSync();
@@ -1949,7 +1979,7 @@
 
   function canDeleteCustomTemplate(template) {
     if (!isCustomTemplate(template) || !state.currentUser) return false;
-    return state.currentUser.role === 'admin' || template.created_by_uid === state.currentUser.uid;
+    return isCurrentUserAdmin() || template.created_by_uid === state.currentUser.uid;
   }
 
   function setTemplateHidden(templateCode, hidden) {
@@ -2655,7 +2685,7 @@ function openPasswordEditorModal(mode = 'normal') {
 function renderSettingsView() {
   refreshPasswordEditorPresentation();
   if (!state.currentUser) return;
-  const canManageTeam = state.currentUser.role === 'admin';
+  const canManageTeam = isCurrentUserAdmin();
   if (el.settingsAdminToolsPanel) el.settingsAdminToolsPanel.classList.toggle('hidden', !canManageTeam);
   if (el.accountMenuOpenTeamMembers) el.accountMenuOpenTeamMembers.classList.toggle('hidden', !canManageTeam);
   enforceSettingsFieldValues();
@@ -5858,7 +5888,7 @@ function switchView(viewId) {
 
   function startChecklistRunsSync() {
     if (!isFirebaseLive() || !state.currentUser) return;
-    if (!['admin', 'mod'].includes(state.currentUser.role)) {
+    if (!['admin', 'mod'].includes(normalizeRoleValue(state.currentUser.role))) {
       state.data.checklistRuns = [];
       return;
     }
@@ -6003,7 +6033,15 @@ function switchView(viewId) {
     const sdk = fb.sdk;
     const q = sdk.query(sdk.collection(fb.db, 'users'));
     state.firebaseUsersUnsub = sdk.onSnapshot(q, (snap) => {
-      state.data.teamMembers = snap.docs.map(docSnap => ({ uid: docSnap.id, ...docSnap.data() }))
+      state.data.teamMembers = snap.docs.map(docSnap => {
+        const data = docSnap.data() || {};
+        return {
+          uid: docSnap.id,
+          ...data,
+          role: normalizeRoleValue(data.role),
+          department: normalizeDepartmentValue(data.department),
+        };
+      })
         .filter(user => user.is_active !== false)
         .sort((a, b) => String(a.full_name || '').localeCompare(String(b.full_name || ''), 'th'));
       renderTeamMembers();
@@ -6240,7 +6278,7 @@ function humanizeLogAction(action) {
       el.teamMembersList.innerHTML = `<div class="empty-state">${txt('ยังไม่มีรายชื่อผู้ใช้', 'No team members yet')}</div>`;
       return;
     }
-    const canIssueTempPassword = state.mode === 'live' && state.currentUser && state.currentUser.role === 'admin';
+    const canIssueTempPassword = state.mode === 'live' && isCurrentUserAdmin();
     el.teamMembersList.innerHTML = members.map(member => {
       const isSelf = state.currentUser && member.uid === state.currentUser.uid;
       const statusChips = [];
