@@ -131,28 +131,6 @@
     return currentLang() === 'en' ? entry.en : entry.th;
   }
 
-  function normalizeRoleValue(role) {
-    const raw = String(role || '').trim().toLowerCase();
-    if (!raw) return 'dept_user';
-    if (['admin', 'administrator', 'ผู้ดูแลระบบ'].includes(raw)) return 'admin';
-    if (['mod'].includes(raw)) return 'mod';
-    if (['dept_user', 'department user', 'department_user', 'ผู้ใช้แผนก'].includes(raw)) return 'dept_user';
-    return raw;
-  }
-
-  function normalizeDepartmentValue(department) {
-    const raw = String(department || '').trim();
-    if (!raw) return 'MOD';
-    const upper = raw.toUpperCase();
-    if (ALL_DEPARTMENT_CODES.includes(upper)) return upper;
-    const found = DEPARTMENTS.find(dept => [String(dept.code || '').toUpperCase(), String(dept.name || '').toUpperCase(), String(dept.name_th || '').toUpperCase()].includes(upper));
-    return found ? found.code : raw;
-  }
-
-  function isCurrentUserAdmin() {
-    return normalizeRoleValue(state?.currentUser?.role) === 'admin';
-  }
-
   function getUserInitials(name) {
     const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
     if (!parts.length) return 'M';
@@ -1479,15 +1457,7 @@
       }
 
       const profile = snap.data();
-      state.currentUser = {
-        uid: user.uid,
-        password_change_required: false,
-        temporary_password_issued_at: null,
-        temporary_password_issued_by_uid: '',
-        ...profile,
-        role: normalizeRoleValue(profile.role),
-        department: normalizeDepartmentValue(profile.department),
-      };
+      state.currentUser = { uid: user.uid, password_change_required: false, temporary_password_issued_at: null, temporary_password_issued_by_uid: '', ...profile };
 
       stopIssueSync();
       stopIssueCommentsSync();
@@ -1660,6 +1630,11 @@
       modeBanner: qs('#modeBanner'),
       connectionBadge: qs('#connectionBadge'),
       teamMembersList: qs('#teamMembersList'),
+      tempPasswordResultModal: qs('#tempPasswordResultModal'),
+      closeTempPasswordResultModalBtn: qs('#closeTempPasswordResultModalBtn'),
+      tempPasswordResultName: qs('#tempPasswordResultName'),
+      tempPasswordResultValue: qs('#tempPasswordResultValue'),
+      tempPasswordResultCopyBtn: qs('#tempPasswordResultCopyBtn'),
       settingsAdminToolsPanel: qs('#settingsAdminToolsPanel'),
       openTeamMembersFromSettings: qs('#openTeamMembersFromSettings'),
       settingsProfileAvatarPreview: qs('#settingsProfileAvatarPreview'),
@@ -1710,15 +1685,6 @@
       passwordConfirmLength: qs('#passwordConfirmLength'),
       cancelPasswordChangeBtn: qs('#cancelPasswordChangeBtn'),
       confirmPasswordChangeBtn: qs('#confirmPasswordChangeBtn'),
-      tempPasswordResultModal: qs('#tempPasswordResultModal'),
-      closeTempPasswordResultModalBtn: qs('#closeTempPasswordResultModalBtn'),
-      tempPasswordResultTitle: qs('#tempPasswordResultTitle'),
-      tempPasswordResultMessage: qs('#tempPasswordResultMessage'),
-      tempPasswordResultName: qs('#tempPasswordResultName'),
-      tempPasswordResultCode: qs('#tempPasswordResultCode'),
-      copyTempPasswordBtn: qs('#copyTempPasswordBtn'),
-      tempPasswordCopyStatus: qs('#tempPasswordCopyStatus'),
-      tempPasswordDoneBtn: qs('#tempPasswordDoneBtn'),
     });
 
     populateDepartmentSelects();
@@ -1910,14 +1876,17 @@
     if (el.settingsAvatarCameraBtn) el.settingsAvatarCameraBtn.addEventListener('click', () => { if (el.settingsAvatarCameraInput) el.settingsAvatarCameraInput.value = ''; });
     if (el.settingsAvatarRemoveBtn) el.settingsAvatarRemoveBtn.addEventListener('click', handleRemoveProfileAvatar);
     if (el.teamMembersList) el.teamMembersList.addEventListener('click', handleTeamMemberListClick);
+    if (el.closeTempPasswordResultModalBtn) el.closeTempPasswordResultModalBtn.addEventListener('click', closeTempPasswordResultModal);
+    if (el.tempPasswordResultCopyBtn) el.tempPasswordResultCopyBtn.addEventListener('click', copyTempPasswordFromModal);
+    if (el.tempPasswordResultModal) {
+      el.tempPasswordResultModal.addEventListener('click', event => {
+        if (event.target?.matches?.('[data-close-temp-password-modal="true"]')) closeTempPasswordResultModal();
+      });
+    }
     if (el.closePasswordConfirmModalBtn) el.closePasswordConfirmModalBtn.addEventListener('click', closePasswordConfirmModal);
     if (el.cancelPasswordChangeBtn) el.cancelPasswordChangeBtn.addEventListener('click', closePasswordConfirmModal);
     if (el.confirmPasswordChangeBtn) el.confirmPasswordChangeBtn.addEventListener('click', confirmPasswordChange);
     if (el.passwordConfirmModal) el.passwordConfirmModal.addEventListener('click', (e) => { if (e.target.dataset.closePasswordModal) closePasswordConfirmModal(); });
-    if (el.closeTempPasswordResultModalBtn) el.closeTempPasswordResultModalBtn.addEventListener('click', closeTempPasswordResultModal);
-    if (el.tempPasswordDoneBtn) el.tempPasswordDoneBtn.addEventListener('click', closeTempPasswordResultModal);
-    if (el.copyTempPasswordBtn) el.copyTempPasswordBtn.addEventListener('click', copyTempPasswordToClipboard);
-    if (el.tempPasswordResultModal) el.tempPasswordResultModal.addEventListener('click', (e) => { if (e.target.dataset.closeTempPasswordModal) closeTempPasswordResultModal(); });
     if (el.addChecklistTemplateBtn) {
       el.addChecklistTemplateBtn.addEventListener('click', openChecklistTemplateBuilder);
     }
@@ -1979,7 +1948,7 @@
 
   function canDeleteCustomTemplate(template) {
     if (!isCustomTemplate(template) || !state.currentUser) return false;
-    return isCurrentUserAdmin() || template.created_by_uid === state.currentUser.uid;
+    return state.currentUser.role === 'admin' || template.created_by_uid === state.currentUser.uid;
   }
 
   function setTemplateHidden(templateCode, hidden) {
@@ -2483,52 +2452,38 @@
     return `https://${region}-${projectId}.cloudfunctions.net/issueTemporaryPassword`;
   }
 
-  function setTempPasswordCopyStatus(message, tone = 'success') {
-    if (!el.tempPasswordCopyStatus) return;
-    el.tempPasswordCopyStatus.textContent = message || '';
-    el.tempPasswordCopyStatus.classList.toggle('is-error', tone === 'error');
+  function closeTempPasswordResultModal() {
+    if (!el.tempPasswordResultModal) return;
+    el.tempPasswordResultModal.classList.add('hidden');
   }
 
-  function openTempPasswordResultModal(memberName, tempPassword) {
+  async function copyTempPasswordFromModal() {
+    const password = String(el.tempPasswordResultValue?.textContent || '').trim();
+    if (!password) return;
+    try {
+      await navigator.clipboard.writeText(password);
+      if (el.tempPasswordResultCopyBtn) {
+        el.tempPasswordResultCopyBtn.textContent = txt('คัดลอกแล้ว', 'Copied');
+        window.setTimeout(() => {
+          if (el.tempPasswordResultCopyBtn) el.tempPasswordResultCopyBtn.textContent = txt('คัดลอกรหัส', 'Copy Password');
+        }, 1400);
+      }
+    } catch (err) {
+      window.prompt(txt('คัดลอกรหัสชั่วคราว', 'Copy temporary password'), password);
+    }
+  }
+
+  function openTempPasswordResultModal(fullName, tempPassword) {
     if (!el.tempPasswordResultModal) {
-      alert(`${memberName}
+      alert(`${fullName}
 
 ${tempPassword}`);
       return;
     }
-    if (el.tempPasswordResultName) el.tempPasswordResultName.textContent = memberName || '-';
-    if (el.tempPasswordResultCode) el.tempPasswordResultCode.textContent = tempPassword || '------';
-    setTempPasswordCopyStatus('');
+    if (el.tempPasswordResultName) el.tempPasswordResultName.textContent = fullName || '-';
+    if (el.tempPasswordResultValue) el.tempPasswordResultValue.textContent = tempPassword || '-';
+    if (el.tempPasswordResultCopyBtn) el.tempPasswordResultCopyBtn.textContent = txt('คัดลอกรหัส', 'Copy Password');
     el.tempPasswordResultModal.classList.remove('hidden');
-  }
-
-  function closeTempPasswordResultModal() {
-    if (!el.tempPasswordResultModal) return;
-    el.tempPasswordResultModal.classList.add('hidden');
-    if (el.tempPasswordResultCode) el.tempPasswordResultCode.textContent = '------';
-    if (el.tempPasswordResultName) el.tempPasswordResultName.textContent = '-';
-    setTempPasswordCopyStatus('');
-  }
-
-  async function copyTempPasswordToClipboard() {
-    const code = String(el.tempPasswordResultCode?.textContent || '').trim();
-    if (!code || code === '------') return;
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(code);
-      } else {
-        const input = document.createElement('input');
-        input.value = code;
-        document.body.appendChild(input);
-        input.select();
-        document.execCommand('copy');
-        input.remove();
-      }
-      setTempPasswordCopyStatus(txt('คัดลอกรหัสชั่วคราวแล้ว', 'Temporary password copied'));
-    } catch (err) {
-      console.error(err);
-      setTempPasswordCopyStatus(txt('คัดลอกรหัสไม่สำเร็จ ลองคัดลอกด้วยตนเอง', 'Copy failed. Please copy it manually'), 'error');
-    }
   }
 
   async function issueTemporaryPasswordForUser(targetUid) {
@@ -2558,7 +2513,7 @@ The user will be forced to change it on next sign in.`);
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok || payload?.ok === false) throw new Error(payload?.message || `http_${res.status}`);
-      openTempPasswordResultModal(payload.fullName || member.full_name, payload.tempPassword || '------');
+      openTempPasswordResultModal(payload.fullName || member.full_name || '-', payload.tempPassword || '-');
     } catch (err) {
       console.error(err);
       const msg = String(err?.message || err || '');
@@ -2685,7 +2640,7 @@ function openPasswordEditorModal(mode = 'normal') {
 function renderSettingsView() {
   refreshPasswordEditorPresentation();
   if (!state.currentUser) return;
-  const canManageTeam = isCurrentUserAdmin();
+  const canManageTeam = state.currentUser.role === 'admin';
   if (el.settingsAdminToolsPanel) el.settingsAdminToolsPanel.classList.toggle('hidden', !canManageTeam);
   if (el.accountMenuOpenTeamMembers) el.accountMenuOpenTeamMembers.classList.toggle('hidden', !canManageTeam);
   enforceSettingsFieldValues();
@@ -5888,7 +5843,7 @@ function switchView(viewId) {
 
   function startChecklistRunsSync() {
     if (!isFirebaseLive() || !state.currentUser) return;
-    if (!['admin', 'mod'].includes(normalizeRoleValue(state.currentUser.role))) {
+    if (!['admin', 'mod'].includes(state.currentUser.role)) {
       state.data.checklistRuns = [];
       return;
     }
@@ -6033,15 +5988,7 @@ function switchView(viewId) {
     const sdk = fb.sdk;
     const q = sdk.query(sdk.collection(fb.db, 'users'));
     state.firebaseUsersUnsub = sdk.onSnapshot(q, (snap) => {
-      state.data.teamMembers = snap.docs.map(docSnap => {
-        const data = docSnap.data() || {};
-        return {
-          uid: docSnap.id,
-          ...data,
-          role: normalizeRoleValue(data.role),
-          department: normalizeDepartmentValue(data.department),
-        };
-      })
+      state.data.teamMembers = snap.docs.map(docSnap => ({ uid: docSnap.id, ...docSnap.data() }))
         .filter(user => user.is_active !== false)
         .sort((a, b) => String(a.full_name || '').localeCompare(String(b.full_name || ''), 'th'));
       renderTeamMembers();
@@ -6278,30 +6225,31 @@ function humanizeLogAction(action) {
       el.teamMembersList.innerHTML = `<div class="empty-state">${txt('ยังไม่มีรายชื่อผู้ใช้', 'No team members yet')}</div>`;
       return;
     }
-    const canIssueTempPassword = isFirebaseLive() && isCurrentUserAdmin();
+    const canIssue = canIssueTemporaryPassword();
+    const currentUid = String(state.currentUser?.uid || '');
     el.teamMembersList.innerHTML = members.map(member => {
-      const isSelf = state.currentUser && member.uid === state.currentUser.uid;
-      const statusChips = [];
-      if (member.password_change_required) {
-        statusChips.push(`<span class="mini-chip mini-chip-warn">${txt('ต้องเปลี่ยนรหัส', 'Must change password')}</span>`);
-      }
-      if (member.temporary_password_issued_at) {
-        statusChips.push(`<span class="mini-chip">${txt('มีรหัสชั่วคราว', 'Temp password active')}</span>`);
-      }
-      const actionButton = canIssueTempPassword
-        ? `<button class="btn btn-primary btn-sm" type="button" data-issue-temp-password="${escapeHtml(member.uid || '')}" ${isSelf ? 'disabled' : ''}>${txt('ตั้งรหัสชั่วคราว', 'Issue Temp Password')}</button>`
+      const memberUid = String(member.uid || '');
+      const mustChange = Boolean(member.password_change_required || member.require_password_change);
+      const hasTemp = Boolean(member.temporary_password_issued_at || member.temp_password_active);
+      const badges = [
+        mustChange ? `<span class="team-member-status status-warning">${txt('ต้องเปลี่ยนรหัส', 'Must change password')}</span>` : '',
+        hasTemp ? `<span class="team-member-status status-info">${txt('มีรหัสชั่วคราว', 'Temporary password')}</span>` : '',
+      ].filter(Boolean).join('');
+      const action = canIssue && memberUid && memberUid !== currentUid
+        ? `<button type="button" class="btn btn-primary btn-sm team-member-temp-btn" data-issue-temp-password="${escapeHtml(memberUid)}">${txt('ตั้งรหัสชั่วคราว', 'Issue Temp Password')}</button>`
         : '';
       return `
       <div class="team-member-item">
         <div class="team-member-avatar">${member.avatar_url ? `<img src="${escapeHtml(member.avatar_url)}" alt="${escapeHtml(member.full_name || 'User')}" />` : escapeHtml(getUserInitials(member.full_name || '?'))}</div>
         <div class="team-member-main">
           <div class="team-member-name">${escapeHtml(member.full_name || '-')}</div>
-          <div class="team-member-meta">${escapeHtml(getDepartmentName(member.department || 'MOD'))} • ${escapeHtml(member.employee_id || '')} • ${escapeHtml(getRoleName(member.role || 'dept_user'))}</div>
-          ${statusChips.length ? `<div class="team-member-status">${statusChips.join('')}</div>` : ''}
+          <div class="team-member-meta">${escapeHtml(getDepartmentName(member.department || 'MOD'))} • ${escapeHtml(member.employee_id || '')}</div>
+          ${badges ? `<div class="team-member-badges">${badges}</div>` : ''}
         </div>
-        ${actionButton ? `<div class="team-member-actions">${actionButton}${isSelf ? `<div class="team-member-action-note">${txt('ไม่สามารถออกรหัสให้ตัวเอง', 'You cannot issue a temp password for yourself')}</div>` : `<div class="team-member-action-note">${txt('กดเพื่อสุ่มรหัสชั่วคราวให้ผู้ใช้นี้', 'Generate a temporary password for this user')}</div>`}</div>` : ''}
+        ${action ? `<div class="team-member-actions">${action}</div>` : ''}
       </div>
-    `;}).join('');
+    `;
+    }).join('');
   }
 
   function getMentionContext(text, caretPos) {

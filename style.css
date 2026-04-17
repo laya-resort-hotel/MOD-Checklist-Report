@@ -2360,64 +2360,6 @@ input:not([type="checkbox"]):not([type="radio"]) {
 .force-password-banner strong{display:block;margin-bottom:2px;}
 .team-member-actions .btn.btn-primary{box-shadow:0 10px 24px rgba(36,53,44,.10);}
 
-.team-member-item {
-  grid-template-columns: 44px minmax(0, 1fr);
-}
-.team-member-main {
-  min-width: 0;
-}
-.team-member-status {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-.team-member-actions {
-  grid-column: 2 / -1;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  margin-top: 6px;
-}
-.team-member-actions .btn {
-  min-width: 190px;
-}
-.team-member-action-note {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.4;
-}
-.mini-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(36,53,44,0.08);
-  color: var(--brand-dark);
-  font-size: 12px;
-  font-weight: 700;
-}
-.mini-chip-warn {
-  background: rgba(181,151,96,0.18);
-}
-@media (min-width: 760px) {
-  .team-member-item {
-    grid-template-columns: 44px minmax(0, 1fr) auto;
-  }
-  .team-member-actions {
-    grid-column: auto;
-    align-items: flex-end;
-    margin-top: 0;
-  }
-  .team-member-action-note {
-    text-align: right;
-    max-width: 220px;
-  }
-}
-
-
 .auth-login-tools{display:flex;justify-content:center;margin-top:12px;}
 .btn-login-cache{min-width:160px;border-radius:999px;padding:10px 16px;}
 
@@ -2425,26 +2367,24 @@ input:not([type="checkbox"]):not([type="radio"]) {
 .auth-lang-switch,.auth-tabs,.auth-pane,.auth-login-tools,.demo-box{position:relative;z-index:2;}
 .auth-status{position:relative;z-index:1;}
 
-.btn-sm{padding:10px 14px;font-size:13px;border-radius:12px;}
 
-
-.temp-password-card{width:min(520px,calc(100vw - 24px));padding:28px 24px 24px;text-align:center;}
-.temp-password-icon{width:78px;height:78px;border-radius:26px;margin:4px auto 12px;display:grid;place-items:center;font-size:38px;background:linear-gradient(135deg,rgba(181,151,96,.24),rgba(38,67,50,.12));box-shadow:0 16px 36px rgba(36,53,44,.10);}
-.temp-password-badge{display:inline-flex;align-items:center;justify-content:center;padding:7px 14px;border-radius:999px;background:rgba(36,53,44,.08);color:#264332;font-size:12px;font-weight:800;letter-spacing:.12em;margin-bottom:10px;}
-.temp-password-card h3{margin-bottom:8px;}
-.temp-password-userbox{margin:18px 0 12px;padding:14px 16px;border-radius:20px;background:rgba(255,255,255,.58);border:1px solid rgba(255,255,255,.7);text-align:left;}
-.temp-password-userlabel{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
-.temp-password-username{font-size:1.05rem;font-weight:800;color:#24352c;line-height:1.35;word-break:break-word;}
-.temp-password-code-wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin-top:10px;}
-.temp-password-code{min-height:62px;border-radius:22px;background:linear-gradient(135deg,rgba(36,53,44,.96),rgba(54,77,62,.96));color:#fff;font-size:1.9rem;font-weight:900;letter-spacing:.22em;display:flex;align-items:center;justify-content:center;padding:0 18px;font-variant-numeric:tabular-nums;box-shadow:0 18px 36px rgba(20,28,24,.18);}
-.temp-password-copy-btn{min-width:138px;justify-content:center;white-space:nowrap;}
-.temp-password-copy-status{min-height:22px;margin-top:10px;font-size:13px;font-weight:700;color:#2e7d32;}
-.temp-password-copy-status.is-error{color:#b3261e;}
-.temp-password-note{margin-top:14px;padding:14px 16px;border-radius:18px;background:rgba(181,151,96,.14);border:1px solid rgba(181,151,96,.22);text-align:left;font-size:13px;line-height:1.55;color:#24352c;display:grid;gap:4px;}
-.temp-password-actions{display:flex;justify-content:center;margin-top:18px;}
-@media (max-width: 640px){
-  .temp-password-card{padding:24px 18px 20px;}
-  .temp-password-code-wrap{grid-template-columns:1fr;}
-  .temp-password-copy-btn,.temp-password-actions .btn{width:100%;}
-  .temp-password-code{font-size:1.6rem;letter-spacing:.18em;min-height:58px;}
+.team-member-item{
+  grid-template-columns:44px minmax(0,1fr) auto;
+}
+.team-member-main{min-width:0;}
+.team-member-badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.team-member-status{display:inline-flex;align-items:center;min-height:28px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;}
+.team-member-status.status-warning{background:rgba(181,151,96,.16);color:#8a6b34;}
+.team-member-status.status-info{background:rgba(36,53,44,.10);color:#24352c;}
+.team-member-actions{display:flex;align-items:center;justify-content:flex-end;}
+.team-member-temp-btn{white-space:nowrap;min-width:170px;}
+.temp-password-result-card{max-width:460px;}
+.temp-password-result-body{display:grid;gap:8px;margin:8px 0 12px;}
+.temp-password-result-label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+.temp-password-result-name{font-size:20px;font-weight:800;color:var(--text);}
+.temp-password-result-value{padding:14px 16px;border-radius:16px;background:rgba(181,151,96,.12);border:1px solid rgba(181,151,96,.25);font-size:28px;font-weight:900;letter-spacing:.08em;color:#8a6b34;text-align:center;}
+@media (max-width: 860px){
+  .team-member-item{grid-template-columns:44px minmax(0,1fr);}
+  .team-member-actions{grid-column:2 / -1;justify-content:flex-start;margin-top:10px;}
+  .team-member-temp-btn{min-width:0;width:100%;}
 }
