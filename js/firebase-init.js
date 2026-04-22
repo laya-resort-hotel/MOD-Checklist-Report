@@ -44,9 +44,26 @@ import {
 
 const cfg = window.LAYA_FIREBASE_CONFIG;
 
+window.LAYA_FIREBASE = {
+  ...(window.LAYA_FIREBASE || {}),
+  ready: false,
+  booting: true,
+  mode: 'booting',
+  error: '',
+  projectId: cfg?.projectId || window.LAYA_FIREBASE?.projectId || ''
+};
+
+window.dispatchEvent(new CustomEvent('laya-firebase-booting', { detail: window.LAYA_FIREBASE }));
+
 async function boot() {
   if (!cfg) {
-    window.LAYA_FIREBASE = { ready: false, mode: 'demo', error: 'missing_config' };
+    window.LAYA_FIREBASE = {
+      ready: false,
+      booting: false,
+      mode: 'demo',
+      error: 'missing_config',
+      projectId: ''
+    };
     window.dispatchEvent(new CustomEvent('laya-firebase-error', { detail: window.LAYA_FIREBASE }));
     return;
   }
@@ -78,6 +95,7 @@ async function boot() {
 
     window.LAYA_FIREBASE = {
       ready: true,
+      booting: false,
       mode: 'configured',
       app,
       auth,
@@ -118,13 +136,19 @@ async function boot() {
         deleteObject,
       }
     };
+
     window.dispatchEvent(new CustomEvent('laya-firebase-ready', { detail: window.LAYA_FIREBASE }));
   } catch (error) {
+    console.error('Firebase boot failed:', error);
+
     window.LAYA_FIREBASE = {
       ready: false,
+      booting: false,
       mode: 'config_error',
-      error: error?.message || String(error)
+      error: error?.message || String(error),
+      projectId: cfg?.projectId || ''
     };
+
     window.dispatchEvent(new CustomEvent('laya-firebase-error', { detail: window.LAYA_FIREBASE }));
   }
 }

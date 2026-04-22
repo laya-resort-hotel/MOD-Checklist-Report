@@ -962,12 +962,17 @@
   }
 ];
 
+  const FIREBASE_BOOT_TIMEOUT_MS = 8000;
+  let firebaseBootWatchdog = null;
+  let firebaseBootGraceUntil = 0;
+
   document.addEventListener('DOMContentLoaded', init);
 
   async function init() {
     cacheEls();
     bindEvents();
     bindFirebaseEvents();
+    startFirebaseBootWatchdog();
     applyLanguageToStaticUI();
     showAuthTab('signin');
     applyRuntimeMode();
@@ -984,12 +989,77 @@
 
 
   function bindFirebaseEvents() {
-    window.addEventListener('laya-firebase-ready', applyRuntimeMode);
-    window.addEventListener('laya-firebase-error', applyRuntimeMode);
+    window.addEventListener('laya-firebase-booting', () => {
+      startFirebaseBootWatchdog();
+      applyRuntimeMode();
+    });
+
+    window.addEventListener('laya-firebase-ready', () => {
+      clearFirebaseBootWatchdog();
+      applyRuntimeMode();
+    });
+
+    window.addEventListener('laya-firebase-error', () => {
+      clearFirebaseBootWatchdog();
+      applyRuntimeMode();
+    });
+  }
+
+  function clearFirebaseBootWatchdog() {
+    if (firebaseBootWatchdog) {
+      window.clearTimeout(firebaseBootWatchdog);
+      firebaseBootWatchdog = null;
+    }
+  }
+
+  function startFirebaseBootWatchdog() {
+    if (!window.LAYA_FIREBASE_CONFIG_PRESENT) return;
+
+    firebaseBootGraceUntil = Date.now() + FIREBASE_BOOT_TIMEOUT_MS;
+    clearFirebaseBootWatchdog();
+
+    const current = window.LAYA_FIREBASE || {};
+    if (!current.ready && current.booting == null) {
+      window.LAYA_FIREBASE = {
+        ready: false,
+        booting: true,
+        mode: current.mode || 'booting',
+        error: current.error || '',
+        projectId: current.projectId || window.LAYA_FIREBASE_CONFIG?.projectId || ''
+      };
+    }
+
+    firebaseBootWatchdog = window.setTimeout(() => {
+      const fb = window.LAYA_FIREBASE;
+      if (fb?.ready) return;
+
+      const timeoutError = !fb
+        ? 'firebase_init_not_started'
+        : fb.booting
+          ? 'firebase_init_timeout'
+          : (fb.error || 'firebase_init_incomplete');
+
+      window.LAYA_FIREBASE = {
+        ...(fb || {}),
+        ready: false,
+        booting: false,
+        mode: 'config_error',
+        error: timeoutError,
+        projectId: (fb && fb.projectId) || window.LAYA_FIREBASE_CONFIG?.projectId || ''
+      };
+
+      window.dispatchEvent(new CustomEvent('laya-firebase-error', { detail: window.LAYA_FIREBASE }));
+    }, FIREBASE_BOOT_TIMEOUT_MS);
+  }
+
+  function isFirebaseBootGraceActive() {
+    return !!(window.LAYA_FIREBASE_CONFIG_PRESENT && Date.now() < firebaseBootGraceUntil);
   }
 
   function applyRuntimeMode() {
     const fb = window.LAYA_FIREBASE;
+    const isBooting = !!fb?.booting || (!!window.LAYA_FIREBASE_CONFIG_PRESENT && !fb?.ready && isFirebaseBootGraceActive());
+
     if (fb?.ready) {
       if (el.modeBanner) el.modeBanner.textContent = txt('Firebase Auth พร้อมใช้งาน', 'Firebase Auth Ready') + ` • ${fb.projectId || txt('เชื่อมแล้ว', 'connected')}`;
       if (el.connectionBadge) {
@@ -999,6 +1069,17 @@
       }
       if (el.demoBox) el.demoBox.classList.add('hidden');
       bootstrapFirebaseAuth();
+      return;
+    }
+
+    if (isBooting) {
+      if (el.modeBanner) el.modeBanner.textContent = txt('กำลังเชื่อม Firebase...', 'Connecting to Firebase...');
+      setAuthStatus(txt('กำลังเชื่อมระบบ กรุณารอสักครู่...', 'Connecting... please wait a moment.'), 'info');
+      if (el.connectionBadge) {
+        el.connectionBadge.textContent = txt('กำลังเชื่อมต่อ', 'Connecting');
+        el.connectionBadge.classList.remove('success', 'warning');
+      }
+      if (el.demoBox) el.demoBox.classList.remove('hidden');
       return;
     }
 
@@ -1381,18 +1462,55 @@
     return !!(window.LAYA_FIREBASE && window.LAYA_FIREBASE.ready && window.LAYA_FIREBASE.auth && window.LAYA_FIREBASE.db);
   }
   function isFirebaseConfiguredButUnavailable() {
-    return !!(window.LAYA_FIREBASE_CONFIG_PRESENT && !isFirebaseLive());
+    if (!window.LAYA_FIREBASE_CONFIG_PRESENT) return false;
+    if (isFirebaseLive()) return false;
+    if (window.LAYA_FIREBASE?.booting) return false;
+    if (isFirebaseBootGraceActive()) return false;
+    return true;
   }
 
   function getFirebaseUnavailableReason() {
     const raw = String(window.LAYA_FIREBASE?.error || '').trim();
-    if (!raw) return '';
+
+    if (!raw) {
+      if (window.LAYA_FIREBASE?.booting || isFirebaseBootGraceActive()) {
+        return txt('ระบบกำลังเชื่อม Firebase', 'Firebase is still starting');
+      }
+      return '';
+    }
+
+    const normalized = raw.toLowerCase();
+
+    if (normalized === 'firebase_init_not_started') {
+      return txt(
+        'ไฟล์ js/firebase-init.js ยังไม่เริ่มทำงาน หรือถูกแคช/บล็อกไว้',
+        'js/firebase-init.js did not start, or was cached/blocked.'
+      );
+    }
+
+    if (normalized === 'firebase_init_timeout') {
+      return txt(
+        'Firebase ใช้เวลาเชื่อมต่อนานเกินไปบนเบราว์เซอร์นี้',
+        'Firebase took too long to initialize on this browser.'
+      );
+    }
+
+    if (normalized === 'firebase_init_incomplete') {
+      return txt(
+        'Firebase เริ่มทำงานแล้ว แต่ยังเชื่อม Auth/Firestore ไม่ครบ',
+        'Firebase started but did not finish connecting Auth/Firestore.'
+      );
+    }
+
     return raw;
   }
 
   function describeFirebaseUnavailable() {
     const reason = getFirebaseUnavailableReason();
-    const base = txt('Firebase ยังไม่พร้อมบนเบราว์เซอร์นี้ กรุณากดล้างแคชแล้วลองใหม่', 'Firebase is not ready on this browser. Please clear cache and try again.');
+    const base = txt(
+      'Firebase ยังไม่พร้อมบนเบราว์เซอร์นี้ กรุณากดล้างแคชแล้วลองใหม่',
+      'Firebase is not ready on this browser. Please clear cache and try again.'
+    );
     return reason ? `${base} (${reason})` : base;
   }
 
