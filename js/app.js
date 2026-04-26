@@ -1879,6 +1879,13 @@
     if (el.accountMenuLogout) el.accountMenuLogout.addEventListener('click', handleLogout);
     document.addEventListener('click', handleDocumentClickForAccountMenu);
     document.addEventListener('keydown', handleGlobalKeydown);
+    document.addEventListener('click', (event) => {
+      const target = event.target.closest('[data-lang-btn]');
+      if (!target) return;
+      if (el.loginScreen && el.loginScreen.contains(target)) return; // handled by authClickHandler
+      event.preventDefault();
+      setLanguage(target.dataset.langBtn || 'th');
+    });
     if (el.registerRole) el.registerRole.addEventListener('change', syncRegisterRoleDepartment);
     qsa('.nav-link').forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
     el.fabNewIssue.addEventListener('click', () => switchView('newIssueView'));
