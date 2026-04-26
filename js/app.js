@@ -220,7 +220,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v80-stability-recovery'; // 'v77-desktop-login-compat';
+  const APP_VERSION = 'v81-checklist-dedupe'; // 'v77-desktop-login-compat';
 
   function safeClone(value) {
     try {
@@ -3314,7 +3314,7 @@ function switchView(viewId) {
   }
 
   function getBoardFeedItems() {
-    const issueItems = applyBoardFilters(getVisibleIssuesForCurrentUser()).sort(sortIssues);
+    const issueItems = dedupeChecklistIssuesForBoard(applyBoardFilters(getVisibleIssuesForCurrentUser()).sort(sortIssues));
     const checklistItems = getVisibleChecklistRunsForBoard();
     return [...issueItems, ...checklistItems].sort(sortBoardItems);
   }
@@ -3332,6 +3332,7 @@ function switchView(viewId) {
       runs = runs.filter(run => [run.template_name, run.template_name_th, run.location_text, run.run_no, run.inspector_name].join(' ').toLowerCase().includes(search));
     }
     runs = runs.filter(run => matchesDateFilter(getChecklistRunFilterDate(run, 'board'), state.ui.boardDateFilter));
+    runs = dedupeChecklistRunsForBoard(runs);
     return runs.map(run => ({ ...run, board_type: 'checklist_run' }));
   }
 
@@ -3862,10 +3863,138 @@ function switchView(viewId) {
   }
 
   async function createIssue(payload) {
+    if (payload?.dedupe_key) {
+      const existing = findActiveIssueByDedupeKey(payload.dedupe_key);
+      if (existing) {
+        await recordChecklistDuplicateIssueHit(existing, payload);
+        return existing;
+      }
+    }
     if (isFirebaseLive()) {
       return createIssueFirebase(payload);
     }
     return createIssueLocal(payload);
+  }
+
+  function normalizeDedupePart(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9ก-๙]+/gi, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 80) || 'blank';
+  }
+
+  function buildChecklistIssueDedupeKey(templateCode, inspectionDate, locationText, itemCode, itemText = '') {
+    const dateKey = toDateKey(inspectionDate || new Date().toISOString()) || toDateKey(new Date());
+    return [
+      'checklist',
+      normalizeDedupePart(templateCode),
+      normalizeDedupePart(dateKey),
+      normalizeDedupePart(locationText || 'all_area'),
+      normalizeDedupePart(itemCode || itemText)
+    ].join('__');
+  }
+
+  function getChecklistIssueDedupeKey(issue) {
+    if (!issue || issue.source_type !== 'checklist') return '';
+    if (issue.dedupe_key) return issue.dedupe_key;
+    return buildChecklistIssueDedupeKey(
+      issue.source_checklist_template_code || 'legacy',
+      issue.dedupe_date || issue.created_at || issue.updated_at,
+      issue.location_text || '',
+      issue.source_checklist_answer_id || '',
+      issue.title || ''
+    );
+  }
+
+  function findActiveIssueByDedupeKey(dedupeKey) {
+    if (!dedupeKey) return null;
+    return (state.data.issues || []).find(issue =>
+      issue.source_type === 'checklist' &&
+      issue.status !== 'closed' &&
+      getChecklistIssueDedupeKey(issue) === dedupeKey
+    ) || null;
+  }
+
+  function dedupeChecklistIssuesForBoard(issues) {
+    const seen = new Set();
+    return (issues || []).filter(issue => {
+      const key = getChecklistIssueDedupeKey(issue);
+      if (!key) return true;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function getChecklistRunDedupeKey(run) {
+    if (!run) return '';
+    return buildChecklistIssueDedupeKey(
+      run.template_code || run.template_name || 'checklist',
+      run.inspection_date || run.submitted_at || run.created_at,
+      run.location_text || '',
+      'run_card',
+      run.template_name || ''
+    );
+  }
+
+  function dedupeChecklistRunsForBoard(runs) {
+    const seen = new Set();
+    return (runs || []).filter(run => {
+      const key = getChecklistRunDedupeKey(run);
+      if (!key) return true;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  async function recordChecklistDuplicateIssueHit(existingIssue, payload) {
+    const now = new Date().toISOString();
+    if (!existingIssue) return null;
+
+    if (isFirebaseLive()) {
+      const fb = window.LAYA_FIREBASE;
+      const sdk = fb.sdk;
+      const issueId = existingIssue.id || existingIssue;
+      await sdk.runTransaction(fb.db, async (tx) => {
+        const issueRef = sdk.doc(fb.db, 'issues', issueId);
+        const snap = await tx.get(issueRef);
+        if (!snap.exists()) return;
+        const liveIssue = { id: snap.id, ...snap.data() };
+        if (liveIssue.status === 'closed') return;
+        const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${issueId}/activity`));
+        tx.update(issueRef, {
+          updated_at: sdk.serverTimestamp(),
+          last_activity_at: sdk.serverTimestamp(),
+          activity_count: sdk.increment(1),
+        });
+        tx.set(activityRef, {
+          action: 'duplicate_checklist_fail_skipped',
+          note: payload?.source_checklist_run_id
+            ? `Duplicate checklist fail skipped from run ${payload.source_checklist_run_id}`
+            : 'Duplicate checklist fail skipped',
+          by_uid: state.currentUser.uid,
+          by_name: state.currentUser.full_name,
+          by_department: state.currentUser.department,
+          created_at: sdk.serverTimestamp(),
+        });
+      });
+      return issueId;
+    }
+
+    existingIssue.updated_at = now;
+    existingIssue.last_activity_at = now;
+    existingIssue.activity_count = (Number(existingIssue.activity_count) || 0) + 1;
+    addActivity({
+      type: 'issue',
+      title: existingIssue.title,
+      text: `${state.currentUser.full_name} submitted the same failed checklist item again; existing issue kept`,
+      created_at: now,
+    });
+    persist();
+    return existingIssue;
   }
 
   function createIssueLocal(payload) {
@@ -3879,6 +4008,9 @@ function switchView(viewId) {
       source_type: payload.source_type || 'manual',
       source_checklist_run_id: payload.source_checklist_run_id || '',
       source_checklist_answer_id: payload.source_checklist_answer_id || '',
+      source_checklist_template_code: payload.source_checklist_template_code || '',
+      dedupe_key: payload.dedupe_key || '',
+      dedupe_date: payload.dedupe_date || '',
       title: payload.title,
       description: payload.description || '',
       issue_type: payload.issue_type || 'other',
@@ -3930,11 +4062,54 @@ function switchView(viewId) {
     if (!uid || !state.currentUser) throw new Error('not_signed_in');
 
     const issueRef = sdk.doc(sdk.collection(fb.db, 'issues'));
+    const guardRef = payload.dedupe_key ? sdk.doc(fb.db, 'issue_dedupe', payload.dedupe_key) : null;
+
+    if (guardRef) {
+      const guardSnap = await sdk.getDoc(guardRef);
+      const guardedIssueId = guardSnap.exists() ? (guardSnap.data().issue_id || '') : '';
+      if (guardedIssueId) {
+        const guardedIssueSnap = await sdk.getDoc(sdk.doc(fb.db, 'issues', guardedIssueId));
+        if (guardedIssueSnap.exists() && guardedIssueSnap.data().status !== 'closed') {
+          return recordChecklistDuplicateIssueHit({ id: guardedIssueId, ...guardedIssueSnap.data() }, payload);
+        }
+      }
+    }
+
     const uploadedBeforePhotos = await prepareIssuePhotosForFirebase(issueRef.id, payload.before_photos || []);
     const uploadedBeforeVideos = await prepareIssueVideosForFirebase(issueRef.id, payload.before_videos || []);
 
     let createdIssueNo = '';
+    let duplicateIssueId = '';
     await sdk.runTransaction(fb.db, async (tx) => {
+      if (guardRef) {
+        const guardSnap = await tx.get(guardRef);
+        const guardedIssueId = guardSnap.exists() ? (guardSnap.data().issue_id || '') : '';
+        if (guardedIssueId) {
+          const guardedIssueRef = sdk.doc(fb.db, 'issues', guardedIssueId);
+          const guardedIssueSnap = await tx.get(guardedIssueRef);
+          if (guardedIssueSnap.exists() && guardedIssueSnap.data().status !== 'closed') {
+            const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${guardedIssueId}/activity`));
+            tx.update(guardedIssueRef, {
+              updated_at: sdk.serverTimestamp(),
+              last_activity_at: sdk.serverTimestamp(),
+              activity_count: sdk.increment(1),
+            });
+            tx.set(activityRef, {
+              action: 'duplicate_checklist_fail_skipped',
+              note: payload.source_checklist_run_id
+                ? `Duplicate checklist fail skipped from run ${payload.source_checklist_run_id}`
+                : 'Duplicate checklist fail skipped',
+              by_uid: state.currentUser.uid,
+              by_name: state.currentUser.full_name,
+              by_department: state.currentUser.department,
+              created_at: sdk.serverTimestamp(),
+            });
+            duplicateIssueId = guardedIssueId;
+            return;
+          }
+        }
+      }
+
       const counterRef = sdk.doc(fb.db, 'counters', 'issue_counter');
       const counterSnap = await tx.get(counterRef);
       let nextNumber = 1;
@@ -3956,6 +4131,9 @@ function switchView(viewId) {
         source_type: payload.source_type || 'manual',
         source_checklist_run_id: payload.source_checklist_run_id || '',
         source_checklist_answer_id: payload.source_checklist_answer_id || '',
+        source_checklist_template_code: payload.source_checklist_template_code || '',
+        dedupe_key: payload.dedupe_key || '',
+        dedupe_date: payload.dedupe_date || '',
         title: payload.title,
         description: payload.description || '',
         issue_type: payload.issue_type || 'other',
@@ -3996,7 +4174,23 @@ function switchView(viewId) {
         by_department: state.currentUser.department,
         created_at: sdk.serverTimestamp(),
       });
+
+      if (guardRef) {
+        tx.set(guardRef, {
+          issue_id: issueRef.id,
+          issue_no: issueNo,
+          dedupe_key: payload.dedupe_key,
+          template_code: payload.source_checklist_template_code || '',
+          item_code: payload.source_checklist_answer_id || '',
+          inspection_date: payload.dedupe_date || '',
+          location_text: payload.location_text || '',
+          updated_at: sdk.serverTimestamp(),
+          created_at: sdk.serverTimestamp(),
+        });
+      }
     });
+
+    if (duplicateIssueId) return duplicateIssueId;
 
     recordUsageLog({
       category: 'issue',
@@ -4708,6 +4902,14 @@ function switchView(viewId) {
 
     if (!answers.length && !specialFormEntries.length) return alert(txt('กรุณากรอก checklist หรือ special form อย่างน้อย 1 ส่วน', 'Please fill in at least one checklist answer or special form section'));
 
+    const submitBtn = qs('#submitChecklistBtn', el.checklistRunPanel);
+    if (submitBtn?.dataset.submitting === '1') return;
+    if (submitBtn) {
+      submitBtn.dataset.submitting = '1';
+      submitBtn.disabled = true;
+      submitBtn.textContent = txt('กำลังส่ง...', 'Submitting...');
+    }
+
     const baseRun = {
       id: runId,
       run_no: buildChecklistRunNo((state.data.counters.checklist || 0) + 1, inspectionDate),
@@ -4749,6 +4951,9 @@ function switchView(viewId) {
           source_type: 'checklist',
           source_checklist_run_id: run.id,
           source_checklist_answer_id: a.item_code,
+          source_checklist_template_code: template.template_code || '',
+          dedupe_key: buildChecklistIssueDedupeKey(template.template_code, inspectionDate, location || templateLabel(template), a.item_code, a.item_text),
+          dedupe_date: inspectionDate,
           title: a.item_text,
           description: a.note || txt(`สร้างจากข้อที่ไม่ผ่าน: ${a.item_text}`, `Created from checklist fail: ${a.item_text}`),
           issue_type: 'other',
@@ -4791,6 +4996,12 @@ function switchView(viewId) {
     } catch (err) {
       console.error('submit checklist failed', err);
       alert(friendlyIssueError(err));
+    } finally {
+      if (submitBtn) {
+        submitBtn.dataset.submitting = '0';
+        submitBtn.disabled = false;
+        submitBtn.textContent = txt('Submit Checklist', 'Submit Checklist');
+      }
     }
   }
 

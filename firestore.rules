@@ -164,6 +164,9 @@ service cloud.firestore {
         'source_type',
         'source_checklist_run_id',
         'source_checklist_answer_id',
+        'source_checklist_template_code',
+        'dedupe_key',
+        'dedupe_date',
 
         'title',
         'description',
@@ -640,6 +643,12 @@ service cloud.firestore {
       }
     }
 
+
+    match /issue_dedupe/{dedupeKey} {
+      allow get, list: if isAdmin() || isMod();
+      allow create, update: if isAdmin() || isMod();
+      allow delete: if isAdmin();
+    }
 
     match /usage_logs/{logId} {
       allow read: if signedIn();
