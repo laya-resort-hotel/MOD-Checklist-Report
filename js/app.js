@@ -220,7 +220,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v81-checklist-dedupe'; // 'v77-desktop-login-compat';
+  const APP_VERSION = 'v82-storage-quota-safe'; // 'v77-desktop-login-compat';
 
   function safeClone(value) {
     try {
@@ -2125,24 +2125,62 @@
   }
 
   function persist() {
-    const payload = {
+    // Firebase is the source of truth in production. Do not keep the full board/checklist
+    // payload in localStorage because old phones quickly hit the 5MB browser quota,
+    // especially when checklist answers temporarily contain image/video previews.
+    if (isFirebaseLive()) {
+      try { localStorage.removeItem(APP_KEY); } catch (err) { console.warn('Persist cleanup skipped', err); }
+      return;
+    }
+
+    const payload = buildLocalPersistPayload();
+
+    if (tryPersistPayload(payload)) return;
+
+    console.warn('Persist failed, retrying with compact payload');
+    const compact = {
+      ...payload,
+      data: stripInlinePhotosFromData(payload.data),
+    };
+    if (tryPersistPayload(compact)) return;
+
+    console.warn('Persist failed again, saving minimum local state only');
+    const minimum = {
+      currentUser: payload.currentUser || null,
+      data: {
+        counters: payload.data?.counters || { issue: 0, checklist: 0 },
+        customTemplates: Array.isArray(payload.data?.customTemplates) ? payload.data.customTemplates : [],
+        issues: [],
+        checklistRuns: [],
+        activity: [],
+        teamMembers: [],
+        usageLogs: [],
+      }
+    };
+    if (!tryPersistPayload(minimum)) {
+      try { localStorage.removeItem(APP_KEY); } catch (_) {}
+    }
+  }
+
+  function buildLocalPersistPayload() {
+    return {
       currentUser: isFirebaseLive() ? null : state.currentUser,
       data: {
         ...state.data,
         templates: undefined,
         baseTemplates: undefined,
+        checklistRuns: sanitizeChecklistRunsForStorage(state.data.checklistRuns || []),
       }
     };
+  }
 
+  function tryPersistPayload(payload) {
     try {
       localStorage.setItem(APP_KEY, JSON.stringify(payload));
+      return true;
     } catch (err) {
-      console.warn('Persist failed, retrying without inline photos', err);
-      const fallback = {
-        ...payload,
-        data: stripInlinePhotosFromData(payload.data),
-      };
-      localStorage.setItem(APP_KEY, JSON.stringify(fallback));
+      console.warn('Persist payload failed', err);
+      return false;
     }
   }
 
@@ -2158,7 +2196,32 @@
         after_photos: [],
         after_videos: [],
       })),
+      checklistRuns: sanitizeChecklistRunsForStorage(data.checklistRuns || []),
+      activity: (data.activity || []).slice(0, 100),
+      usageLogs: (data.usageLogs || []).slice(0, 100),
     };
+  }
+
+  function sanitizeChecklistRunsForStorage(runs = []) {
+    return (Array.isArray(runs) ? runs : []).map(run => ({
+      ...run,
+      answers: sanitizeChecklistAnswersForStorage(run.answers || []),
+    }));
+  }
+
+  function sanitizeChecklistAnswersForStorage(answers = []) {
+    return (Array.isArray(answers) ? answers : []).map(answer => {
+      const source = answer || {};
+      const clean = { ...source };
+      const media = source.fail_media || {};
+      const photoCount = Array.isArray(media.photos) ? media.photos.length : 0;
+      const videoCount = media.video ? 1 : 0;
+      delete clean.fail_media;
+      if (photoCount || videoCount) {
+        clean.fail_media_count = { photos: photoCount, videos: videoCount };
+      }
+      return clean;
+    });
   }
 
   function isInlineDataUrl(value) {
@@ -5115,7 +5178,7 @@ function switchView(viewId) {
         inspection_date: run.inspection_date,
         location_text: run.location_text || '',
         source: 'checklist',
-        answers: run.answers,
+        answers: sanitizeChecklistAnswersForStorage(run.answers || []),
         special_form_entries: Array.isArray(run.special_form_entries) ? run.special_form_entries : [],
         total_items: run.total_items,
         pass_count: run.pass_count,
@@ -5131,6 +5194,7 @@ function switchView(viewId) {
       ...run,
       id: runRef.id,
       run_no: buildChecklistRunNo(runNumber, run.inspection_date),
+      answers: sanitizeChecklistAnswersForStorage(run.answers || []),
     };
   }
 
