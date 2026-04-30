@@ -1,4 +1,4 @@
-const CACHE_NAME = 'laya-mod-v30-storage-safe';
+const CACHE_NAME = 'laya-mod-v87-account-menu-fix';
 const APP_SHELL = [
   './',
   './index.html',

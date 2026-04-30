@@ -2388,3 +2388,24 @@ input:not([type="checkbox"]):not([type="radio"]) {
   .team-member-actions{grid-column:2 / -1;justify-content:flex-start;margin-top:10px;}
   .team-member-temp-btn{min-width:0;width:100%;}
 }
+
+/* PATCH v87: account mini menu mobile logout visibility */
+@media (max-width: 860px) {
+  .account-mini-menu {
+    position: fixed;
+    top: calc(78px + env(safe-area-inset-top));
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: calc(100dvh - 78px - 96px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    z-index: 120;
+  }
+
+  .account-mini-actions {
+    padding-bottom: 2px;
+  }
+}
