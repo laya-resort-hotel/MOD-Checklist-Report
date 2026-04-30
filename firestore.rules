@@ -260,6 +260,8 @@ service cloud.firestore {
         'assigned_department',
         'assigned_to_uid',
         'assigned_to_name',
+        'cover_photo_url',
+        'cover_thumb_url',
         'after_photos',
         'after_videos',
         'comment_count',
@@ -282,6 +284,8 @@ service cloud.firestore {
 
       return changed.hasOnly([
         'status',
+        'cover_photo_url',
+        'cover_thumb_url',
         'after_photos',
         'after_videos',
         'comment_count',

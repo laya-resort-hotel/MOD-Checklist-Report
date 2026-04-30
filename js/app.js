@@ -5063,7 +5063,7 @@ function switchView(viewId) {
       if (submitBtn) {
         submitBtn.dataset.submitting = '0';
         submitBtn.disabled = false;
-        submitBtn.textContent = txt('Submit Checklist', 'Submit Checklist');
+        submitBtn.textContent = txt('ส่งเช็กลิสต์', 'Submit Checklist');
       }
     }
   }
