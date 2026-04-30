@@ -205,6 +205,10 @@
       mediaPreviewItems: [],
       mediaPreviewIndex: 0,
       mediaPreviewTouchStartX: 0,
+      issueSyncStatus: 'idle',
+      checklistSyncStatus: 'idle',
+      fastDashboardCacheActive: false,
+      fastDashboardCacheTime: '',
     },
     data: {
       issues: [],
@@ -220,7 +224,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v88-performance-fast-load'; // Performance patch: lazy Excel + bounded Firestore reads
+  const APP_VERSION = 'v89-fast-dashboard-hydration'; // Fast dashboard patch: cached first paint + loading skeleton
 
   function safeClone(value) {
     try {
@@ -968,7 +972,10 @@
     checklistRuns: 80,
     usageLogs: 200,
     mentionAlerts: 50,
+    fastCacheIssues: 80,
+    fastCacheChecklistRuns: 40,
   };
+  const FAST_DASHBOARD_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
   let xlsxLoadPromise = null;
   let firebaseBootWatchdog = null;
   let firebaseBootGraceUntil = 0;
@@ -1523,6 +1530,10 @@
 
 
   function resetSignedOutState() {
+    state.ui.issueSyncStatus = 'idle';
+    state.ui.checklistSyncStatus = 'idle';
+    state.ui.fastDashboardCacheActive = false;
+    state.ui.fastDashboardCacheTime = '';
     state.currentUser = null;
     stopIssueSync();
     stopIssueCommentsSync();
@@ -1583,6 +1594,8 @@
 
       const profile = snap.data();
       state.currentUser = { uid: user.uid, password_change_required: false, temporary_password_issued_at: null, temporary_password_issued_by_uid: '', ...profile };
+      hydrateFastDashboardCache();
+      renderAll();
 
       stopIssueSync();
       stopIssueCommentsSync();
@@ -1592,15 +1605,15 @@
       stopUsageLogsSync();
       startTemplatesSync();
       startChecklistRunsSync();
+      startIssuesSync();
       startUsersSync();
       startUsageLogsSync();
 
-      try {
-        await fb.sdk.updateDoc(userRef, {
-          last_login_at: fb.sdk.serverTimestamp(),
-          updated_at: fb.sdk.serverTimestamp()
-        });
-      } catch (_) {}
+      // Do not block first dashboard paint while writing last_login_at.
+      Promise.resolve().then(() => fb.sdk.updateDoc(userRef, {
+        last_login_at: fb.sdk.serverTimestamp(),
+        updated_at: fb.sdk.serverTimestamp()
+      })).catch(() => {});
 
       const needsTempPasswordChange = !!profile.password_change_required;
       setAuthStatus(
@@ -1610,7 +1623,6 @@
         needsTempPasswordChange ? 'info' : 'success'
       );
       state.ui.didInitialMentionCheck = false;
-      startIssuesSync();
       renderAll();
       if (needsTempPasswordChange) {
         setTimeout(() => openPasswordEditorModal('force'), 120);
@@ -2131,6 +2143,130 @@
     }
   }
 
+
+  function getFastDashboardCacheKey() {
+    const uid = state.currentUser?.uid || window.LAYA_FIREBASE?.auth?.currentUser?.uid || 'anonymous';
+    return `${APP_KEY}_fast_dashboard_${uid}`;
+  }
+
+  function normalizeCachedIssue(issue) {
+    if (!issue || typeof issue !== 'object') return null;
+    return {
+      id: issue.id || '',
+      issue_no: issue.issue_no || '',
+      title: issue.title || '',
+      description: issue.description || '',
+      issue_type: issue.issue_type || 'other',
+      priority: issue.priority || 'medium',
+      status: issue.status || 'open',
+      assigned_department: issue.assigned_department || '',
+      location_text: issue.location_text || '',
+      reported_by_uid: issue.reported_by_uid || '',
+      reported_by_name: issue.reported_by_name || '',
+      reported_by_department: issue.reported_by_department || '',
+      closed_by_name: issue.closed_by_name || '',
+      comment_count: issue.comment_count || 0,
+      cover_thumb_url: issue.cover_thumb_url || '',
+      cover_photo_url: issue.cover_photo_url || '',
+      before_photos: [],
+      before_videos: [],
+      after_photos: [],
+      after_videos: [],
+      created_at: normalizeDateValue(issue.created_at),
+      updated_at: normalizeDateValue(issue.updated_at),
+      last_activity_at: normalizeDateValue(issue.last_activity_at),
+      last_comment_at: normalizeDateValue(issue.last_comment_at),
+      closed_at: normalizeDateValue(issue.closed_at),
+      comments: [],
+      __fromFastCache: true,
+    };
+  }
+
+  function normalizeCachedChecklistRun(run) {
+    if (!run || typeof run !== 'object') return null;
+    return {
+      id: run.id || '',
+      run_no: run.run_no || '',
+      template_code: run.template_code || '',
+      template_name: run.template_name || '',
+      template_name_th: run.template_name_th || '',
+      status: run.status || 'submitted',
+      inspector_uid: run.inspector_uid || '',
+      inspector_name: run.inspector_name || '',
+      inspector_department: run.inspector_department || '',
+      inspection_date: run.inspection_date || '',
+      location_text: run.location_text || '',
+      total_items: run.total_items || 0,
+      pass_count: run.pass_count || 0,
+      fail_count: run.fail_count || 0,
+      na_count: run.na_count || 0,
+      issue_count: run.issue_count || 0,
+      answers: [],
+      special_form_entries: [],
+      created_at: normalizeDateValue(run.created_at),
+      updated_at: normalizeDateValue(run.updated_at),
+      submitted_at: normalizeDateValue(run.submitted_at),
+      __fromFastCache: true,
+    };
+  }
+
+  function hydrateFastDashboardCache() {
+    if (!state.currentUser || !window.LAYA_FIREBASE_CONFIG_PRESENT) return false;
+    try {
+      const raw = localStorage.getItem(getFastDashboardCacheKey());
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      const savedAt = parsed?.saved_at ? Date.parse(parsed.saved_at) : 0;
+      if (!savedAt || Date.now() - savedAt > FAST_DASHBOARD_CACHE_MAX_AGE_MS) {
+        localStorage.removeItem(getFastDashboardCacheKey());
+        return false;
+      }
+      const cachedIssues = Array.isArray(parsed.issues) ? parsed.issues.map(normalizeCachedIssue).filter(Boolean) : [];
+      const cachedRuns = Array.isArray(parsed.checklistRuns) ? parsed.checklistRuns.map(normalizeCachedChecklistRun).filter(Boolean) : [];
+      if (!cachedIssues.length && !cachedRuns.length) return false;
+      if (!state.data.issues.length) state.data.issues = cachedIssues;
+      if (!state.data.checklistRuns.length) state.data.checklistRuns = cachedRuns;
+      state.ui.fastDashboardCacheActive = true;
+      state.ui.fastDashboardCacheTime = parsed.saved_at || '';
+      return true;
+    } catch (err) {
+      console.warn('Fast dashboard cache hydrate skipped', err);
+      return false;
+    }
+  }
+
+  function persistFastDashboardCache() {
+    if (!state.currentUser || !window.LAYA_FIREBASE_CONFIG_PRESENT) return;
+    try {
+      const issues = (state.data.issues || [])
+        .filter(Boolean)
+        .slice(0, PERF_LIMITS.fastCacheIssues)
+        .map(normalizeCachedIssue)
+        .filter(Boolean);
+      const checklistRuns = (state.data.checklistRuns || [])
+        .filter(Boolean)
+        .slice(0, PERF_LIMITS.fastCacheChecklistRuns)
+        .map(normalizeCachedChecklistRun)
+        .filter(Boolean);
+      localStorage.setItem(getFastDashboardCacheKey(), JSON.stringify({
+        saved_at: new Date().toISOString(),
+        issues,
+        checklistRuns,
+      }));
+      state.ui.fastDashboardCacheActive = false;
+      state.ui.fastDashboardCacheTime = '';
+    } catch (err) {
+      console.warn('Fast dashboard cache save skipped', err);
+    }
+  }
+
+  function isIssueSyncLoading() {
+    return !!state.currentUser && window.LAYA_FIREBASE_CONFIG_PRESENT && (state.ui.issueSyncStatus === 'idle' || state.ui.issueSyncStatus === 'loading');
+  }
+
+  function isBoardDataLoading() {
+    return isIssueSyncLoading() || (!!state.currentUser && window.LAYA_FIREBASE_CONFIG_PRESENT && (state.ui.checklistSyncStatus === 'idle' || state.ui.checklistSyncStatus === 'loading'));
+  }
   function persist() {
     // Firebase is the source of truth in production. Do not keep the full board/checklist
     // payload in localStorage because old phones quickly hit the 5MB browser quota,
@@ -3138,28 +3274,36 @@ function switchView(viewId) {
   }
 
   function renderSummary() {
-    const visibleIssues = getVisibleIssuesForCurrentUser().filter(i => i.issue_type !== 'checklist_submission');
+    const loading = isIssueSyncLoading() && !state.data.issues.length;
+    const cachedUpdating = state.ui.fastDashboardCacheActive && isIssueSyncLoading() && state.data.issues.length;
+    const visibleIssues = loading ? [] : getVisibleIssuesForCurrentUser().filter(i => i.issue_type !== 'checklist_submission');
     const openCount = visibleIssues.filter(i => i.status === 'open').length;
     const progressCount = visibleIssues.filter(i => i.status === 'in_progress').length;
     const criticalCount = visibleIssues.filter(i => i.priority === 'critical' && i.status !== 'closed').length;
     const closedTodayCount = visibleIssues.filter(i => i.status === 'closed' && isToday(i.closed_at || i.updated_at)).length;
+    const loadingHint = txt('กำลังโหลดข้อมูลงาน...', 'Loading work data...');
+    const cacheHint = txt('แสดงข้อมูลล่าสุดที่จำไว้ • กำลังอัปเดต', 'Showing cached data • Updating');
 
-    const cards = [
-      { label: txt('เปิดวันนี้', 'Open Today'), value: openCount, hint: txt('ยังต้องตามต่อ', 'Still needs follow-up') },
-      { label: txt('กำลังดำเนินการ', 'In Progress'), value: progressCount, hint: txt('กำลังดำเนินการ', 'Work in progress') },
-      { label: txt('เร่งด่วนมาก', 'Critical'), value: criticalCount, hint: txt('ต้องเร่งตรวจ', 'Needs urgent attention') },
-      { label: txt('ปิดวันนี้', 'Closed Today'), value: closedTodayCount, hint: txt('ปิดงานวันนี้', 'Closed today') },
+    const cards = loading ? [
+      { label: txt('เปิดวันนี้', 'Open Today'), value: '…', hint: loadingHint, loading: true },
+      { label: txt('กำลังดำเนินการ', 'In Progress'), value: '…', hint: loadingHint, loading: true },
+      { label: txt('เร่งด่วนมาก', 'Critical'), value: '…', hint: loadingHint, loading: true },
+      { label: txt('ปิดวันนี้', 'Closed Today'), value: '…', hint: loadingHint, loading: true },
+    ] : [
+      { label: txt('เปิดวันนี้', 'Open Today'), value: openCount, hint: cachedUpdating ? cacheHint : txt('ยังต้องตามต่อ', 'Still needs follow-up') },
+      { label: txt('กำลังดำเนินการ', 'In Progress'), value: progressCount, hint: cachedUpdating ? cacheHint : txt('กำลังดำเนินการ', 'Work in progress') },
+      { label: txt('เร่งด่วนมาก', 'Critical'), value: criticalCount, hint: cachedUpdating ? cacheHint : txt('ต้องเร่งตรวจ', 'Needs urgent attention') },
+      { label: txt('ปิดวันนี้', 'Closed Today'), value: closedTodayCount, hint: cachedUpdating ? cacheHint : txt('ปิดงานวันนี้', 'Closed today') },
     ];
 
     el.summaryGrid.innerHTML = cards.map(card => `
-      <article class="summary-card">
+      <article class="summary-card${card.loading ? ' is-loading' : ''}">
         <div class="summary-label">${escapeHtml(card.label)}</div>
-        <div class="summary-value">${card.value}</div>
+        <div class="summary-value${card.loading ? ' loading-dots' : ''}">${card.value}</div>
         <div class="summary-hint">${escapeHtml(card.hint)}</div>
       </article>
     `).join('');
   }
-
   function renderClosedJobs() {
     if (!el.closedList) return;
     const closedItems = getClosedBoardItemsForCurrentUser();
@@ -3259,6 +3403,11 @@ function switchView(viewId) {
   function renderBoard() {
     if (state.ui.boardFilter === 'closed') state.ui.boardFilter = 'all';
     const boardItems = getBoardFeedItems();
+
+    if (!boardItems.length && isBoardDataLoading()) {
+      el.boardList.innerHTML = `<div class="empty-state board-loading-state"><span class="spinner-dot"></span>${txt('กำลังโหลดข้อมูลงาน...', 'Loading work data...')}</div>`;
+      return;
+    }
 
     if (!boardItems.length) {
       el.boardList.innerHTML = `<div class="empty-state">${txt('ยังไม่มีรายการในมุมมองนี้', 'No items in this view')}</div>`;
@@ -6263,6 +6412,8 @@ function switchView(viewId) {
       return;
     }
     stopChecklistRunsSync();
+    state.ui.checklistSyncStatus = 'loading';
+    renderBoard();
     const fb = window.LAYA_FIREBASE;
     const sdk = fb.sdk;
     const constraints = [sdk.collection(fb.db, 'checklist_runs')];
@@ -6270,14 +6421,22 @@ function switchView(viewId) {
     if (sdk.limit) constraints.push(sdk.limit(PERF_LIMITS.checklistRuns));
     const q = sdk.query(...constraints);
     state.firebaseChecklistRunsUnsub = sdk.onSnapshot(q, (snap) => {
+      state.ui.checklistSyncStatus = 'ready';
       state.data.checklistRuns = snap.docs.map(normalizeChecklistRunDoc).sort((a, b) => new Date(b.submitted_at || b.created_at || 0) - new Date(a.submitted_at || a.created_at || 0));
+      persistFastDashboardCache();
       renderBoard();
-    }, (err) => console.error('checklist runs sync failed', err));
+    }, (err) => {
+      state.ui.checklistSyncStatus = 'error';
+      console.error('checklist runs sync failed', err);
+    });
   }
 
   function startIssuesSync() {
     if (!isFirebaseLive() || !state.currentUser) return;
     stopIssueSync();
+    state.ui.issueSyncStatus = 'loading';
+    renderSummary();
+    renderBoard();
     const fb = window.LAYA_FIREBASE;
     const sdk = fb.sdk;
     const constraints = [sdk.collection(fb.db, 'issues')];
@@ -6286,7 +6445,9 @@ function switchView(viewId) {
     const q = sdk.query(...constraints);
 
     state.firebaseIssuesUnsub = sdk.onSnapshot(q, (snap) => {
+      state.ui.issueSyncStatus = 'ready';
       state.data.issues = snap.docs.map(normalizeIssueDoc);
+      persistFastDashboardCache();
       renderAll();
       queueMentionAlertCheck();
       if (state.ui.openIssueId) {
@@ -6295,8 +6456,11 @@ function switchView(viewId) {
         else renderIssueModalContent(liveIssue);
       }
     }, (err) => {
+      state.ui.issueSyncStatus = 'error';
       console.error('issues onSnapshot failed', err);
       setAuthStatus('อ่าน Issue จาก Firestore ไม่สำเร็จ', 'error');
+      renderSummary();
+      renderBoard();
     });
   }
 

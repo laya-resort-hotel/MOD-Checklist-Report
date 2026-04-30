@@ -1,4 +1,4 @@
-const CACHE_NAME = 'laya-mod-v88-performance-fast-load';
+const CACHE_NAME = 'laya-mod-v89-fast-dashboard-hydration';
 const APP_SHELL = [
   './',
   './index.html',
