@@ -224,7 +224,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v89-fast-dashboard-hydration'; // Fast dashboard patch: cached first paint + loading skeleton
+  const APP_VERSION = 'v90-light-startup-data'; // Light startup: fewer first-load reads + lazy secondary syncs + full CSS restore
 
   function safeClone(value) {
     try {
@@ -968,17 +968,20 @@
 
   const FIREBASE_BOOT_TIMEOUT_MS = 14000;
   const PERF_LIMITS = {
-    issues: 180,
-    checklistRuns: 80,
-    usageLogs: 200,
-    mentionAlerts: 50,
-    fastCacheIssues: 80,
-    fastCacheChecklistRuns: 40,
+    // v90: keep the first dashboard light. Older logs / checklist history load only when the user opens those pages.
+    issues: 120,
+    checklistRuns: 35,
+    usageLogs: 60,
+    mentionAlerts: 30,
+    fastCacheIssues: 60,
+    fastCacheChecklistRuns: 25,
   };
   const FAST_DASHBOARD_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
   let xlsxLoadPromise = null;
   let firebaseBootWatchdog = null;
   let firebaseBootGraceUntil = 0;
+  let secondarySyncTimer = null;
+  let teamSyncTimer = null;
 
   document.addEventListener('DOMContentLoaded', init);
 
@@ -1530,6 +1533,7 @@
 
 
   function resetSignedOutState() {
+    cancelSecondarySyncs();
     state.ui.issueSyncStatus = 'idle';
     state.ui.checklistSyncStatus = 'idle';
     state.ui.fastDashboardCacheActive = false;
@@ -1603,11 +1607,11 @@
       stopChecklistRunsSync();
       stopUsersSync();
       stopUsageLogsSync();
-      startTemplatesSync();
-      startChecklistRunsSync();
+
+      // v90: load only Board data immediately.
+      // Checklist history, users, and usage logs are lazy-loaded after first paint / when opened.
       startIssuesSync();
-      startUsersSync();
-      startUsageLogsSync();
+      scheduleSecondarySyncsAfterFirstPaint();
 
       // Do not block first dashboard paint while writing last_login_at.
       Promise.resolve().then(() => fb.sdk.updateDoc(userRef, {
@@ -2566,6 +2570,7 @@
   }
 
   async function handleLogout() {
+    cancelSecondarySyncs();
     if (isFirebaseLive()) {
       try {
         await window.LAYA_FIREBASE.sdk.signOut(window.LAYA_FIREBASE.auth);
@@ -3250,6 +3255,10 @@ function switchView(viewId) {
     }
     qsa('.view').forEach(view => view.classList.toggle('active', view.id === viewId));
     qsa('.nav-link').forEach(btn => btn.classList.toggle('active', btn.dataset.view === viewId));
+
+    // v90: lazy Firestore syncs. The Board gets issues first; logs/users/checklist history load only when needed.
+    ensureSyncsForView(viewId);
+
     if (viewId === 'boardView') renderBoard();
     if (viewId === 'activityView') renderActivity();
     if (viewId === 'logView') renderUsageLogs();
@@ -3262,14 +3271,19 @@ function switchView(viewId) {
   function renderAll() {
     renderAuthState();
     if (!state.currentUser) return;
+
+    // v90: render only what is needed for the first screen.
+    // Heavy secondary views are rendered lazily when opened.
     renderSummary();
     renderBoard();
-    renderTemplateCards();
-    renderActivity();
-    renderUsageLogs();
-    renderClosedJobs();
-    renderTeamMembers();
-    renderSettingsView();
+
+    if (state.ui.activeView === 'checklistView') renderTemplateCards();
+    if (state.ui.activeView === 'activityView') renderActivity();
+    if (state.ui.activeView === 'logView') renderUsageLogs();
+    if (state.ui.activeView === 'closedView') renderClosedJobs();
+    if (state.ui.activeView === 'settingsView') renderSettingsView();
+    if (state.ui.activeView === 'moreView') renderTeamMembers();
+
     switchView(state.ui.activeView);
   }
 
@@ -6363,6 +6377,82 @@ function switchView(viewId) {
     issue.comment_count = issue.comments.length;
   }
 
+
+  function cancelSecondarySyncs() {
+    if (secondarySyncTimer) {
+      clearTimeout(secondarySyncTimer);
+      secondarySyncTimer = null;
+    }
+    if (teamSyncTimer) {
+      clearTimeout(teamSyncTimer);
+      teamSyncTimer = null;
+    }
+  }
+
+  function ensureChecklistRunsSync() {
+    if (!state.currentUser || !isFirebaseLive()) return;
+    if (typeof state.firebaseChecklistRunsUnsub === 'function') return;
+    startChecklistRunsSync();
+  }
+
+  function ensureTemplatesSync() {
+    if (!state.currentUser || !isFirebaseLive()) return;
+    if (typeof state.firebaseTemplatesUnsub === 'function') return;
+    startTemplatesSync();
+  }
+
+  function ensureUsersSync() {
+    if (!state.currentUser || !isFirebaseLive()) return;
+    if (typeof state.firebaseUsersUnsub === 'function') return;
+    startUsersSync();
+  }
+
+  function ensureUsageLogsSync() {
+    if (!state.currentUser || !isFirebaseLive()) return;
+    if (typeof state.firebaseUsageLogsUnsub === 'function') return;
+    startUsageLogsSync();
+  }
+
+  function ensureSyncsForView(viewId) {
+    if (!state.currentUser) return;
+
+    if (viewId === 'checklistView') {
+      ensureTemplatesSync();
+      ensureChecklistRunsSync();
+    }
+
+    if (viewId === 'closedView') {
+      ensureChecklistRunsSync();
+    }
+
+    if (viewId === 'logView' || viewId === 'activityView') {
+      ensureUsageLogsSync();
+    }
+
+    if (viewId === 'newIssueView' || viewId === 'settingsView' || viewId === 'moreView') {
+      ensureUsersSync();
+    }
+  }
+
+  function scheduleSecondarySyncsAfterFirstPaint() {
+    cancelSecondarySyncs();
+    if (!state.currentUser || !isFirebaseLive()) return;
+
+    // Wait until the Board has had time to paint before starting secondary reads.
+    secondarySyncTimer = setTimeout(() => {
+      secondarySyncTimer = null;
+      if (!state.currentUser || !isFirebaseLive()) return;
+      ensureChecklistRunsSync();
+
+      // Team members are useful for mentions/settings, but not required for the first dashboard paint.
+      teamSyncTimer = setTimeout(() => {
+        teamSyncTimer = null;
+        if (!state.currentUser || !isFirebaseLive()) return;
+        ensureUsersSync();
+      }, 1200);
+    }, 1300);
+  }
+
   function stopIssueSync() {
     if (typeof state.firebaseIssuesUnsub === 'function') {
       try { state.firebaseIssuesUnsub(); } catch (_) {}
@@ -6413,7 +6503,7 @@ function switchView(viewId) {
     }
     stopChecklistRunsSync();
     state.ui.checklistSyncStatus = 'loading';
-    renderBoard();
+    if (state.ui.activeView === 'boardView' || state.ui.activeView === 'checklistView' || state.ui.activeView === 'closedView') renderBoard();
     const fb = window.LAYA_FIREBASE;
     const sdk = fb.sdk;
     const constraints = [sdk.collection(fb.db, 'checklist_runs')];
@@ -6424,7 +6514,8 @@ function switchView(viewId) {
       state.ui.checklistSyncStatus = 'ready';
       state.data.checklistRuns = snap.docs.map(normalizeChecklistRunDoc).sort((a, b) => new Date(b.submitted_at || b.created_at || 0) - new Date(a.submitted_at || a.created_at || 0));
       persistFastDashboardCache();
-      renderBoard();
+      if (state.ui.activeView === 'boardView') renderBoard();
+      if (state.ui.activeView === 'closedView') renderClosedJobs();
     }, (err) => {
       state.ui.checklistSyncStatus = 'error';
       console.error('checklist runs sync failed', err);
@@ -6449,7 +6540,8 @@ function switchView(viewId) {
       state.data.issues = snap.docs.map(normalizeIssueDoc);
       persistFastDashboardCache();
       renderAll();
-      queueMentionAlertCheck();
+      // v90: avoid extra collectionGroup read during first load; mention alerts run after team sync.
+      if (state.data.teamMembers.length) setTimeout(queueMentionAlertCheck, 800);
       if (state.ui.openIssueId) {
         const liveIssue = state.data.issues.find(i => i.id === state.ui.openIssueId);
         if (!liveIssue) closeIssueModal();
@@ -6577,6 +6669,7 @@ function switchView(viewId) {
         .filter(user => user.is_active !== false)
         .sort((a, b) => String(a.full_name || '').localeCompare(String(b.full_name || ''), 'th'));
       renderTeamMembers();
+      if (!state.ui.didInitialMentionCheck) setTimeout(queueMentionAlertCheck, 500);
     }, (err) => {
       console.error('users onSnapshot failed', err);
     });

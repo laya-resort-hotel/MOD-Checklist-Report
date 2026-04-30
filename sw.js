@@ -1,14 +1,14 @@
-const CACHE_NAME = 'laya-mod-v89-fast-dashboard-hydration';
+const CACHE_NAME = 'laya-mod-v90-light-startup-data';
 const APP_SHELL = [
   './',
   './index.html',
-  './style.css',
+  './style.css?v=v90-light-startup',
   './manifest.webmanifest',
   './assets/logo.png',
   './data/checklist_templates.json',
-  './js/app.js',
+  './js/app.js?v=v90-light-startup',
   './js/firebase-config.js',
-  './js/firebase-init.js'
+  './js/firebase-init.js?v=v90-light-startup'
 ];
 
 self.addEventListener('install', (event) => {
@@ -28,6 +28,11 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+function isCodeOrStyle(req) {
+  const url = new URL(req.url);
+  return /\.(css|js)$/i.test(url.pathname);
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -44,6 +49,22 @@ self.addEventListener('fetch', (event) => {
           return resp;
         })
         .catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
+  // v90: JS/CSS should be network-first so GitHub updates do not get stuck behind old cache.
+  if (isSameOrigin && isCodeOrStyle(req)) {
+    event.respondWith(
+      fetch(req)
+        .then((resp) => {
+          if (resp && resp.ok) {
+            const copy = resp.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
+          }
+          return resp;
+        })
+        .catch(() => caches.match(req))
     );
     return;
   }
