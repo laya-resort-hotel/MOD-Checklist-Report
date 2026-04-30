@@ -1,6 +1,6 @@
 (() => {
   const APP_KEY = 'laya_mod_checklist_v1';
-  const APP_VERSION = window.LAYA_APP_VERSION || 'v91-auto-cache-login';
+  const APP_VERSION = window.LAYA_APP_VERSION || 'v92-role-department-management';
   const APP_VERSION_KEY = 'laya_mod_active_version_v1';
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 
@@ -95,14 +95,24 @@
     { code: 'ADMIN', name: 'Admin', name_th: 'ผู้ดูแลระบบ' },
   ];
   const WORK_DEPARTMENT_CODES = ['ENG', 'HK', 'FO', 'FB', 'SEC', 'HR', 'RSV', 'SALES', 'REC', 'KIT'];
+  const USER_DEPARTMENT_CODES = [...WORK_DEPARTMENT_CODES, 'MOD', 'ADMIN'];
   const ALL_DEPARTMENT_CODES = DEPARTMENTS.map(dept => dept.code);
 
+  const ROLES = [
+    { code: 'admin', name: 'Admin', name_th: 'ผู้ดูแลระบบ' },
+    { code: 'manager', name: 'Manager', name_th: 'ผู้จัดการ' },
+    { code: 'mod', name: 'MOD', name_th: 'MOD' },
+    { code: 'supervisor', name: 'Supervisor', name_th: 'หัวหน้างาน' },
+    { code: 'staff', name: 'Staff', name_th: 'พนักงาน' },
+  ];
+  const PRIVILEGED_ROLES = ['admin', 'manager', 'mod'];
+
   const DEMO_USERS = [
-    { uid: 'demo-9901', employee_id: '9901', full_name: 'Somchai MOD', role: 'mod', department: 'MOD', password: '9901', is_active: true },
-    { uid: 'demo-9902', employee_id: '9902', full_name: 'Nok MOD', role: 'mod', department: 'MOD', password: '9902', is_active: true },
-    { uid: 'demo-9903', employee_id: '9903', full_name: 'Brown MOD', role: 'mod', department: 'MOD', password: '9903', is_active: true },
-    { uid: 'demo-9904', employee_id: '9904', full_name: 'Mint MOD', role: 'mod', department: 'MOD', password: '9904', is_active: true },
-    { uid: 'demo-25381', employee_id: '25381', full_name: 'Wuttichai KOJI-NOI-FB', role: 'admin', department: 'MOD', password: '25381', is_active: true }
+    { uid: 'demo-9901', employee_id: '9901', full_name: 'Somchai MOD', role: 'mod', department: 'MOD', position: 'MOD', password: '9901', is_active: true },
+    { uid: 'demo-9902', employee_id: '9902', full_name: 'Nok HK', role: 'staff', department: 'HK', position: 'HK Staff', password: '9902', is_active: true },
+    { uid: 'demo-9903', employee_id: '9903', full_name: 'Brown ENG', role: 'supervisor', department: 'ENG', position: 'Engineering Supervisor', password: '9903', is_active: true },
+    { uid: 'demo-9904', employee_id: '9904', full_name: 'Mint FO', role: 'manager', department: 'FO', position: 'FO Manager', password: '9904', is_active: true },
+    { uid: 'demo-25381', employee_id: '25381', full_name: 'Wuttichai KOJI-NOI-FB', role: 'admin', department: 'FB', position: 'MOD / F&B', password: '25381', is_active: true }
   ];
 
   const PRIORITIES = ['low', 'medium', 'high', 'critical'];
@@ -122,15 +132,36 @@
     return dept ? departmentLabel(dept) : (code || '-');
   }
 
+  function normalizeRole(role) {
+    const value = String(role || 'staff').toLowerCase();
+    if (value === 'dept_user' || value === 'viewer') return 'staff';
+    return ROLES.some(item => item.code === value) ? value : 'staff';
+  }
+
+  function getRoleMeta(role) {
+    const code = normalizeRole(role);
+    return ROLES.find(item => item.code === code) || ROLES[ROLES.length - 1];
+  }
+
   function getRoleName(role) {
-    const value = String(role || 'dept_user').toLowerCase();
-    const map = {
-      admin: { th: 'ผู้ดูแลระบบ', en: 'Admin' },
-      mod: { th: 'MOD', en: 'MOD' },
-      dept_user: { th: 'ผู้ใช้แผนก', en: 'Department User' },
-    };
-    const entry = map[value] || { th: labelize(value), en: labelize(value) };
-    return currentLang() === 'en' ? entry.en : entry.th;
+    const entry = getRoleMeta(role);
+    return currentLang() === 'en' ? entry.name : entry.name_th;
+  }
+
+  function canManageUsers() {
+    return normalizeRole(state.currentUser?.role) === 'admin';
+  }
+
+  function canManageAllWork() {
+    return PRIVILEGED_ROLES.includes(normalizeRole(state.currentUser?.role));
+  }
+
+  function canCreateIssueForRole() {
+    return canManageAllWork();
+  }
+
+  function canUseChecklistForRole() {
+    return canManageAllWork();
   }
 
   function getUserInitials(name) {
@@ -207,6 +238,7 @@
       mediaPreviewItems: [],
       mediaPreviewIndex: 0,
       mediaPreviewTouchStartX: 0,
+      editingUserUid: '',
       issueSyncStatus: 'idle',
       checklistSyncStatus: 'idle',
       fastDashboardCacheActive: false,
@@ -1054,7 +1086,7 @@
     if (!window.LAYA_FIREBASE_CONFIG_PRESENT && !state.data.issues.length && !state.data.activity.length) {
       seedDemoData();
     }
-    state.data.teamMembers = DEMO_USERS.map(user => ({ uid: user.uid, employee_id: user.employee_id, full_name: user.full_name, role: 'mod', department: 'MOD', is_active: true }));
+    state.data.teamMembers = DEMO_USERS.map(user => ({ uid: user.uid, employee_id: user.employee_id, full_name: user.full_name, role: normalizeRole(user.role), department: user.department || 'MOD', position: user.position || getRoleName(user.role), is_active: true }));
     renderTemplateCards();
     renderUsageLogs();
     renderAll();
@@ -1231,8 +1263,9 @@
     const registerTexts = [
       txt('รหัสพนักงาน', 'Employee ID'),
       txt('ชื่อ-นามสกุล', 'Full Name'),
-      txt('ประเภทการเข้าใช้งาน', 'Access Type'),
+      txt('Role เริ่มต้น', 'Default Role'),
       txt('แผนก', 'Department'),
+      txt('ตำแหน่งจริง', 'Position'),
       txt('รหัสผ่าน', 'Password'),
       txt('ยืนยันรหัสผ่าน', 'Confirm Password'),
     ];
@@ -1246,14 +1279,13 @@
     setNodeText('#loginPasswordHelp', 'หากลืมรหัสผ่าน ให้ติดต่อ Admin เพื่อขอรหัสชั่วคราว', 'If you forgot your password, ask an admin for a temporary password.');
     setNodePlaceholder('#registerEmployeeId', 'เช่น 5521', 'e.g. 5521');
     setNodePlaceholder('#registerFullName', 'ชื่อ-นามสกุล', 'Full name');
+    setNodePlaceholder('#registerPosition', 'เช่น FO Staff / HK Supervisor', 'e.g. FO Staff / HK Supervisor');
     setNodePlaceholder('#registerPassword', 'อย่างน้อย 6 ตัวอักษร', 'At least 6 characters');
     setNodePlaceholder('#registerConfirmPassword', 'ยืนยันรหัสผ่าน', 'Confirm password');
 
     if (el.registerRole) {
-      const modOpt = qs('option[value="mod"]', el.registerRole);
-      const deptOpt = qs('option[value="dept_user"]', el.registerRole);
-      if (modOpt) modOpt.textContent = 'MOD';
-      if (deptOpt) deptOpt.textContent = txt('ผู้ใช้แผนก', 'Department User');
+      const staffOpt = qs('option[value="staff"]', el.registerRole);
+      if (staffOpt) staffOpt.textContent = txt('Staff - รอ Admin กำหนดสิทธิ์', 'Staff - admin will assign permission');
     }
 
     const sidebarLabels = {
@@ -1274,15 +1306,15 @@
     setNodeText('#openSettingsBtn', 'ตั้งค่า', 'Settings');
     setNodeText('#clearCacheBtn', 'ล้างแคช', 'Clear Cache');
     setNodeText('#clearCacheBtnMore', 'ล้างแคช', 'Clear Cache');
-    setNodeText('#settingsAdminToolsPanel .panel-header h3', 'เครื่องมือแอดมิน', 'Admin Tools');
-    setNodeText('#settingsAdminToolsPanel .panel-header p', 'เปิดรายชื่อสมาชิกทีมและออกรหัสชั่วคราวให้พนักงาน', 'Open team members and issue temporary passwords for staff.');
-    setNodeText('#openTeamMembersFromSettings', 'เปิดสมาชิกทีม', 'Open Team Members');
+    setNodeText('#settingsAdminToolsPanel .panel-header h3', 'จัดการผู้ใช้งาน', 'User Management');
+    setNodeText('#settingsAdminToolsPanel .panel-header p', 'แก้ Role / Department / Position และออกรหัสชั่วคราวให้พนักงาน', 'Manage role, department, position, and temporary passwords for staff.');
+    setNodeText('#openTeamMembersFromSettings', 'จัดการผู้ใช้งาน', 'Manage Users');
     setNodeText('#logoutBtn', 'ออกจากระบบ', 'Logout');
     setNodeText('#topbarAccountName', 'บัญชีของฉัน', 'My Account');
     setNodeText('#topbarAccountMeta', 'ทีม MOD', 'MOD Team');
     setNodeText('#accountMenuName', 'บัญชีของฉัน', 'My Account');
     setNodeText('#accountMenuMeta', '0000 • MOD', '0000 • MOD');
-    setNodeText('#accountMenuOpenTeamMembers', 'สมาชิกทีม', 'Team Members');
+    setNodeText('#accountMenuOpenTeamMembers', 'จัดการผู้ใช้งาน', 'Manage Users');
     setNodeText('#accountMenuOpenSettings', 'เปิดตั้งค่า', 'Open Settings');
     setNodeText('#accountMenuClearCache', 'ล้างแคช', 'Clear Cache');
     setNodeText('#accountMenuLogout', 'ออกจากระบบ', 'Logout');
@@ -1381,7 +1413,8 @@
     setNodeText('#settingsView .settings-form-grid.compact > div:nth-child(1) > label', 'รหัสพนักงาน', 'Employee ID');
     setNodeText('#settingsView .settings-form-grid.compact > div:nth-child(2) > label', 'สิทธิ์การใช้งาน', 'Role');
     setNodeText('#settingsView .settings-form-grid.compact > div:nth-child(3) > label', 'แผนก', 'Department');
-    setNodeText('#settingsView .settings-form-grid.compact > div:nth-child(4) > label', 'ชื่อ-นามสกุล', 'Full Name');
+    setNodeText('#settingsView .settings-form-grid.compact > div:nth-child(4) > label', 'ตำแหน่งจริง', 'Position');
+    setNodeText('#settingsView .settings-form-grid.compact > div:nth-child(5) > label', 'ชื่อ-นามสกุล', 'Full Name');
     setNodePlaceholder('#settingsFullName', 'ชื่อ-นามสกุล', 'Full Name');
     setNodeText('#openFullNameEditorBtn', 'แก้ไขชื่อ', 'Edit Name');
     setNodeText('#saveProfileSettingsBtn', 'บันทึกโปรไฟล์', 'Save Profile');
@@ -1445,15 +1478,7 @@
 
   function syncRegisterRoleDepartment() {
     if (!el.registerDepartment) return;
-    const role = el.registerRole?.value || 'mod';
     const previousValue = el.registerDepartment.value;
-    if (role === 'mod') {
-      el.registerDepartment.innerHTML = '<option value="MOD">MOD</option>';
-      el.registerDepartment.value = 'MOD';
-      el.registerDepartment.disabled = true;
-      return;
-    }
-
     const deptCodes = WORK_DEPARTMENT_CODES;
     el.registerDepartment.innerHTML = renderDepartmentOptions(deptCodes);
     if (previousValue && deptCodes.includes(previousValue)) {
@@ -1463,6 +1488,7 @@
       el.registerDepartment.value = 'ENG';
     }
     el.registerDepartment.disabled = false;
+    if (el.registerRole) el.registerRole.value = 'staff';
   }
 
   function employeeIdToEmail(employeeId) {
@@ -1490,13 +1516,13 @@
     } catch (_) {}
   }
 
-  function buildUserProfile({ employeeId, fullName, role = 'mod', department = 'MOD', position = '', email = '' }) {
+  function buildUserProfile({ employeeId, fullName, role = 'staff', department = 'ENG', position = '', email = '' }) {
     return {
       employee_id: employeeId,
       full_name: fullName,
-      role,
+      role: normalizeRole(role),
       department,
-      position,
+      position: position || getRoleName(role),
       is_active: true,
       phone: '',
       email,
@@ -1652,7 +1678,13 @@
       }
 
       const profile = snap.data();
-      state.currentUser = { uid: user.uid, password_change_required: false, temporary_password_issued_at: null, temporary_password_issued_by_uid: '', ...profile };
+      if (profile.is_active === false) {
+        setAuthStatus(txt('บัญชีนี้ถูกปิดใช้งาน กรุณาติดต่อ Admin', 'This account is inactive. Please contact an admin.'), 'error');
+        try { await fb.sdk.signOut(fb.auth); } catch (_) {}
+        resetSignedOutState();
+        return false;
+      }
+      state.currentUser = { uid: user.uid, password_change_required: false, temporary_password_issued_at: null, temporary_password_issued_by_uid: '', ...profile, role: normalizeRole(profile.role) };
       hydrateFastDashboardCache();
       renderAll();
 
@@ -1720,6 +1752,7 @@
       registerFullName: qs('#registerFullName'),
       registerRole: qs('#registerRole'),
       registerDepartment: qs('#registerDepartment'),
+      registerPosition: qs('#registerPosition'),
       registerPassword: qs('#registerPassword'),
       registerConfirmPassword: qs('#registerConfirmPassword'),
       registerBtn: qs('#registerBtn'),
@@ -1831,6 +1864,17 @@
       tempPasswordResultName: qs('#tempPasswordResultName'),
       tempPasswordResultValue: qs('#tempPasswordResultValue'),
       tempPasswordResultCopyBtn: qs('#tempPasswordResultCopyBtn'),
+      userManagementModal: qs('#userManagementModal'),
+      closeUserManagementModalBtn: qs('#closeUserManagementModalBtn'),
+      cancelUserManagementBtn: qs('#cancelUserManagementBtn'),
+      saveUserManagementBtn: qs('#saveUserManagementBtn'),
+      userManagementName: qs('#userManagementName'),
+      userManagementEmployeeId: qs('#userManagementEmployeeId'),
+      userRoleEdit: qs('#userRoleEdit'),
+      userDepartmentEdit: qs('#userDepartmentEdit'),
+      userPositionEdit: qs('#userPositionEdit'),
+      userActiveEdit: qs('#userActiveEdit'),
+      userManagementStatus: qs('#userManagementStatus'),
       settingsAdminToolsPanel: qs('#settingsAdminToolsPanel'),
       openTeamMembersFromSettings: qs('#openTeamMembersFromSettings'),
       settingsProfileAvatarPreview: qs('#settingsProfileAvatarPreview'),
@@ -1848,6 +1892,7 @@
       settingsEmployeeId: qs('#settingsEmployeeId'),
       settingsRole: qs('#settingsRole'),
       settingsDepartment: qs('#settingsDepartment'),
+      settingsPosition: qs('#settingsPosition'),
       settingsFullName: qs('#settingsFullName'),
       settingsFullNameReadout: qs('#settingsFullNameReadout'),
       openFullNameEditorBtn: qs('#openFullNameEditorBtn'),
@@ -2079,6 +2124,12 @@
     if (el.settingsAvatarCameraBtn) el.settingsAvatarCameraBtn.addEventListener('click', () => { if (el.settingsAvatarCameraInput) el.settingsAvatarCameraInput.value = ''; });
     if (el.settingsAvatarRemoveBtn) el.settingsAvatarRemoveBtn.addEventListener('click', handleRemoveProfileAvatar);
     if (el.teamMembersList) el.teamMembersList.addEventListener('click', handleTeamMemberListClick);
+    if (el.closeUserManagementModalBtn) el.closeUserManagementModalBtn.addEventListener('click', () => closeUserManagementModal());
+    if (el.cancelUserManagementBtn) el.cancelUserManagementBtn.addEventListener('click', () => closeUserManagementModal());
+    if (el.saveUserManagementBtn) el.saveUserManagementBtn.addEventListener('click', saveUserManagementChanges);
+    document.addEventListener('click', (event) => {
+      if (event.target.closest('[data-close-user-management-modal]')) closeUserManagementModal();
+    });
     if (el.closeTempPasswordResultModalBtn) el.closeTempPasswordResultModalBtn.addEventListener('click', closeTempPasswordResultModal);
     if (el.tempPasswordResultCopyBtn) el.tempPasswordResultCopyBtn.addEventListener('click', copyTempPasswordFromModal);
     if (el.tempPasswordResultModal) {
@@ -2492,9 +2543,9 @@
 
     const employeeId = el.registerEmployeeId.value.trim();
     const fullName = el.registerFullName.value.trim();
-    const role = el.registerRole?.value === 'dept_user' ? 'dept_user' : 'mod';
-    const department = role === 'mod' ? 'MOD' : (el.registerDepartment?.value || 'ENG');
-    const position = role === 'mod' ? 'MOD' : 'Department User';
+    const role = 'staff';
+    const department = el.registerDepartment?.value || 'ENG';
+    const position = String(el.registerPosition?.value || '').trim() || getRoleName(role);
     const password = el.registerPassword.value.trim();
     const confirmPassword = el.registerConfirmPassword.value.trim();
 
@@ -2502,8 +2553,8 @@
       setAuthStatus('กรุณากรอกข้อมูลสมัครสมาชิกให้ครบ', 'error');
       return;
     }
-    if (role === 'dept_user' && !department) {
-      setAuthStatus(txt('กรุณาเลือกแผนกสำหรับ Department User', 'Please choose a department for Department User'), 'error');
+    if (!department || !WORK_DEPARTMENT_CODES.includes(department)) {
+      setAuthStatus(txt('กรุณาเลือกแผนก', 'Please choose a department'), 'error');
       return;
     }
     if (password.length < 6) {
@@ -2533,7 +2584,7 @@
         category: 'auth',
         action: 'register',
         title: 'Created account',
-        text: `${fullName} created ${role === 'mod' ? 'MOD' : getDepartmentName(department)} account`,
+        text: `${fullName} created ${getRoleName(role)} account in ${getDepartmentName(department)}`,
         user_uid: cred.user.uid,
         user_name: fullName,
         ref_no: employeeId,
@@ -2673,7 +2724,7 @@
     if (!user) return;
     const fullName = String(user.full_name || txt('บัญชีของฉัน', 'My Account'));
     const employeeId = String(user.employee_id || '-');
-    const roleName = getRoleName(user.role || 'dept_user');
+    const roleName = getRoleName(user.role || 'staff');
     const departmentName = getDepartmentName(user.department || 'MOD');
     const avatarUrl = String(user.avatar_url || '');
     const initials = getUserInitials(fullName || 'M');
@@ -2834,7 +2885,7 @@
 
 
   function canIssueTemporaryPassword() {
-    return String(state.currentUser?.role || '').toLowerCase() === 'admin' && isFirebaseLive();
+    return canManageUsers() && isFirebaseLive();
   }
 
   function getIssueTemporaryPasswordFunctionUrl() {
@@ -2925,6 +2976,11 @@ The user will be forced to change it on next sign in.`);
   }
 
   function handleTeamMemberListClick(event) {
+    const editBtn = event.target.closest('[data-edit-user-management]');
+    if (editBtn) {
+      openUserManagementModal(editBtn.dataset.editUserManagement || '');
+      return;
+    }
     const btn = event.target.closest('[data-issue-temp-password]');
     if (!btn) return;
     issueTemporaryPasswordForUser(btn.dataset.issueTempPassword || '');
@@ -3020,15 +3076,17 @@ function openPasswordEditorModal(mode = 'normal') {
     const preserveActive = options.preserveActive !== false;
     const fullName = state.currentUser.full_name || '';
     const employeeId = state.currentUser.employee_id || '';
-    const roleName = getRoleName(state.currentUser.role || 'dept_user');
+    const roleName = getRoleName(state.currentUser.role || 'staff');
     const departmentName = getDepartmentName(state.currentUser.department || 'MOD');
+    const positionName = state.currentUser.position || '-';
     setFieldValue(el.settingsEmployeeId, employeeId);
     setFieldValue(el.settingsRole, roleName);
     setFieldValue(el.settingsDepartment, departmentName);
+    setFieldValue(el.settingsPosition, positionName);
     setFieldValue(el.settingsFullName, fullName, { preserveActive, allowEmpty: true });
     setFieldValue(el.settingsFullNameReadout, fullName, { preserveActive, allowEmpty: true });
     if (el.settingsProfileNameDisplay) el.settingsProfileNameDisplay.textContent = fullName || '-';
-    if (el.settingsProfileMetaText) el.settingsProfileMetaText.textContent = `${employeeId || '-'} • ${roleName}`;
+    if (el.settingsProfileMetaText) el.settingsProfileMetaText.textContent = `${employeeId || '-'} • ${roleName} • ${positionName}`;
     if (el.settingsRoleBadge) el.settingsRoleBadge.textContent = roleName;
     if (el.settingsDepartmentBadge) el.settingsDepartmentBadge.textContent = departmentName;
     clearSettingsPasswordInputs();
@@ -3039,7 +3097,7 @@ function openPasswordEditorModal(mode = 'normal') {
 function renderSettingsView() {
   refreshPasswordEditorPresentation();
   if (!state.currentUser) return;
-  const canManageTeam = state.currentUser.role === 'admin';
+  const canManageTeam = canManageUsers();
   if (el.settingsAdminToolsPanel) el.settingsAdminToolsPanel.classList.toggle('hidden', !canManageTeam);
   if (el.accountMenuOpenTeamMembers) el.accountMenuOpenTeamMembers.classList.toggle('hidden', !canManageTeam);
   enforceSettingsFieldValues();
@@ -3308,7 +3366,12 @@ function switchView(viewId) {
     closeAccountMiniMenu(true);
     if (viewId === 'activityView') viewId = 'logView';
     if (viewId === 'newIssueView') {
-      clearIssueForm();
+      if (!canCreateIssueForRole()) {
+        setAuthStatus(txt('บัญชีนี้รับงานและอัปเดตงานของแผนกได้ แต่ยังไม่มีสิทธิ์เปิด Issue ใหม่', 'This account can receive/update department jobs, but cannot create new issues yet.'), 'info');
+        viewId = 'boardView';
+      } else {
+        clearIssueForm();
+      }
     }
     qsa('.view').forEach(view => view.classList.toggle('active', view.id === viewId));
     qsa('.nav-link').forEach(btn => btn.classList.toggle('active', btn.dataset.view === viewId));
@@ -4088,6 +4151,10 @@ function switchView(viewId) {
   }
 
   async function saveIssueFromForm() {
+    if (!canCreateIssueForRole()) {
+      alert(txt('บัญชีนี้ยังไม่มีสิทธิ์เปิด Issue ใหม่ ให้ Admin ปรับ Role เป็น MOD / Manager / Admin', 'This account cannot create new issues yet. Ask an Admin to set the role to MOD / Manager / Admin.'));
+      return;
+    }
     const title = el.issueTitle.value.trim();
     const description = el.issueDescription.value.trim();
     const issueType = el.issueType.value;
@@ -6469,7 +6536,7 @@ function switchView(viewId) {
 
   function startChecklistRunsSync() {
     if (!isFirebaseLive() || !state.currentUser) return;
-    if (!['admin', 'mod'].includes(state.currentUser.role)) {
+    if (!canUseChecklistForRole()) {
       state.data.checklistRuns = [];
       return;
     }
@@ -6502,7 +6569,14 @@ function switchView(viewId) {
     const fb = window.LAYA_FIREBASE;
     const sdk = fb.sdk;
     const constraints = [sdk.collection(fb.db, 'issues')];
-    if (sdk.orderBy) constraints.push(sdk.orderBy('created_at', 'desc'));
+    const deptScopedQuery = !canManageAllWork() && sdk.where;
+    if (deptScopedQuery) {
+      // Staff/Supervisor load only their department to reduce startup data and avoid exposing other departments.
+      // Do not add orderBy here, so Firestore does not require a composite index.
+      constraints.push(sdk.where('assigned_department', '==', state.currentUser.department || ''));
+    } else if (sdk.orderBy) {
+      constraints.push(sdk.orderBy('created_at', 'desc'));
+    }
     if (sdk.limit) constraints.push(sdk.limit(PERF_LIMITS.issues));
     const q = sdk.query(...constraints);
 
@@ -6623,8 +6697,9 @@ function switchView(viewId) {
         uid: user.uid,
         employee_id: user.employee_id,
         full_name: user.full_name,
-        role: 'mod',
-        department: 'MOD',
+        role: normalizeRole(user.role),
+        department: user.department || 'MOD',
+        position: user.position || getRoleName(user.role),
         is_active: true,
       }));
       renderTeamMembers();
@@ -6633,7 +6708,11 @@ function switchView(viewId) {
     stopUsersSync();
     const fb = window.LAYA_FIREBASE;
     const sdk = fb.sdk;
-    const q = sdk.query(sdk.collection(fb.db, 'users'));
+    const constraints = [sdk.collection(fb.db, 'users')];
+    if (!canManageUsers() && sdk.where) {
+      constraints.push(sdk.where('department', '==', state.currentUser.department || ''));
+    }
+    const q = sdk.query(...constraints);
     state.firebaseUsersUnsub = sdk.onSnapshot(q, (snap) => {
       state.data.teamMembers = snap.docs.map(docSnap => ({ uid: docSnap.id, ...docSnap.data() }))
         .filter(user => user.is_active !== false)
@@ -6657,8 +6736,9 @@ function switchView(viewId) {
       uid: user.uid,
       employee_id: user.employee_id,
       full_name: user.full_name,
-      role: 'mod',
-      department: 'MOD',
+      role: normalizeRole(user.role),
+      department: user.department || 'MOD',
+      position: user.position || getRoleName(user.role),
       is_active: true,
     }));
   }
@@ -6904,30 +6984,131 @@ function humanizeLogAction(action) {
       return;
     }
     const canIssue = canIssueTemporaryPassword();
+    const canEditUsers = canManageUsers();
     const currentUid = String(state.currentUser?.uid || '');
     el.teamMembersList.innerHTML = members.map(member => {
       const memberUid = String(member.uid || '');
+      const roleCode = normalizeRole(member.role);
+      const roleName = getRoleName(roleCode);
+      const deptName = getDepartmentName(member.department || 'MOD');
+      const position = member.position || roleName;
       const mustChange = Boolean(member.password_change_required || member.require_password_change);
       const hasTemp = Boolean(member.temporary_password_issued_at || member.temp_password_active);
+      const inactive = member.is_active === false;
       const badges = [
+        `<span class="team-member-status status-role">${escapeHtml(roleName)}</span>`,
+        `<span class="team-member-status status-dept">${escapeHtml(deptName)}</span>`,
+        inactive ? `<span class="team-member-status status-danger">${txt('ปิดใช้งาน', 'Inactive')}</span>` : '',
         mustChange ? `<span class="team-member-status status-warning">${txt('ต้องเปลี่ยนรหัส', 'Must change password')}</span>` : '',
         hasTemp ? `<span class="team-member-status status-info">${txt('มีรหัสชั่วคราว', 'Temporary password')}</span>` : '',
       ].filter(Boolean).join('');
-      const action = canIssue && memberUid && memberUid !== currentUid
+      const editAction = canEditUsers && memberUid
+        ? `<button type="button" class="btn btn-secondary btn-sm team-member-edit-btn" data-edit-user-management="${escapeHtml(memberUid)}">${txt('แก้สิทธิ์', 'Edit')}</button>`
+        : '';
+      const tempAction = canIssue && memberUid && memberUid !== currentUid
         ? `<button type="button" class="btn btn-primary btn-sm team-member-temp-btn" data-issue-temp-password="${escapeHtml(memberUid)}">${txt('ตั้งรหัสชั่วคราว', 'Issue Temp Password')}</button>`
         : '';
+      const action = [editAction, tempAction].filter(Boolean).join('');
       return `
-      <div class="team-member-item">
+      <div class="team-member-item${inactive ? ' is-inactive' : ''}">
         <div class="team-member-avatar">${member.avatar_url ? `<img src="${escapeHtml(member.avatar_url)}" alt="${escapeHtml(member.full_name || 'User')}" />` : escapeHtml(getUserInitials(member.full_name || '?'))}</div>
         <div class="team-member-main">
           <div class="team-member-name">${escapeHtml(member.full_name || '-')}</div>
-          <div class="team-member-meta">${escapeHtml(getDepartmentName(member.department || 'MOD'))} • ${escapeHtml(member.employee_id || '')}</div>
-          ${badges ? `<div class="team-member-badges">${badges}</div>` : ''}
+          <div class="team-member-meta">${escapeHtml(member.employee_id || '')} • ${escapeHtml(position)}</div>
+          <div class="team-member-badges">${badges}</div>
         </div>
         ${action ? `<div class="team-member-actions">${action}</div>` : ''}
       </div>
     `;
     }).join('');
+  }
+
+  function populateUserManagementSelects(member = {}) {
+    if (el.userRoleEdit) {
+      el.userRoleEdit.innerHTML = ROLES.map(role => `<option value="${escapeHtml(role.code)}">${escapeHtml(currentLang() === 'en' ? role.name : role.name_th)}</option>`).join('');
+      el.userRoleEdit.value = normalizeRole(member.role);
+    }
+    if (el.userDepartmentEdit) {
+      el.userDepartmentEdit.innerHTML = renderDepartmentOptions(USER_DEPARTMENT_CODES);
+      const dept = USER_DEPARTMENT_CODES.includes(member.department) ? member.department : (member.department || 'ENG');
+      el.userDepartmentEdit.value = USER_DEPARTMENT_CODES.includes(dept) ? dept : 'ENG';
+    }
+    if (el.userPositionEdit) el.userPositionEdit.value = member.position || getRoleName(member.role || 'staff');
+    if (el.userActiveEdit) el.userActiveEdit.value = member.is_active === false ? 'false' : 'true';
+  }
+
+  function setUserManagementStatus(message = '', type = 'info') {
+    if (!el.userManagementStatus) return;
+    if (!message) {
+      el.userManagementStatus.className = 'settings-status hidden';
+      el.userManagementStatus.textContent = '';
+      return;
+    }
+    el.userManagementStatus.className = `settings-status ${type}`;
+    el.userManagementStatus.textContent = message;
+  }
+
+  function openUserManagementModal(uid) {
+    if (!canManageUsers() || !el.userManagementModal) return;
+    const member = getTeamMembers().find(item => String(item.uid || '') === String(uid || ''));
+    if (!member) return;
+    state.ui.editingUserUid = String(member.uid || '');
+    if (el.userManagementName) el.userManagementName.textContent = member.full_name || '-';
+    if (el.userManagementEmployeeId) el.userManagementEmployeeId.textContent = `${member.employee_id || '-'} • ${getRoleName(member.role)} • ${getDepartmentName(member.department || 'MOD')}`;
+    populateUserManagementSelects(member);
+    setUserManagementStatus('', 'info');
+    el.userManagementModal.classList.remove('hidden');
+  }
+
+  function closeUserManagementModal(force = false) {
+    if (el.userManagementModal) el.userManagementModal.classList.add('hidden');
+    state.ui.editingUserUid = '';
+    setUserManagementStatus('', 'info');
+  }
+
+  async function saveUserManagementChanges() {
+    if (!canManageUsers()) return;
+    const uid = String(state.ui.editingUserUid || '');
+    const member = getTeamMembers().find(item => String(item.uid || '') === uid);
+    if (!uid || !member) return;
+    const nextRole = normalizeRole(el.userRoleEdit?.value || 'staff');
+    const nextDepartment = el.userDepartmentEdit?.value || 'ENG';
+    const nextPosition = String(el.userPositionEdit?.value || '').trim() || getRoleName(nextRole);
+    const nextActive = String(el.userActiveEdit?.value || 'true') === 'true';
+    if (!USER_DEPARTMENT_CODES.includes(nextDepartment)) {
+      setUserManagementStatus(txt('กรุณาเลือกแผนกให้ถูกต้อง', 'Please choose a valid department'), 'error');
+      return;
+    }
+    if (uid === String(state.currentUser?.uid || '') && nextRole !== 'admin') {
+      setUserManagementStatus(txt('ไม่ควรลดสิทธิ์ Admin ของบัญชีที่กำลังใช้งานอยู่', 'Do not remove Admin from your current account'), 'error');
+      return;
+    }
+    try {
+      setUserManagementStatus(txt('กำลังบันทึกสิทธิ์...', 'Saving user permission...'), 'info');
+      if (isFirebaseLive()) {
+        const fb = window.LAYA_FIREBASE;
+        await fb.sdk.updateDoc(fb.sdk.doc(fb.db, 'users', uid), {
+          role: nextRole,
+          department: nextDepartment,
+          position: nextPosition,
+          is_active: nextActive,
+          updated_at: fb.sdk.serverTimestamp(),
+        });
+      }
+      state.data.teamMembers = (state.data.teamMembers || []).map(item => String(item.uid || '') === uid ? { ...item, role: nextRole, department: nextDepartment, position: nextPosition, is_active: nextActive } : item);
+      if (uid === String(state.currentUser?.uid || '')) {
+        state.currentUser.role = nextRole;
+        state.currentUser.department = nextDepartment;
+        state.currentUser.position = nextPosition;
+        state.currentUser.is_active = nextActive;
+      }
+      renderAll();
+      setUserManagementStatus(txt('บันทึกสิทธิ์เรียบร้อยแล้ว', 'User permission updated'), 'success');
+      setTimeout(() => closeUserManagementModal(), 450);
+    } catch (err) {
+      console.error('save user management failed', err);
+      setUserManagementStatus(txt('บันทึกสิทธิ์ไม่สำเร็จ ตรวจสอบ Firestore rules', 'Could not update user permission. Check Firestore rules.'), 'error');
+    }
   }
 
   function getMentionContext(text, caretPos) {
@@ -7050,7 +7231,9 @@ function humanizeLogAction(action) {
 
   function getVisibleIssuesForCurrentUser() {
     if (!state.currentUser) return [];
-    return [...state.data.issues];
+    if (canManageAllWork()) return [...state.data.issues];
+    const myDept = String(state.currentUser.department || '');
+    return [...state.data.issues].filter(issue => String(issue.assigned_department || '') === myDept || String(issue.reported_by_uid || '') === String(state.currentUser.uid || ''));
   }
 
   function toDateKey(value) {

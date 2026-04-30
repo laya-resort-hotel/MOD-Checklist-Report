@@ -38,16 +38,47 @@ service cloud.firestore {
       return myUserExists() && myRole() == 'admin';
     }
 
+    function isManager() {
+      return myUserExists() && myRole() == 'manager';
+    }
+
     function isMod() {
       return myUserExists() && myRole() == 'mod';
     }
 
+    function isSupervisor() {
+      return myUserExists() && myRole() == 'supervisor';
+    }
+
+    function isStaff() {
+      return myUserExists() && myRole() == 'staff';
+    }
+
+    // Backward compatibility for users created before v92.
     function isDeptUser() {
       return myUserExists() && myRole() == 'dept_user';
     }
 
     function isViewer() {
       return myUserExists() && myRole() == 'viewer';
+    }
+
+    function canManageAllWork() {
+      return isAdmin() || isManager() || isMod();
+    }
+
+    function canWorkOwnDept() {
+      return isSupervisor() || isStaff() || isDeptUser();
+    }
+
+    function validRole(v) {
+      return v == 'admin' ||
+             v == 'manager' ||
+             v == 'mod' ||
+             v == 'supervisor' ||
+             v == 'staff' ||
+             v == 'dept_user' ||
+             v == 'viewer';
     }
 
     function validDept(v) {
@@ -84,16 +115,14 @@ service cloud.firestore {
     }
 
     function canReadIssueDoc(issueData) {
-      return isAdmin() ||
-             isMod() ||
+      return canManageAllWork() ||
              isViewer() ||
-             (isDeptUser() && issueData.assigned_department == myDept());
+             (canWorkOwnDept() && issueData.assigned_department == myDept());
     }
 
     function canWorkIssueDoc(issueData) {
-      return isAdmin() ||
-             isMod() ||
-             (isDeptUser() && issueData.assigned_department == myDept());
+      return canManageAllWork() ||
+             (canWorkOwnDept() && issueData.assigned_department == myDept());
     }
 
     function validTransition(oldStatus, newStatus) {
@@ -305,10 +334,10 @@ service cloud.firestore {
 
     function issueUpdateIsValid() {
       return (
-        (isAdmin() || isMod()) &&
+        canManageAllWork() &&
         issueUpdateAllowedForAdminOrMod()
       ) || (
-        isDeptUser() &&
+        canWorkOwnDept() &&
         resource.data.assigned_department == myDept() &&
         issueUpdateAllowedForDeptUser()
       );
@@ -372,7 +401,7 @@ service cloud.firestore {
     }
 
     function checklistRunCreateValid() {
-      return (isAdmin() || isMod()) &&
+      return canManageAllWork() &&
         request.resource.data.keys().hasAll([
           'run_no',
           'template_code',
@@ -402,8 +431,7 @@ service cloud.firestore {
     match /users/{uid} {
       allow get: if signedIn() && (
         request.auth.uid == uid ||
-        isAdmin() ||
-        isMod()
+        canManageAllWork()
       );
 
       allow list: if signedIn();
@@ -452,18 +480,12 @@ service cloud.firestore {
         ]) &&
         request.resource.data.employee_id is string &&
         request.resource.data.full_name is string &&
-        (
-          (
-            request.resource.data.role == 'mod' &&
-            request.resource.data.department == 'MOD'
-          ) || (
-            request.resource.data.role == 'dept_user' &&
-            request.resource.data.department is string &&
-            validDept(request.resource.data.department) &&
-            request.resource.data.department != 'MOD' &&
-            request.resource.data.department != 'ADMIN'
-          )
-        ) &&
+        validRole(request.resource.data.role) &&
+        request.resource.data.role == 'staff' &&
+        request.resource.data.department is string &&
+        validDept(request.resource.data.department) &&
+        request.resource.data.department != 'MOD' &&
+        request.resource.data.department != 'ADMIN' &&
         request.resource.data.position is string &&
         request.resource.data.is_active == true &&
         request.resource.data.phone is string &&
@@ -493,6 +515,8 @@ service cloud.firestore {
           'temporary_password_issued_by_uid'
         ]) &&
         request.resource.data.role == resource.data.role &&
+        request.resource.data.department == resource.data.department &&
+        request.resource.data.position == resource.data.position &&
         request.resource.data.employee_id == resource.data.employee_id &&
         request.resource.data.is_active == resource.data.is_active &&
         request.resource.data.avatar_storage_path is string &&
@@ -518,7 +542,7 @@ service cloud.firestore {
 
     match /checklist_templates/{templateId} {
       allow read: if signedIn();
-      allow create, update: if isAdmin() || isMod();
+      allow create, update: if canManageAllWork();
       allow delete: if isAdmin() || (isMod() && resource.data.created_by_uid == request.auth.uid);
     }
 
@@ -527,10 +551,10 @@ service cloud.firestore {
     ========================== */
 
     match /checklist_runs/{runId} {
-      allow get, list: if isAdmin() || isMod();
+      allow get, list: if canManageAllWork();
       allow create: if checklistRunCreateValid();
 
-      allow update: if (isAdmin() || isMod()) &&
+      allow update: if canManageAllWork() &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'status',
           'submitted_at',
@@ -547,9 +571,9 @@ service cloud.firestore {
       allow delete: if false;
 
       match /answers/{answerId} {
-        allow get, list: if isAdmin() || isMod();
+        allow get, list: if canManageAllWork();
 
-        allow create: if (isAdmin() || isMod()) &&
+        allow create: if canManageAllWork() &&
           request.resource.data.keys().hasAll([
             'section_code',
             'section_title',
@@ -569,7 +593,7 @@ service cloud.firestore {
           request.resource.data.answered_by_uid == request.auth.uid &&
           request.resource.data.answered_by_name == myName();
 
-        allow update: if (isAdmin() || isMod()) &&
+        allow update: if canManageAllWork() &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'response',
             'note',
@@ -590,8 +614,8 @@ service cloud.firestore {
       }
 
       match /special_form_entries/{entryId} {
-        allow get, list: if isAdmin() || isMod();
-        allow create, update: if isAdmin() || isMod();
+        allow get, list: if canManageAllWork();
+        allow create, update: if canManageAllWork();
         allow delete: if false;
       }
     }
@@ -604,13 +628,12 @@ service cloud.firestore {
       allow get: if signedIn() && canReadIssueDoc(resource.data);
 
       allow list: if signedIn() && (
-        isAdmin() ||
-        isMod() ||
+        canManageAllWork() ||
         isViewer() ||
-        isDeptUser()
+        canWorkOwnDept()
       );
 
-      allow create: if (isAdmin() || isMod()) && issueCreateDataValid();
+      allow create: if canManageAllWork() && issueCreateDataValid();
 
       allow update: if signedIn() &&
         canWorkIssueDoc(resource.data) &&
@@ -649,8 +672,8 @@ service cloud.firestore {
 
 
     match /issue_dedupe/{dedupeKey} {
-      allow get, list: if isAdmin() || isMod();
-      allow create, update: if isAdmin() || isMod();
+      allow get, list: if canManageAllWork();
+      allow create, update: if canManageAllWork();
       allow delete: if isAdmin();
     }
 
@@ -672,8 +695,8 @@ service cloud.firestore {
     ========================== */
 
     match /counters/{counterId} {
-      allow read: if isAdmin() || isMod();
-      allow write: if isAdmin() || isMod();
+      allow read: if canManageAllWork();
+      allow write: if canManageAllWork();
     }
   }
 }

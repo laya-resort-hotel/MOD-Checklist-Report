@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script>
-    window.LAYA_APP_VERSION = 'v91-auto-cache-login';
+    window.LAYA_APP_VERSION = 'v92-role-department-management';
     (function () {
       var VERSION = window.LAYA_APP_VERSION;
       var VERSION_KEY = 'laya_mod_active_version_v1';
@@ -56,12 +56,12 @@
       } catch (err) {}
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=v91-auto-cache-login" />
+  <link rel="stylesheet" href="style.css?v=v92-role-department-management" />
 </head>
 <body>
   <div id="loginScreen" class="login-shell">
     <div class="login-card glass">
-      <img src="assets/logo.png?v=v91-auto-cache-login" alt="Laya Resort Phuket" class="login-logo" />
+      <img src="assets/logo.png?v=v92-role-department-management" alt="Laya Resort Phuket" class="login-logo" />
       <div class="brand-subtitle">MOD Checklist Report</div>
       <h1>Hotel Inspection & Issue Board</h1>
       <div id="authStatus" class="auth-status hidden"></div>
@@ -101,15 +101,18 @@
             <input id="registerFullName" type="text" placeholder="ชื่อ-นามสกุล" />
           </div>
           <div>
-            <label>Access Type</label>
+            <label>Role</label>
             <select id="registerRole">
-              <option value="mod">MOD</option>
-              <option value="dept_user">Department User</option>
+              <option value="staff">Staff</option>
             </select>
           </div>
           <div>
             <label>Department</label>
             <select id="registerDepartment"></select>
+          </div>
+          <div>
+            <label>Position</label>
+            <input id="registerPosition" type="text" placeholder="เช่น FO Staff / HK Supervisor" />
           </div>
           <div>
             <label>Password</label>
@@ -140,7 +143,7 @@
   <div id="appShell" class="app-shell hidden">
     <aside class="sidebar glass desktop-only">
       <div class="sidebar-brand">
-        <img src="assets/logo.png?v=v91-auto-cache-login" alt="Laya Resort Phuket" class="sidebar-logo" />
+        <img src="assets/logo.png?v=v92-role-department-management" alt="Laya Resort Phuket" class="sidebar-logo" />
       </div>
       <nav class="sidebar-nav">
         <button class="nav-link active" data-view="boardView">Board</button>
@@ -430,6 +433,10 @@
                     <div id="settingsDepartment" class="settings-readout" data-kind="department">-</div>
                   </div>
                   <div class="full-span">
+                    <label>Position</label>
+                    <div id="settingsPosition" class="settings-readout" data-kind="position">-</div>
+                  </div>
+                  <div class="full-span">
                     <label>Full Name</label>
                     <div id="settingsFullNameReadout" class="settings-readout" data-kind="full-name">-</div>
                     <div class="settings-inline-actions">
@@ -470,10 +477,10 @@
           <div id="settingsAdminToolsPanel" class="panel glass hidden">
             <div class="panel-header">
               <h3>Admin Tools</h3>
-              <p class="muted">Open team members and issue temporary passwords for staff.</p>
+              <p class="muted">Manage team role, department, position, status, and temporary passwords.</p>
             </div>
             <div class="stack">
-              <button id="openTeamMembersFromSettings" class="btn btn-secondary" type="button">Open Team Members</button>
+              <button id="openTeamMembersFromSettings" class="btn btn-secondary" type="button">Manage Users</button>
             </div>
           </div>
         </div>
@@ -501,8 +508,8 @@
 
           <div class="panel glass">
             <div class="panel-header">
-              <h3>Team Members</h3>
-              <p class="muted">ผู้ใช้ทั้งหมดของระบบนี้</p>
+              <h3>User Role & Department Management</h3>
+              <p class="muted">Role ใช้คุมสิทธิ์ • Department ใช้ส่งงาน/แจ้งเตือน • Position ใช้โชว์ตำแหน่งจริง</p>
             </div>
             <div id="teamMembersList" class="team-member-list"></div>
           </div>
@@ -628,9 +635,48 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=v91-auto-cache-login"></script>
-  <script type="module" src="js/firebase-init.js?v=v91-auto-cache-login"></script>
-  <script src="js/app.js?v=v91-auto-cache-login"></script>
+  <div id="userManagementModal" class="modal hidden">
+    <div class="modal-backdrop" data-close-user-management-modal="true"></div>
+    <div class="modal-card glass settings-editor-card user-management-card">
+      <button id="closeUserManagementModalBtn" class="modal-close" type="button">×</button>
+      <h3 id="userManagementTitle">แก้ไข Role / Department</h3>
+      <p id="userManagementMessage" class="muted">Admin เท่านั้นที่แก้สิทธิ์ แผนก และตำแหน่งของพนักงานได้</p>
+      <div class="user-management-target">
+        <strong id="userManagementName">-</strong>
+        <span id="userManagementEmployeeId">-</span>
+      </div>
+      <div class="form-grid settings-form-grid">
+        <div>
+          <label id="userRoleEditLabel">Role</label>
+          <select id="userRoleEdit"></select>
+        </div>
+        <div>
+          <label id="userDepartmentEditLabel">Department</label>
+          <select id="userDepartmentEdit"></select>
+        </div>
+        <div class="full-span">
+          <label id="userPositionEditLabel">Position</label>
+          <input id="userPositionEdit" type="text" placeholder="เช่น FO Staff / HK Supervisor / MOD" />
+        </div>
+        <div class="full-span">
+          <label id="userActiveEditLabel">Status</label>
+          <select id="userActiveEdit">
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
+      </div>
+      <div id="userManagementStatus" class="settings-status hidden"></div>
+      <div class="password-confirm-actions">
+        <button id="cancelUserManagementBtn" class="btn btn-ghost" type="button">ยกเลิก</button>
+        <button id="saveUserManagementBtn" class="btn btn-primary" type="button">บันทึกสิทธิ์</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/firebase-config.js?v=v92-role-department-management"></script>
+  <script type="module" src="js/firebase-init.js?v=v92-role-department-management"></script>
+  <script src="js/app.js?v=v92-role-department-management"></script>
 
   <div id="tempPasswordResultModal" class="modal hidden">
     <div class="modal-backdrop" data-close-temp-password-modal="true"></div>

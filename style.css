@@ -2465,3 +2465,21 @@ input:not([type="checkbox"]):not([type="radio"]) {
   font-size: 12px;
   color: var(--muted);
 }
+
+
+/* PATCH v92: Role / Department / Position management */
+.user-management-card{max-width:540px;}
+.user-management-target{display:flex;flex-direction:column;gap:4px;margin:12px 0 14px;padding:12px 14px;border-radius:16px;background:rgba(36,53,44,.07);border:1px solid rgba(36,53,44,.10);}
+.user-management-target strong{font-size:18px;color:var(--text);}
+.user-management-target span{font-size:13px;color:var(--muted);}
+.team-member-item.is-inactive{opacity:.58;filter:saturate(.7);}
+.team-member-status.status-role{background:rgba(36,53,44,.12);color:#24352c;}
+.team-member-status.status-dept{background:rgba(181,151,96,.14);color:#82653a;}
+.team-member-status.status-danger{background:rgba(180,60,60,.13);color:#9f2d2d;}
+.team-member-edit-btn{white-space:nowrap;min-width:92px;}
+.team-member-actions{gap:8px;flex-wrap:wrap;}
+.settings-readout[data-kind="position"]{font-weight:700;color:#24352c;}
+@media (max-width:860px){
+  .team-member-actions{grid-column:2 / -1;justify-content:flex-start;margin-top:10px;}
+  .team-member-edit-btn,.team-member-temp-btn{min-width:0;width:100%;}
+}

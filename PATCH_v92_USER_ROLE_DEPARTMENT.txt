@@ -1,0 +1,34 @@
+MOD Checklist Report
+Patch v92 – User Role & Department Management
+
+หลักการ:
+- Role = คุมสิทธิ์ในระบบ
+- Department = ใช้ส่งงาน / แจ้งเตือน / filter งานตามแผนก
+- Position = ใช้โชว์ตำแหน่งจริงของพนักงาน
+
+สิ่งที่เพิ่ม:
+1. เพิ่ม role ใหม่: Admin, Manager, MOD, Supervisor, Staff
+2. สมัครสมาชิกใหม่จะเป็น role Staff เสมอ ไม่ให้ทุกคนเป็น MOD อัตโนมัติ
+3. เพิ่ม Department และ Position ในข้อมูลผู้ใช้
+4. หน้า Settings แสดง Role / Department / Position แบบอ่านอย่างเดียว
+5. Admin มีเมนู User Management สำหรับแก้ Role, Department, Position, Active/Inactive
+6. Admin ยังสามารถตั้งรหัสชั่วคราวให้พนักงานได้
+7. Staff/Supervisor โหลดเฉพาะงานของแผนกตัวเองเพื่อลดข้อมูลตอนเข้าแอพ
+8. Admin/Manager/MOD เห็นงานรวมและใช้งาน Checklist / New Issue ได้
+9. ปรับ Firestore rules รองรับ role ใหม่และการแก้สิทธิ์โดย Admin
+10. อัป cache version เป็น v92-role-department-management
+
+ไฟล์ที่ต้องอัปทับ:
+- index.html
+- app.js
+- js/app.js
+- style.css
+- sw.js
+- firestore.rules
+
+หลังอัปขึ้น GitHub:
+1. เปิดเว็บ
+2. ระบบจะ reload/refresh cache อัตโนมัติจาก version v92
+3. เข้าด้วยบัญชี Admin
+4. ไป Settings > Manage Users
+5. แก้ Role / Department / Position ให้แต่ละชื่อ
