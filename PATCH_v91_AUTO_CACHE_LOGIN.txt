@@ -1,0 +1,13 @@
+MOD Checklist Patch v91 – Auto Cache on Login
+
+Changed:
+- index.html: adds app version and early one-time version refresh.
+- index.html: versioned style/script/logo URLs to avoid stale cache.
+- js/app.js and app.js: silently clears browser CacheStorage before login while preserving dashboard data cache.
+- sw.js: new cache name; navigation + JS/CSS/JSON use network-first/no-store.
+
+Upload changed files:
+index.html
+sw.js
+app.js
+js/app.js

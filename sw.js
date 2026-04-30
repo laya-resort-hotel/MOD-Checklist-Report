@@ -1,14 +1,15 @@
-const CACHE_NAME = 'laya-mod-v90-light-startup-data';
+const CACHE_NAME = 'laya-mod-v91-auto-cache-login';
+const APP_VERSION = 'v91-auto-cache-login';
 const APP_SHELL = [
   './',
   './index.html',
-  './style.css?v=v90-light-startup',
+  './style.css?v=' + APP_VERSION,
   './manifest.webmanifest',
-  './assets/logo.png',
-  './data/checklist_templates.json',
-  './js/app.js?v=v90-light-startup',
-  './js/firebase-config.js',
-  './js/firebase-init.js?v=v90-light-startup'
+  './assets/logo.png?v=' + APP_VERSION,
+  './data/checklist_templates.json?v=' + APP_VERSION,
+  './js/app.js?v=' + APP_VERSION,
+  './js/firebase-config.js?v=' + APP_VERSION,
+  './js/firebase-init.js?v=' + APP_VERSION
 ];
 
 self.addEventListener('install', (event) => {
@@ -28,21 +29,27 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-function isCodeOrStyle(req) {
-  const url = new URL(req.url);
-  return /\.(css|js)$/i.test(url.pathname);
-}
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data && event.data.type === 'CLEAR_OLD_CACHES') {
+    event.waitUntil(
+      caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+    );
+  }
+});
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
+  const url = new URL(req.url);
   const isNavigation = req.mode === 'navigate';
-  const isSameOrigin = new URL(req.url).origin === self.location.origin;
+  const isSameOrigin = url.origin === self.location.origin;
+  const isCodeAsset = isSameOrigin && /\.(?:html|js|css|json)$/i.test(url.pathname);
 
   if (isNavigation) {
     event.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-store' })
         .then((resp) => {
           const copy = resp.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy)).catch(() => {});
@@ -53,10 +60,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // v90: JS/CSS should be network-first so GitHub updates do not get stuck behind old cache.
-  if (isSameOrigin && isCodeOrStyle(req)) {
+  if (isCodeAsset) {
     event.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-store' })
         .then((resp) => {
           if (resp && resp.ok) {
             const copy = resp.clone();

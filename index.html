@@ -9,12 +9,59 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=v90-light-startup" />
+  <script>
+    window.LAYA_APP_VERSION = 'v91-auto-cache-login';
+    (function () {
+      var VERSION = window.LAYA_APP_VERSION;
+      var VERSION_KEY = 'laya_mod_active_version_v1';
+      var REFRESH_KEY = 'laya_mod_version_refreshing_v1';
+      function clearBrowserCaches() {
+        var tasks = [];
+        try {
+          if ('caches' in window) {
+            tasks.push(caches.keys().then(function (keys) {
+              return Promise.all(keys.map(function (key) { return caches.delete(key); }));
+            }));
+          }
+        } catch (err) {}
+        try {
+          if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+            tasks.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+              return Promise.all(regs.map(function (reg) {
+                return reg.update ? reg.update().catch(function () {}) : Promise.resolve();
+              }));
+            }));
+          }
+        } catch (err) {}
+        return Promise.allSettled(tasks);
+      }
+      try {
+        var lastVersion = localStorage.getItem(VERSION_KEY);
+        var alreadyRefreshing = sessionStorage.getItem(REFRESH_KEY) === VERSION;
+        var url = new URL(window.location.href);
+        var alreadyReloaded = url.searchParams.get('app_refresh') === VERSION;
+        if (lastVersion !== VERSION && !alreadyRefreshing && !alreadyReloaded) {
+          sessionStorage.setItem(REFRESH_KEY, VERSION);
+          clearBrowserCaches().then(function () {
+            localStorage.setItem(VERSION_KEY, VERSION);
+            url.searchParams.set('app_refresh', VERSION);
+            window.location.replace(url.toString());
+          }).catch(function () {
+            localStorage.setItem(VERSION_KEY, VERSION);
+          });
+        } else {
+          if (lastVersion !== VERSION) localStorage.setItem(VERSION_KEY, VERSION);
+          if (alreadyReloaded) sessionStorage.removeItem(REFRESH_KEY);
+        }
+      } catch (err) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="style.css?v=v91-auto-cache-login" />
 </head>
 <body>
   <div id="loginScreen" class="login-shell">
     <div class="login-card glass">
-      <img src="assets/logo.png" alt="Laya Resort Phuket" class="login-logo" />
+      <img src="assets/logo.png?v=v91-auto-cache-login" alt="Laya Resort Phuket" class="login-logo" />
       <div class="brand-subtitle">MOD Checklist Report</div>
       <h1>Hotel Inspection & Issue Board</h1>
       <div id="authStatus" class="auth-status hidden"></div>
@@ -93,7 +140,7 @@
   <div id="appShell" class="app-shell hidden">
     <aside class="sidebar glass desktop-only">
       <div class="sidebar-brand">
-        <img src="assets/logo.png" alt="Laya Resort Phuket" class="sidebar-logo" />
+        <img src="assets/logo.png?v=v91-auto-cache-login" alt="Laya Resort Phuket" class="sidebar-logo" />
       </div>
       <nav class="sidebar-nav">
         <button class="nav-link active" data-view="boardView">Board</button>
@@ -581,9 +628,9 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js"></script>
-  <script type="module" src="js/firebase-init.js?v=v90-light-startup"></script>
-  <script src="js/app.js?v=v90-light-startup"></script>
+  <script src="js/firebase-config.js?v=v91-auto-cache-login"></script>
+  <script type="module" src="js/firebase-init.js?v=v91-auto-cache-login"></script>
+  <script src="js/app.js?v=v91-auto-cache-login"></script>
 
   <div id="tempPasswordResultModal" class="modal hidden">
     <div class="modal-backdrop" data-close-temp-password-modal="true"></div>
