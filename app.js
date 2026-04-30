@@ -220,7 +220,7 @@
   };
 
   const el = {};
-  const APP_VERSION = 'v82-storage-quota-safe'; // 'v77-desktop-login-compat';
+  const APP_VERSION = 'v88-performance-fast-load'; // Performance patch: lazy Excel + bounded Firestore reads
 
   function safeClone(value) {
     try {
@@ -962,7 +962,14 @@
   }
 ];
 
-  const FIREBASE_BOOT_TIMEOUT_MS = 8000;
+  const FIREBASE_BOOT_TIMEOUT_MS = 14000;
+  const PERF_LIMITS = {
+    issues: 180,
+    checklistRuns: 80,
+    usageLogs: 200,
+    mentionAlerts: 50,
+  };
+  let xlsxLoadPromise = null;
   let firebaseBootWatchdog = null;
   let firebaseBootGraceUntil = 0;
 
@@ -2021,7 +2028,7 @@
     let loadedTemplates = [];
     try {
       const versionKey = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1';
-      const res = await fetch(`./data/checklist_templates.json?v=${encodeURIComponent(versionKey)}`, { cache: 'no-store' });
+      const res = await fetch(`./data/checklist_templates.json?v=${encodeURIComponent(versionKey)}`, { cache: 'default' });
       if (!res.ok) throw new Error(`template_fetch_failed_${res.status}`);
       const data = await res.json();
       loadedTemplates = Array.isArray(data?.templates) ? data.templates : [];
@@ -5500,10 +5507,12 @@ function switchView(viewId) {
     if (isFirebaseLive() && window.LAYA_FIREBASE?.sdk?.collectionGroup && window.LAYA_FIREBASE?.sdk?.getDocs) {
       const fb = window.LAYA_FIREBASE;
       const sdk = fb.sdk;
-      const q = sdk.query(
+      const constraints = [
         sdk.collectionGroup(fb.db, 'comments'),
         sdk.where('mentions', 'array-contains', state.currentUser.full_name)
-      );
+      ];
+      if (sdk.limit) constraints.push(sdk.limit(PERF_LIMITS.mentionAlerts));
+      const q = sdk.query(...constraints);
       const snap = await sdk.getDocs(q);
       return snap.docs.map(docSnap => {
         const data = docSnap.data() || {};
@@ -6256,7 +6265,10 @@ function switchView(viewId) {
     stopChecklistRunsSync();
     const fb = window.LAYA_FIREBASE;
     const sdk = fb.sdk;
-    const q = sdk.query(sdk.collection(fb.db, 'checklist_runs'));
+    const constraints = [sdk.collection(fb.db, 'checklist_runs')];
+    if (sdk.orderBy) constraints.push(sdk.orderBy('submitted_at', 'desc'));
+    if (sdk.limit) constraints.push(sdk.limit(PERF_LIMITS.checklistRuns));
+    const q = sdk.query(...constraints);
     state.firebaseChecklistRunsUnsub = sdk.onSnapshot(q, (snap) => {
       state.data.checklistRuns = snap.docs.map(normalizeChecklistRunDoc).sort((a, b) => new Date(b.submitted_at || b.created_at || 0) - new Date(a.submitted_at || a.created_at || 0));
       renderBoard();
@@ -6268,7 +6280,10 @@ function switchView(viewId) {
     stopIssueSync();
     const fb = window.LAYA_FIREBASE;
     const sdk = fb.sdk;
-    const q = sdk.query(sdk.collection(fb.db, 'issues'));
+    const constraints = [sdk.collection(fb.db, 'issues')];
+    if (sdk.orderBy) constraints.push(sdk.orderBy('created_at', 'desc'));
+    if (sdk.limit) constraints.push(sdk.limit(PERF_LIMITS.issues));
+    const q = sdk.query(...constraints);
 
     state.firebaseIssuesUnsub = sdk.onSnapshot(q, (snap) => {
       state.data.issues = snap.docs.map(normalizeIssueDoc);
@@ -6439,9 +6454,11 @@ function switchView(viewId) {
     stopUsageLogsSync();
     const fb = window.LAYA_FIREBASE;
     const sdk = fb.sdk;
-    const q = sdk.query(sdk.collection(fb.db, 'usage_logs'), sdk.orderBy('created_at', 'desc'));
+    const constraints = [sdk.collection(fb.db, 'usage_logs'), sdk.orderBy('created_at', 'desc')];
+    if (sdk.limit) constraints.push(sdk.limit(PERF_LIMITS.usageLogs));
+    const q = sdk.query(...constraints);
     state.firebaseUsageLogsUnsub = sdk.onSnapshot(q, (snap) => {
-      state.data.usageLogs = snap.docs.map(normalizeUsageLogDoc).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).slice(0, 400);
+      state.data.usageLogs = snap.docs.map(normalizeUsageLogDoc).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
       if (state.ui.activeView === 'logView') renderUsageLogs();
       if (state.ui.activeView === 'activityView') renderActivity();
     }, (err) => {
@@ -6492,7 +6509,7 @@ function humanizeLogAction(action) {
       .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   }
 
-  function exportUsageLogsToExcel() {
+  async function exportUsageLogsToExcel() {
     const rows = getFilteredUsageLogs();
     if (!rows.length) {
       alert(txt('ยังไม่มี usage log สำหรับ export', 'No usage log available for export'));
@@ -6500,8 +6517,14 @@ function humanizeLogAction(action) {
     }
 
     if (!window.XLSX) {
-      alert(txt('ยังโหลดระบบ Export Excel ไม่สำเร็จ ลองรีเฟรชหน้าเว็บอีกครั้ง', 'Excel export is not ready yet. Please refresh the page and try again.'));
-      return;
+      try {
+        setAuthStatus(txt('กำลังโหลดระบบ Export Excel...', 'Loading Excel export...'), 'info');
+        await loadXlsxLibrary();
+      } catch (err) {
+        console.error('xlsx lazy load failed', err);
+        alert(txt('โหลดระบบ Export Excel ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', 'Excel export could not be loaded. Please check the internet connection and try again.'));
+        return;
+      }
     }
 
     const exportRows = rows.map((item, index) => ({
@@ -6543,6 +6566,29 @@ function humanizeLogAction(action) {
     const hh = String(stamp.getHours()).padStart(2, '0');
     const mm = String(stamp.getMinutes()).padStart(2, '0');
     window.XLSX.writeFile(wb, `usage_logs_${y}${m}${d}_${hh}${mm}.xlsx`);
+  }
+
+
+  function loadXlsxLibrary() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (xlsxLoadPromise) return xlsxLoadPromise;
+    xlsxLoadPromise = new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[data-laya-xlsx-loader="true"]');
+      if (existing) {
+        existing.addEventListener('load', () => resolve(window.XLSX), { once: true });
+        existing.addEventListener('error', reject, { once: true });
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      script.async = true;
+      script.defer = true;
+      script.dataset.layaXlsxLoader = 'true';
+      script.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('xlsx_not_available'));
+      script.onerror = () => reject(new Error('xlsx_script_failed'));
+      document.head.appendChild(script);
+    });
+    return xlsxLoadPromise;
   }
 
 

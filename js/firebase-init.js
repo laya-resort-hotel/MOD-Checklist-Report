@@ -1,5 +1,4 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import { getAnalytics, isSupported as analyticsSupported } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics.js';
 import {
   getAuth,
   setPersistence,
@@ -31,7 +30,8 @@ import {
   orderBy,
   onSnapshot,
   runTransaction,
-  increment
+  increment,
+  limit
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import {
   getStorage,
@@ -86,12 +86,7 @@ async function boot() {
         persistenceMode = 'memory';
       }
     }
-
-    let analytics = null;
-    try {
-      const ok = await analyticsSupported();
-      if (ok) analytics = getAnalytics(app);
-    } catch (_) {}
+    const analytics = null;
 
     window.LAYA_FIREBASE = {
       ready: true,
@@ -129,6 +124,7 @@ async function boot() {
         onSnapshot,
         runTransaction,
         increment,
+        limit,
         storageRef,
         uploadString,
         uploadBytes,
