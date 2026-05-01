@@ -1,0 +1,23 @@
+PATCH v97 – Reporter Visibility + Staff Permission Fix
+
+Purpose:
+- Fix Staff/Supervisor creating an issue for another department and then not seeing their own issue on the board.
+- Fix Firestore permission risk when a Staff user creates a new Issue and the first activity document is created in the same transaction.
+- Allow the reporter to read and comment on their own issue even if it is assigned to another department.
+- Keep work control safe: Staff/Supervisor can still update/close only issues assigned to their own department; Admin/Manager/MOD can manage all work.
+- Tighten issue_counter writes so Active users can only increment the issue counter by 1.
+- Align Storage image upload limit with New Issue UI hint: image attachments up to 10MB.
+
+Changed files:
+- index.html
+- app.js
+- js/app.js
+- sw.js
+- firestore.rules
+- storage.rules
+
+Important deployment steps:
+1. Upload changed web files to GitHub Pages.
+2. Update Firestore rules in Firebase Console.
+3. Update Storage rules in Firebase Console.
+4. Test with a Staff account by creating an issue assigned to another department, then confirm the issue remains visible in that Staff user's board.

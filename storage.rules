@@ -13,8 +13,8 @@ service firebase.storage {
       return request.resource != null && request.resource.contentType.matches('video/.*');
     }
 
-    function under5MB() {
-      return request.resource != null && request.resource.size < 5 * 1024 * 1024;
+    function under10MB() {
+      return request.resource != null && request.resource.size < 10 * 1024 * 1024;
     }
 
     function under200MB() {
@@ -23,27 +23,27 @@ service firebase.storage {
 
     match /issue_photos/{uid}/{issueId}/{allPaths=**} {
       allow read: if signedIn();
-      allow write: if signedIn() && request.auth.uid == uid && isImage() && under5MB();
+      allow write: if signedIn() && request.auth.uid == uid && isImage() && under10MB();
     }
 
     match /checklist_photos/{uid}/{runId}/{allPaths=**} {
       allow read: if signedIn();
-      allow write: if signedIn() && request.auth.uid == uid && isImage() && under5MB();
+      allow write: if signedIn() && request.auth.uid == uid && isImage() && under10MB();
     }
 
     match /issue_videos/{uid}/{issueId}/{allPaths=**} {
       allow read: if signedIn();
-      allow write: if signedIn() && request.auth.uid == uid && ((isVideo() && under200MB()) || (isImage() && under5MB()));
+      allow write: if signedIn() && request.auth.uid == uid && ((isVideo() && under200MB()) || (isImage() && under10MB()));
     }
 
     match /comment_photos/{uid}/{issueId}/{allPaths=**} {
       allow read: if signedIn();
-      allow write: if signedIn() && request.auth.uid == uid && isImage() && under5MB();
+      allow write: if signedIn() && request.auth.uid == uid && isImage() && under10MB();
     }
 
     match /profile_photos/{uid}/{allPaths=**} {
       allow read: if signedIn();
-      allow write: if signedIn() && request.auth.uid == uid && isImage() && under5MB();
+      allow write: if signedIn() && request.auth.uid == uid && isImage() && under10MB();
     }
 
     match /{allPaths=**} {

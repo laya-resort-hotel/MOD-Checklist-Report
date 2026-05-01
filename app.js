@@ -6624,21 +6624,15 @@ function switchView(viewId) {
     renderBoard();
     const fb = window.LAYA_FIREBASE;
     const sdk = fb.sdk;
-    const constraints = [sdk.collection(fb.db, 'issues')];
-    const deptScopedQuery = !canManageAllWork() && sdk.where;
-    if (deptScopedQuery) {
-      // Staff/Supervisor load only their department to reduce startup data and avoid exposing other departments.
-      // Do not add orderBy here, so Firestore does not require a composite index.
-      constraints.push(sdk.where('assigned_department', '==', state.currentUser.department || ''));
-    } else if (sdk.orderBy) {
-      constraints.push(sdk.orderBy('created_at', 'desc'));
-    }
-    if (sdk.limit) constraints.push(sdk.limit(PERF_LIMITS.issues));
-    const q = sdk.query(...constraints);
 
-    state.firebaseIssuesUnsub = sdk.onSnapshot(q, (snap) => {
+    function finishIssueSnapshot(listA = [], listB = []) {
+      const byId = new Map();
+      [...listA, ...listB].forEach(issue => {
+        if (issue && issue.id) byId.set(issue.id, issue);
+      });
       state.ui.issueSyncStatus = 'ready';
-      state.data.issues = snap.docs.map(normalizeIssueDoc);
+      state.data.issues = Array.from(byId.values())
+        .sort((a, b) => new Date(b.created_at || b.updated_at || 0) - new Date(a.created_at || a.updated_at || 0));
       persistFastDashboardCache();
       renderAll();
       queueMentionAlertCheck();
@@ -6647,13 +6641,64 @@ function switchView(viewId) {
         if (!liveIssue) closeIssueModal();
         else renderIssueModalContent(liveIssue);
       }
-    }, (err) => {
+    }
+
+    function handleIssueSnapshotError(err) {
       state.ui.issueSyncStatus = 'error';
       console.error('issues onSnapshot failed', err);
       setAuthStatus('อ่าน Issue จาก Firestore ไม่สำเร็จ', 'error');
       renderSummary();
       renderBoard();
-    });
+    }
+
+    if (!canManageAllWork() && sdk.where) {
+      // v97: Staff/Supervisor ต้องเห็นทั้งงานของแผนกตัวเอง และงานที่ตัวเองเป็นผู้แจ้ง
+      // จึงใช้ 2 realtime queries แล้ว merge ตาม issue id แทนการโหลดเฉพาะ assigned_department อย่างเดียว
+      let deptIssues = [];
+      let reporterIssues = [];
+      let deptReady = false;
+      let reporterReady = false;
+
+      const deptConstraints = [
+        sdk.collection(fb.db, 'issues'),
+        sdk.where('assigned_department', '==', state.currentUser.department || '')
+      ];
+      const reporterConstraints = [
+        sdk.collection(fb.db, 'issues'),
+        sdk.where('reported_by_uid', '==', state.currentUser.uid || '')
+      ];
+      if (sdk.limit) {
+        deptConstraints.push(sdk.limit(PERF_LIMITS.issues));
+        reporterConstraints.push(sdk.limit(PERF_LIMITS.issues));
+      }
+
+      const deptUnsub = sdk.onSnapshot(sdk.query(...deptConstraints), (snap) => {
+        deptReady = true;
+        deptIssues = snap.docs.map(normalizeIssueDoc);
+        if (deptReady && reporterReady) finishIssueSnapshot(deptIssues, reporterIssues);
+      }, handleIssueSnapshotError);
+
+      const reporterUnsub = sdk.onSnapshot(sdk.query(...reporterConstraints), (snap) => {
+        reporterReady = true;
+        reporterIssues = snap.docs.map(normalizeIssueDoc);
+        if (deptReady && reporterReady) finishIssueSnapshot(deptIssues, reporterIssues);
+      }, handleIssueSnapshotError);
+
+      state.firebaseIssuesUnsub = () => {
+        try { deptUnsub(); } catch (_) {}
+        try { reporterUnsub(); } catch (_) {}
+      };
+      return;
+    }
+
+    const constraints = [sdk.collection(fb.db, 'issues')];
+    if (sdk.orderBy) constraints.push(sdk.orderBy('created_at', 'desc'));
+    if (sdk.limit) constraints.push(sdk.limit(PERF_LIMITS.issues));
+    const q = sdk.query(...constraints);
+
+    state.firebaseIssuesUnsub = sdk.onSnapshot(q, (snap) => {
+      finishIssueSnapshot(snap.docs.map(normalizeIssueDoc));
+    }, handleIssueSnapshotError);
   }
 
   function startIssueCommentsSync(issueId) {

@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v96-all-roles-can-post';
-const APP_VERSION = 'v96-all-roles-can-post';
+const CACHE_NAME = 'laya-mod-v97-reporter-visibility-staff-permission';
+const APP_VERSION = 'v97-reporter-visibility-staff-permission';
 const APP_SHELL = [
   './',
   './index.html',

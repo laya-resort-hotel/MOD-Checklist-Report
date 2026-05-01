@@ -130,15 +130,24 @@ service cloud.firestore {
       return v == 'manual' || v == 'checklist';
     }
 
+    function isIssueReporter(issueData) {
+      return signedIn() && issueData.reported_by_uid == request.auth.uid;
+    }
+
     function canReadIssueDoc(issueData) {
       return canManageAllWork() ||
              isViewer() ||
-             (canWorkOwnDept() && issueData.assigned_department == myDept());
+             (canWorkOwnDept() && issueData.assigned_department == myDept()) ||
+             isIssueReporter(issueData);
     }
 
     function canWorkIssueDoc(issueData) {
       return canManageAllWork() ||
              (canWorkOwnDept() && issueData.assigned_department == myDept());
+    }
+
+    function canCommentIssueDoc(issueData) {
+      return canWorkIssueDoc(issueData) || isIssueReporter(issueData);
     }
 
     function validTransition(oldStatus, newStatus) {
@@ -646,7 +655,7 @@ service cloud.firestore {
       allow list: if signedIn() && (
         canManageAllWork() ||
         isViewer() ||
-        canWorkOwnDept()
+        canReadIssueDoc(resource.data)
       );
 
       allow create: if canCreateIssueWork() && issueCreateDataValid();
@@ -665,7 +674,7 @@ service cloud.firestore {
         allow get, list: if signedIn() && canReadIssueDoc(parentIssue().data);
 
         allow create: if signedIn() &&
-          canWorkIssueDoc(parentIssue().data) &&
+          canCommentIssueDoc(parentIssue().data) &&
           commentCreateValid();
 
         allow update, delete: if false;
@@ -676,11 +685,24 @@ service cloud.firestore {
           return get(/databases/$(database)/documents/issues/$(issueId));
         }
 
+        function parentIssueAfter() {
+          return getAfter(/databases/$(database)/documents/issues/$(issueId));
+        }
+
+        function createActivityForNewReportedIssue() {
+          return (request.resource.data.action == 'created' ||
+                  request.resource.data.action == 'created_from_checklist') &&
+                 parentIssueAfter().data.reported_by_uid == request.auth.uid;
+        }
+
         allow get, list: if signedIn() && canReadIssueDoc(parentIssue().data);
 
         allow create: if signedIn() &&
-          canWorkIssueDoc(parentIssue().data) &&
-          activityCreateValid();
+          activityCreateValid() &&
+          (
+            canWorkIssueDoc(parentIssue().data) ||
+            createActivityForNewReportedIssue()
+          );
 
         allow update, delete: if false;
       }
@@ -711,10 +733,27 @@ service cloud.firestore {
     ========================== */
 
     match /counters/{counterId} {
-      // issue_counter ต้องเปิดให้ทุก Active user อ่าน/เพิ่มเลขได้ เพราะทุก Role สร้าง Issue ได้ใน v96
+      // v97: issue_counter เปิดให้ Active user ใช้สร้างเลข Issue ได้ แต่ล็อก field และการเพิ่มเลขให้ปลอดภัยขึ้น
+      function validIssueCounterCreate() {
+        return counterId == 'issue_counter' &&
+          canCreateIssueWork() &&
+          request.resource.data.keys().hasOnly(['name', 'last_number', 'updated_at']) &&
+          request.resource.data.name == 'issue_counter' &&
+          request.resource.data.last_number == 1;
+      }
+
+      function validIssueCounterUpdate() {
+        return counterId == 'issue_counter' &&
+          canCreateIssueWork() &&
+          request.resource.data.keys().hasOnly(['name', 'last_number', 'updated_at']) &&
+          request.resource.data.name == resource.data.name &&
+          request.resource.data.last_number == resource.data.last_number + 1;
+      }
+
       allow get: if canManageAllWork() || (counterId == 'issue_counter' && canCreateIssueWork());
       allow list: if canManageAllWork();
-      allow create, update: if canManageAllWork() || (counterId == 'issue_counter' && canCreateIssueWork());
+      allow create: if canManageAllWork() || validIssueCounterCreate();
+      allow update: if canManageAllWork() || validIssueCounterUpdate();
       allow delete: if isAdmin();
     }
   }
