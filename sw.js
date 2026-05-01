@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v99-department-standardize-fix';
-const APP_VERSION = 'v99-department-standardize-fix';
+const CACHE_NAME = 'laya-mod-v100-ui-ux-polish';
+const APP_VERSION = 'v100-ui-ux-polish';
 const APP_SHELL = [
   './',
   './index.html',

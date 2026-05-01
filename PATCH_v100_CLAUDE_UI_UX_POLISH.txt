@@ -1,0 +1,22 @@
+PATCH v100 – Claude UI/UX Polish
+
+Scope:
+- UI/UX polish only. No Firebase rules change. No data model change.
+- Uses Claude static HTML references for New Issue, Checklist, and Settings while preserving existing IDs and JavaScript logic.
+
+Changed files:
+- index.html: app/cache version bumped to v100-ui-ux-polish.
+- style.css: responsive luxury UI overrides for New Issue, Checklist, Settings, and mobile navigation.
+- sw.js: cache version bumped to v100-ui-ux-polish.
+
+Upload order:
+1. index.html
+2. style.css
+3. sw.js
+4. PATCH_v100_CLAUDE_UI_UX_POLISH.txt (optional note)
+
+After upload:
+- Open the site once. The auto cache refresh should reload the app.
+- Test New Issue > attach photo/video > save.
+- Test Checklist > open template > select Pass/Fail/N/A > submit.
+- Test Settings > profile display > Admin Tools buttons.
