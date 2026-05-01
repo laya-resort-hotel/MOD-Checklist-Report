@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v92-role-department-management';
-const APP_VERSION = 'v92-role-department-management';
+const CACHE_NAME = 'laya-mod-v94-luxury-board-ui';
+const APP_VERSION = 'v94-luxury-board-ui';
 const APP_SHELL = [
   './',
   './index.html',

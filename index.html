@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script>
-    window.LAYA_APP_VERSION = 'v92-role-department-management';
+    window.LAYA_APP_VERSION = 'v94-luxury-board-ui';
     (function () {
       var VERSION = window.LAYA_APP_VERSION;
       var VERSION_KEY = 'laya_mod_active_version_v1';
@@ -56,12 +56,12 @@
       } catch (err) {}
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=v92-role-department-management" />
+  <link rel="stylesheet" href="style.css?v=v94-luxury-board-ui" />
 </head>
 <body>
   <div id="loginScreen" class="login-shell">
     <div class="login-card glass">
-      <img src="assets/logo.png?v=v92-role-department-management" alt="Laya Resort Phuket" class="login-logo" />
+      <img src="assets/logo.png?v=v94-luxury-board-ui" alt="Laya Resort Phuket" class="login-logo" />
       <div class="brand-subtitle">MOD Checklist Report</div>
       <h1>Hotel Inspection & Issue Board</h1>
       <div id="authStatus" class="auth-status hidden"></div>
@@ -143,7 +143,7 @@
   <div id="appShell" class="app-shell hidden">
     <aside class="sidebar glass desktop-only">
       <div class="sidebar-brand">
-        <img src="assets/logo.png?v=v92-role-department-management" alt="Laya Resort Phuket" class="sidebar-logo" />
+        <img src="assets/logo.png?v=v94-luxury-board-ui" alt="Laya Resort Phuket" class="sidebar-logo" />
       </div>
       <nav class="sidebar-nav">
         <button class="nav-link active" data-view="boardView">Board</button>
@@ -481,6 +481,9 @@
             </div>
             <div class="stack">
               <button id="openTeamMembersFromSettings" class="btn btn-secondary" type="button">Manage Users</button>
+              <button id="applyUserProfilePresetBtn" class="btn btn-primary" type="button">อัปเดตชื่อ/ตำแหน่ง/แผนก HOD</button>
+              <div id="userProfilePresetStatus" class="settings-status hidden"></div>
+              <p class="muted small-note">ปุ่มนี้จะอัปเดตเฉพาะบัญชี HOD/Manager ตาม Employee ID ที่สรุปไว้ และจะไม่แตะ ID 24174, 32052, 25000, 25285, 26432</p>
             </div>
           </div>
         </div>
@@ -674,9 +677,9 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=v92-role-department-management"></script>
-  <script type="module" src="js/firebase-init.js?v=v92-role-department-management"></script>
-  <script src="js/app.js?v=v92-role-department-management"></script>
+  <script src="js/firebase-config.js?v=v94-luxury-board-ui"></script>
+  <script type="module" src="js/firebase-init.js?v=v94-luxury-board-ui"></script>
+  <script src="js/app.js?v=v94-luxury-board-ui"></script>
 
   <div id="tempPasswordResultModal" class="modal hidden">
     <div class="modal-backdrop" data-close-temp-password-modal="true"></div>

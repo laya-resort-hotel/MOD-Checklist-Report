@@ -1,0 +1,19 @@
+PATCH v94 – Luxury Board UI Merge
+
+Base: v93 User Profile Bulk Update
+Reference UI: laya-mod-checklist.html
+
+Changed:
+- Updated app version to v94-luxury-board-ui for automatic cache refresh.
+- Switched web font to Cormorant Garamond + DM Sans.
+- Added luxury UI skin inspired by the provided single-file HTML mockup.
+- Applied dark LAYA sidebar, cream topbar, gold accent buttons, luxury stat cards, rounded issue cards, refined filter toolbar.
+- Kept all v93 Firebase, User Role/Department, Bulk Profile Update and app logic intact.
+
+Upload changed files:
+- index.html
+- style.css
+- sw.js
+- PATCH_v94_LUXURY_BOARD_UI.txt
+
+No Firestore rules change is required for this UI-only patch.
