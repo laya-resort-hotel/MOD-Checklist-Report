@@ -93,6 +93,12 @@ service cloud.firestore {
              v == 'SALES' ||
              v == 'REC' ||
              v == 'KIT' ||
+             v == 'FNA' ||
+             v == 'PUR' ||
+             v == 'SPA' ||
+             v == 'IT' ||
+             v == 'GM' ||
+             v == 'ROOMS' ||
              v == 'ADMIN';
     }
 

@@ -1,6 +1,6 @@
 (() => {
   const APP_KEY = 'laya_mod_checklist_v1';
-  const APP_VERSION = window.LAYA_APP_VERSION || 'v92-role-department-management';
+  const APP_VERSION = window.LAYA_APP_VERSION || 'v93-user-profile-bulk-update';
   const APP_VERSION_KEY = 'laya_mod_active_version_v1';
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 
@@ -81,20 +81,26 @@
   }
 
   const DEPARTMENTS = [
-    { code: 'ENG', name: 'Engineering', name_th: 'วิศวกรรม' },
+    { code: 'ENG', name: 'Engineering / Maintenance', name_th: 'วิศวกรรม / ซ่อมบำรุง' },
     { code: 'HK', name: 'Housekeeping', name_th: 'แม่บ้าน' },
     { code: 'FO', name: 'Front Office', name_th: 'ฟร้อนท์ออฟฟิศ' },
     { code: 'FB', name: 'Food & Beverage', name_th: 'อาหารและเครื่องดื่ม' },
     { code: 'SEC', name: 'Security', name_th: 'รักษาความปลอดภัย' },
-    { code: 'HR', name: 'HR', name_th: 'ทรัพยากรบุคคล' },
+    { code: 'HR', name: 'Human Resources', name_th: 'ทรัพยากรบุคคล' },
     { code: 'RSV', name: 'Reservation', name_th: 'สำรองห้องพัก' },
-    { code: 'SALES', name: 'Sales', name_th: 'ฝ่ายขาย' },
+    { code: 'SALES', name: 'Sales & Marketing', name_th: 'ฝ่ายขายและการตลาด' },
     { code: 'REC', name: 'Recreation', name_th: 'สันทนาการ' },
     { code: 'KIT', name: 'Kitchen', name_th: 'ครัว' },
+    { code: 'FNA', name: 'Finance & Accounting', name_th: 'การเงินและบัญชี' },
+    { code: 'PUR', name: 'Purchasing / Procurement', name_th: 'จัดซื้อ / จัดหา' },
+    { code: 'SPA', name: 'Spa & Wellness', name_th: 'สปาและเวลเนส' },
+    { code: 'IT', name: 'Information Technology', name_th: 'เทคโนโลยีสารสนเทศ' },
+    { code: 'GM', name: "Administration / General Manager's Office", name_th: 'ฝ่ายบริหาร / สำนักงานผู้จัดการทั่วไป' },
+    { code: 'ROOMS', name: 'Room Division', name_th: 'รูมดิวิชั่น' },
     { code: 'MOD', name: 'MOD', name_th: 'MOD' },
     { code: 'ADMIN', name: 'Admin', name_th: 'ผู้ดูแลระบบ' },
   ];
-  const WORK_DEPARTMENT_CODES = ['ENG', 'HK', 'FO', 'FB', 'SEC', 'HR', 'RSV', 'SALES', 'REC', 'KIT'];
+  const WORK_DEPARTMENT_CODES = ['ENG', 'HK', 'FO', 'FB', 'SEC', 'HR', 'RSV', 'SALES', 'REC', 'KIT', 'FNA', 'PUR', 'SPA', 'IT', 'GM', 'ROOMS'];
   const USER_DEPARTMENT_CODES = [...WORK_DEPARTMENT_CODES, 'MOD', 'ADMIN'];
   const ALL_DEPARTMENT_CODES = DEPARTMENTS.map(dept => dept.code);
 
@@ -114,6 +120,33 @@
     { uid: 'demo-9904', employee_id: '9904', full_name: 'Mint FO', role: 'manager', department: 'FO', position: 'FO Manager', password: '9904', is_active: true },
     { uid: 'demo-25381', employee_id: '25381', full_name: 'Wuttichai KOJI-NOI-FB', role: 'admin', department: 'FB', position: 'MOD / F&B', password: '25381', is_active: true }
   ];
+
+  const HOD_PROFILE_PRESET = {
+    '25381': { full_name: 'Wuttichai Koji', role: 'admin', department: 'FB', position: 'Assistant Food and Beverage Manager', is_active: true },
+    '26421': { full_name: 'Phatteera Pongsantikul', role: 'manager', department: 'FNA', position: 'Chief Accountant - Residences', is_active: true },
+    '26428': { full_name: 'Maneeral Wisedkanakul', role: 'manager', department: 'HK', position: 'Assistant Executive Housekeeper', is_active: true },
+    '23052': { full_name: 'Siwach Pechdee', role: 'manager', department: 'PUR', position: 'Purchasing Manager', is_active: true },
+    '24202': { full_name: 'Walaipan Chaithap Na Sakun', role: 'manager', department: 'FO', position: 'Front Office Manager - Resort', is_active: true },
+    '23027': { full_name: 'Teeradech Tongpon', role: 'manager', department: 'HR', position: 'Director of Human Resources', is_active: true },
+    '25352': { full_name: 'Supannee Srisawat', role: 'manager', department: 'HK', position: 'Executive Housekeeper', is_active: true },
+    '25340': { full_name: 'Pitak Nammongkol', role: 'manager', department: 'KIT', position: 'Executive Chef', is_active: true },
+    '24127': { full_name: 'Nontachai Sutitapun', role: 'supervisor', department: 'KIT', position: 'Sous Chef - Staff Canteen', is_active: true },
+    '23012': { full_name: 'Dara Sujjawongwanit', role: 'manager', department: 'FNA', position: 'Cluster Financial Controller', is_active: true },
+    '25280': { full_name: 'Natthawut Sungkhiew', role: 'manager', department: 'ENG', position: 'Director of Engineer', is_active: true },
+    '26394': { full_name: 'Sirin Jiraro', role: 'manager', department: 'GM', position: 'Executive Assistant', is_active: true },
+    '23078': { full_name: 'Nattiya Chusriying', role: 'manager', department: 'SPA', position: 'Spa Manager', is_active: true },
+    '23008': { full_name: 'Chayada Soirungrueng', role: 'manager', department: 'SALES', position: 'Digital Marketing Manager', is_active: true },
+    '25369': { full_name: 'Jirapha Kaewjan', role: 'manager', department: 'FNA', position: 'Chief Accountant', is_active: true },
+    '24173': { full_name: 'Rattana Chaichum', role: 'manager', department: 'SALES', position: 'Director of Sales and Marketing', is_active: true },
+    '23024': { full_name: 'DOR - Ritdhibhorn V', role: 'manager', department: 'ROOMS', position: 'Director of Room', is_active: true },
+    '26401': { full_name: 'Boonchart Chaikeaw', role: 'manager', department: 'FB', position: 'Director Of Food and Beverage', is_active: true },
+    '24273': { full_name: 'Chayanit Chusuwan (HM)', role: 'manager', department: 'GM', position: 'Hotel Manager', is_active: true },
+    '26411': { full_name: 'Ms. Natthakarn Watthanapan', role: 'staff', department: 'SEC', position: 'Department User', is_active: true },
+    '10001': { full_name: 'Woody', role: 'manager', department: 'GM', position: 'General Manager', is_active: true },
+    '1001': { full_name: 'Woody', role: 'manager', department: 'GM', position: 'General Manager', is_active: true },
+    '23053': { full_name: 'Pornpen Molen', role: 'manager', department: 'HR', position: 'Assistant HR Manager', is_active: true }
+  };
+  const HOD_PROFILE_SKIPPED_EMPLOYEE_IDS = ['24174', '32052', '25000', '25285', '26432'];
 
   const PRIORITIES = ['low', 'medium', 'high', 'critical'];
   const STATUS_ORDER = { open: 1, in_progress: 2, waiting: 3, closed: 4 };
@@ -1309,6 +1342,7 @@
     setNodeText('#settingsAdminToolsPanel .panel-header h3', 'จัดการผู้ใช้งาน', 'User Management');
     setNodeText('#settingsAdminToolsPanel .panel-header p', 'แก้ Role / Department / Position และออกรหัสชั่วคราวให้พนักงาน', 'Manage role, department, position, and temporary passwords for staff.');
     setNodeText('#openTeamMembersFromSettings', 'จัดการผู้ใช้งาน', 'Manage Users');
+    setNodeText('#applyUserProfilePresetBtn', 'อัปเดตชื่อ/ตำแหน่ง/แผนก HOD', 'Update HOD profiles');
     setNodeText('#logoutBtn', 'ออกจากระบบ', 'Logout');
     setNodeText('#topbarAccountName', 'บัญชีของฉัน', 'My Account');
     setNodeText('#topbarAccountMeta', 'ทีม MOD', 'MOD Team');
@@ -1877,6 +1911,8 @@
       userManagementStatus: qs('#userManagementStatus'),
       settingsAdminToolsPanel: qs('#settingsAdminToolsPanel'),
       openTeamMembersFromSettings: qs('#openTeamMembersFromSettings'),
+      applyUserProfilePresetBtn: qs('#applyUserProfilePresetBtn'),
+      userProfilePresetStatus: qs('#userProfilePresetStatus'),
       settingsProfileAvatarPreview: qs('#settingsProfileAvatarPreview'),
       settingsProfileAvatarImg: qs('#settingsProfileAvatarImg'),
       settingsProfileInitials: qs('#settingsProfileInitials'),
@@ -2049,6 +2085,7 @@
     if (el.openUsageLogFromMore) el.openUsageLogFromMore.addEventListener('click', () => switchView('logView'));
     if (el.openSettingsFromMore) el.openSettingsFromMore.addEventListener('click', () => switchView('settingsView'));
     if (el.openTeamMembersFromSettings) el.openTeamMembersFromSettings.addEventListener('click', handleOpenTeamMembersShortcut);
+    if (el.applyUserProfilePresetBtn) el.applyUserProfilePresetBtn.addEventListener('click', applyHodProfilePreset);
     if (el.backToBoardBtn) el.backToBoardBtn.addEventListener('click', () => switchView('boardView'));
     el.boardFilterChips.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');
@@ -6716,7 +6753,7 @@ function switchView(viewId) {
     state.firebaseUsersUnsub = sdk.onSnapshot(q, (snap) => {
       state.data.teamMembers = snap.docs.map(docSnap => ({ uid: docSnap.id, ...docSnap.data() }))
         .filter(user => user.is_active !== false)
-        .sort((a, b) => String(a.full_name || '').localeCompare(String(b.full_name || ''), 'th'));
+        .sort((a, b) => String(a.full_name || a.fullName || a.displayName || '').localeCompare(String(b.full_name || b.fullName || b.displayName || ''), 'th'));
       renderTeamMembers();
     }, (err) => {
       console.error('users onSnapshot failed', err);
@@ -6976,6 +7013,111 @@ function humanizeLogAction(action) {
     setAuthStatus(txt('โหลด usage log จากข้อมูลในเครื่องแล้ว', 'Loaded usage logs from local data'), 'success');
   }
 
+  function setUserProfilePresetStatus(message = '', type = 'info') {
+    if (!el.userProfilePresetStatus) return;
+    if (!message) {
+      el.userProfilePresetStatus.className = 'settings-status hidden';
+      el.userProfilePresetStatus.textContent = '';
+      return;
+    }
+    el.userProfilePresetStatus.className = `settings-status ${type}`;
+    el.userProfilePresetStatus.textContent = message;
+  }
+
+  function normalizeEmployeeId(value) {
+    return String(value || '').trim();
+  }
+
+  function buildHodProfileUpdate(employeeId, preset) {
+    const fullName = String(preset.full_name || '').trim();
+    const position = String(preset.position || '').trim();
+    const department = String(preset.department || '').trim();
+    const role = normalizeRole(preset.role || 'staff');
+    return {
+      employee_id: employeeId,
+      employeeId,
+      full_name: fullName,
+      fullName,
+      display_name: fullName,
+      displayName: fullName,
+      role,
+      department,
+      position,
+      is_active: preset.is_active !== false,
+    };
+  }
+
+  async function applyHodProfilePreset() {
+    if (!canManageUsers()) {
+      setUserProfilePresetStatus(txt('เฉพาะ Admin เท่านั้นที่อัปเดตชุดข้อมูลนี้ได้', 'Only Admin can apply this update.'), 'error');
+      return;
+    }
+    const members = getTeamMembers();
+    const matched = members
+      .map(member => {
+        const employeeId = normalizeEmployeeId(member.employee_id || member.employeeId);
+        return { member, employeeId, preset: HOD_PROFILE_PRESET[employeeId] || null };
+      })
+      .filter(item => item.employeeId && item.preset && item.member?.uid);
+
+    const skippedStillUnchanged = HOD_PROFILE_SKIPPED_EMPLOYEE_IDS.filter(id => members.some(member => normalizeEmployeeId(member.employee_id || member.employeeId) === id));
+
+    if (!matched.length) {
+      setUserProfilePresetStatus(txt('ไม่พบ Employee ID ที่ตรงกับชุดข้อมูล HOD ในรายการผู้ใช้', 'No matching Employee IDs were found in the user list.'), 'error');
+      return;
+    }
+
+    const confirmText = txt(
+      `ระบบจะอัปเดตชื่อ ตำแหน่ง แผนก และ Role จำนวน ${matched.length} บัญชี\nโดยจะคงค่าเดิมของ ID: ${HOD_PROFILE_SKIPPED_EMPLOYEE_IDS.join(', ')}\nต้องการดำเนินการต่อหรือไม่?`,
+      `This will update name, position, department, and role for ${matched.length} accounts.\nIDs kept unchanged: ${HOD_PROFILE_SKIPPED_EMPLOYEE_IDS.join(', ')}\nContinue?`
+    );
+    if (!confirm(confirmText)) return;
+
+    try {
+      setUserProfilePresetStatus(txt('กำลังอัปเดตข้อมูลผู้ใช้งาน...', 'Updating user profiles...'), 'info');
+      if (isFirebaseLive()) {
+        const fb = window.LAYA_FIREBASE;
+        await Promise.all(matched.map(({ member, employeeId, preset }) => fb.sdk.updateDoc(
+          fb.sdk.doc(fb.db, 'users', member.uid),
+          {
+            ...buildHodProfileUpdate(employeeId, preset),
+            updated_at: fb.sdk.serverTimestamp(),
+            profile_bulk_updated_at: fb.sdk.serverTimestamp(),
+            profile_bulk_updated_by_uid: state.currentUser?.uid || '',
+            profile_bulk_update_version: APP_VERSION,
+          }
+        )));
+      }
+
+      const updateById = new Map(matched.map(({ employeeId, preset }) => [employeeId, buildHodProfileUpdate(employeeId, preset)]));
+      state.data.teamMembers = (state.data.teamMembers || []).map(member => {
+        const employeeId = normalizeEmployeeId(member.employee_id || member.employeeId);
+        const patch = updateById.get(employeeId);
+        return patch ? { ...member, ...patch } : member;
+      });
+      const currentEmployeeId = normalizeEmployeeId(state.currentUser?.employee_id || state.currentUser?.employeeId);
+      if (currentEmployeeId && updateById.has(currentEmployeeId)) {
+        state.currentUser = { ...state.currentUser, ...updateById.get(currentEmployeeId) };
+        persist();
+      }
+      renderAll();
+      const unchangedText = skippedStillUnchanged.length ? ` • ${txt('คงค่าเดิม', 'Unchanged')}: ${skippedStillUnchanged.join(', ')}` : '';
+      setUserProfilePresetStatus(txt(`อัปเดตสำเร็จ ${matched.length} บัญชี${unchangedText}`, `Updated ${matched.length} accounts${unchangedText}`), 'success');
+      recordUsageLog({
+        category: 'admin',
+        action: 'bulk_update_user_profiles',
+        title: 'Updated HOD user profiles',
+        text: `Updated ${matched.length} HOD profiles. Unchanged IDs: ${HOD_PROFILE_SKIPPED_EMPLOYEE_IDS.join(', ')}`,
+        user_uid: state.currentUser?.uid || '',
+        user_name: state.currentUser?.full_name || '',
+        ref_no: 'v93',
+      });
+    } catch (err) {
+      console.error('bulk profile preset update failed', err);
+      setUserProfilePresetStatus(txt('อัปเดตไม่สำเร็จ ตรวจสอบว่าใช้บัญชี Admin และ Firestore rules ถูกต้อง', 'Update failed. Check Admin permission and Firestore rules.'), 'error');
+    }
+  }
+
   function renderTeamMembers() {
     if (!el.teamMembersList) return;
     const members = getTeamMembers();
@@ -6988,6 +7130,7 @@ function humanizeLogAction(action) {
     const currentUid = String(state.currentUser?.uid || '');
     el.teamMembersList.innerHTML = members.map(member => {
       const memberUid = String(member.uid || '');
+      const displayName = member.full_name || member.fullName || member.displayName || member.display_name || '-';
       const roleCode = normalizeRole(member.role);
       const roleName = getRoleName(roleCode);
       const deptName = getDepartmentName(member.department || 'MOD');
@@ -7011,10 +7154,10 @@ function humanizeLogAction(action) {
       const action = [editAction, tempAction].filter(Boolean).join('');
       return `
       <div class="team-member-item${inactive ? ' is-inactive' : ''}">
-        <div class="team-member-avatar">${member.avatar_url ? `<img src="${escapeHtml(member.avatar_url)}" alt="${escapeHtml(member.full_name || 'User')}" />` : escapeHtml(getUserInitials(member.full_name || '?'))}</div>
+        <div class="team-member-avatar">${member.avatar_url ? `<img src="${escapeHtml(member.avatar_url)}" alt="${escapeHtml(displayName || 'User')}" />` : escapeHtml(getUserInitials(displayName || '?'))}</div>
         <div class="team-member-main">
-          <div class="team-member-name">${escapeHtml(member.full_name || '-')}</div>
-          <div class="team-member-meta">${escapeHtml(member.employee_id || '')} • ${escapeHtml(position)}</div>
+          <div class="team-member-name">${escapeHtml(displayName)}</div>
+          <div class="team-member-meta">${escapeHtml(member.employee_id || member.employeeId || '')} • ${escapeHtml(position)}</div>
           <div class="team-member-badges">${badges}</div>
         </div>
         ${action ? `<div class="team-member-actions">${action}</div>` : ''}

@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v94-luxury-board-ui';
-const APP_VERSION = 'v94-luxury-board-ui';
+const CACHE_NAME = 'laya-mod-v93-user-profile-bulk-update';
+const APP_VERSION = 'v93-user-profile-bulk-update';
 const APP_SHELL = [
   './',
   './index.html',

@@ -1,0 +1,21 @@
+# PATCH v93 – User Profile Bulk Update
+
+ฟีเจอร์หลัก:
+- เพิ่มปุ่ม Admin: "อัปเดตชื่อ/ตำแหน่ง/แผนก HOD"
+- อัปเดตข้อมูลผู้ใช้ตาม Employee ID ที่สรุปไว้:
+  full_name, displayName/fullName, role, department, position, is_active
+- Woody 10001 และ 1001 = Manager / General Manager / Administration / General Manager's Office / Active
+- Pornpen Molen 23053 = Manager / Assistant HR Manager / Human Resources / Active
+- คงค่าเดิม ไม่แตะ: 24174, 32052, 25000, 25285, 26432
+- เพิ่ม Department code ใหม่:
+  FNA, PUR, SPA, IT, GM, ROOMS
+- อัปเดต firestore.rules ให้ validDept รองรับ department ใหม่
+
+วิธีใช้:
+1. อัปโหลดไฟล์แพตช์ขึ้น GitHub
+2. อัปเดต firestore.rules ใน Firebase Console
+3. เปิดเว็บด้วยบัญชี Admin
+4. ไปที่ Settings > User Management
+5. กดปุ่ม "อัปเดตชื่อ/ตำแหน่ง/แผนก HOD"
+6. กดยืนยัน
+7. ตรวจดูรายชื่อใน Manage Users อีกครั้ง
