@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v103-media-box-fix';
-const APP_VERSION = 'v103-media-box-fix';
+const CACHE_NAME = 'laya-mod-v104-permission-rules-hardening';
+const APP_VERSION = 'v104-permission-rules-hardening';
 const APP_SHELL = [
   './',
   './index.html',

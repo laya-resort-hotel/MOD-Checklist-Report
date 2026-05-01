@@ -1,0 +1,17 @@
+PATCH v104 – Permission & Rules Hardening
+
+สิ่งที่แก้:
+1. แยกสิทธิ์ใน JS เป็น canViewIssue / canCommentIssue / canManageIssue
+2. Reporter เห็นและคอมเมนต์งานตัวเองได้ แม้งานถูก assign ไปแผนกอื่น
+3. Reporter จะไม่เห็นปุ่มปิดงาน / เริ่มงาน / เพิ่มหลักฐาน หากไม่ใช่แผนกรับงาน
+4. Staff / Supervisor จัดการสถานะได้เฉพาะงานของแผนกตัวเอง
+5. Admin / Manager / MOD ยังจัดการงานได้ทุกแผนก
+6. Firestore rules เพิ่ม canonicalDept() เพื่อกัน department เก่า เช่น Engineering / Maintenance ไม่ตรงกับ ENG
+7. Firestore rules อนุญาต reporter update เฉพาะ comment counters
+8. Activity ของ comment ใช้งานได้สำหรับ reporter
+9. Storage rules แยก create/update/delete เพื่อให้ลบรูปเก่าได้โดยไม่ติด contentType check
+10. เปลี่ยน cache/app version เป็น v104-permission-rules-hardening
+
+ต้องอัปเดต Firebase:
+- Firestore Rules: firestore.rules
+- Storage Rules: storage.rules

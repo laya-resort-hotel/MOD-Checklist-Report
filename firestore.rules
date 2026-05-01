@@ -30,8 +30,30 @@ service cloud.firestore {
       return myUser().data.role;
     }
 
+    function canonicalDept(v) {
+      return v == 'ENG' || v == 'Engineer' || v == 'Engineering' || v == 'Engineering / Maintenance' || v == 'Engineering/Maintenance' || v == 'Maintenance' || v == 'ช่าง' ? 'ENG' :
+             v == 'HK' || v == 'Housekeeping' || v == 'House Keeping' || v == 'แม่บ้าน' ? 'HK' :
+             v == 'FO' || v == 'Front Office' || v == 'Front Office - Resort' ? 'FO' :
+             v == 'FB' || v == 'F&B' || v == 'Food & Beverage' || v == 'Food and Beverage' ? 'FB' :
+             v == 'SEC' || v == 'Security' ? 'SEC' :
+             v == 'HR' || v == 'Human Resources' || v == 'Human Resource' ? 'HR' :
+             v == 'RSV' || v == 'Reservation' || v == 'Reservations' ? 'RSV' :
+             v == 'SALES' || v == 'Sales & Marketing' || v == 'Sales and Marketing' || v == 'Digital Marketing' ? 'SALES' :
+             v == 'REC' || v == 'Recreation' ? 'REC' :
+             v == 'KIT' || v == 'Kitchen' || v == 'Culinary' ? 'KIT' :
+             v == 'FNA' || v == 'Finance & Accounting' || v == 'Finance and Accounting' || v == 'Finance' || v == 'Accounting' ? 'FNA' :
+             v == 'PUR' || v == 'Purchasing / Procurement' || v == 'Purchasing' || v == 'Procurement' ? 'PUR' :
+             v == 'SPA' || v == 'Spa & Wellness' || v == 'Spa' || v == 'Wellness' ? 'SPA' :
+             v == 'IT' || v == 'I.T.' || v == 'IT Department' || v == 'Information Technology' || v == 'Information Technology Department' ? 'IT' :
+             v == 'GM' || v == 'Administration / General Manager\'s Office' || v == 'General Manager\'s Office' || v == 'Administration' || v == 'Executive Office' ? 'GM' :
+             v == 'ROOMS' || v == 'Room Division' || v == 'Rooms Division' || v == 'Director of Room' ? 'ROOMS' :
+             v == 'MOD' ? 'MOD' :
+             v == 'ADMIN' || v == 'Admin' ? 'ADMIN' :
+             v;
+    }
+
     function myDept() {
-      return myUser().data.department;
+      return canonicalDept(myUser().data.department);
     }
 
     function myName() {
@@ -92,24 +114,24 @@ service cloud.firestore {
     }
 
     function validDept(v) {
-      return v == 'MOD' ||
-             v == 'ENG' ||
-             v == 'HK'  ||
-             v == 'FO'  ||
-             v == 'FB'  ||
-             v == 'SEC' ||
-             v == 'HR'  ||
-             v == 'RSV' ||
-             v == 'SALES' ||
-             v == 'REC' ||
-             v == 'KIT' ||
-             v == 'FNA' ||
-             v == 'PUR' ||
-             v == 'SPA' ||
-             v == 'IT' ||
-             v == 'GM' ||
-             v == 'ROOMS' ||
-             v == 'ADMIN';
+      return canonicalDept(v) == 'MOD' ||
+             canonicalDept(v) == 'ENG' ||
+             canonicalDept(v) == 'HK'  ||
+             canonicalDept(v) == 'FO'  ||
+             canonicalDept(v) == 'FB'  ||
+             canonicalDept(v) == 'SEC' ||
+             canonicalDept(v) == 'HR'  ||
+             canonicalDept(v) == 'RSV' ||
+             canonicalDept(v) == 'SALES' ||
+             canonicalDept(v) == 'REC' ||
+             canonicalDept(v) == 'KIT' ||
+             canonicalDept(v) == 'FNA' ||
+             canonicalDept(v) == 'PUR' ||
+             canonicalDept(v) == 'SPA' ||
+             canonicalDept(v) == 'IT' ||
+             canonicalDept(v) == 'GM' ||
+             canonicalDept(v) == 'ROOMS' ||
+             canonicalDept(v) == 'ADMIN';
     }
 
     function validIssueStatus(v) {
@@ -137,13 +159,13 @@ service cloud.firestore {
     function canReadIssueDoc(issueData) {
       return canManageAllWork() ||
              isViewer() ||
-             (canWorkOwnDept() && issueData.assigned_department == myDept()) ||
+             (canWorkOwnDept() && canonicalDept(issueData.assigned_department) == myDept()) ||
              isIssueReporter(issueData);
     }
 
     function canWorkIssueDoc(issueData) {
       return canManageAllWork() ||
-             (canWorkOwnDept() && issueData.assigned_department == myDept());
+             (canWorkOwnDept() && canonicalDept(issueData.assigned_department) == myDept());
     }
 
     function canCommentIssueDoc(issueData) {
@@ -289,6 +311,7 @@ service cloud.firestore {
 
         request.resource.data.assigned_department is string &&
         validDept(request.resource.data.assigned_department) &&
+        request.resource.data.assigned_department == canonicalDept(request.resource.data.assigned_department) &&
 
         request.resource.data.location_text is string &&
 
@@ -357,14 +380,39 @@ service cloud.firestore {
       validTransition(resource.data.status, request.resource.data.status);
     }
 
+    function issueUpdateAllowedForReporterComment() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+
+      return changed.hasOnly([
+        'comment_count',
+        'activity_count',
+        'last_comment_at',
+        'last_activity_at',
+        'updated_at'
+      ]) &&
+      request.resource.data.status == resource.data.status &&
+      request.resource.data.priority == resource.data.priority &&
+      request.resource.data.assigned_department == resource.data.assigned_department &&
+      request.resource.data.cover_photo_url == resource.data.cover_photo_url &&
+      request.resource.data.cover_thumb_url == resource.data.cover_thumb_url &&
+      request.resource.data.after_photos == resource.data.after_photos &&
+      request.resource.data.after_videos == resource.data.after_videos &&
+      request.resource.data.closed_at == resource.data.closed_at &&
+      request.resource.data.closed_by_uid == resource.data.closed_by_uid &&
+      request.resource.data.closed_by_name == resource.data.closed_by_name;
+    }
+
     function issueUpdateIsValid() {
       return (
         canManageAllWork() &&
         issueUpdateAllowedForAdminOrMod()
       ) || (
         canWorkOwnDept() &&
-        resource.data.assigned_department == myDept() &&
+        canonicalDept(resource.data.assigned_department) == myDept() &&
         issueUpdateAllowedForDeptUser()
+      ) || (
+        isIssueReporter(resource.data) &&
+        issueUpdateAllowedForReporterComment()
       );
     }
 
@@ -661,7 +709,6 @@ service cloud.firestore {
       allow create: if canCreateIssueWork() && issueCreateDataValid();
 
       allow update: if signedIn() &&
-        canWorkIssueDoc(resource.data) &&
         issueUpdateIsValid();
 
       allow delete: if isAdmin();
@@ -701,6 +748,7 @@ service cloud.firestore {
           activityCreateValid() &&
           (
             canWorkIssueDoc(parentIssue().data) ||
+            canCommentIssueDoc(parentIssue().data) ||
             createActivityForNewReportedIssue()
           );
 

@@ -1,6 +1,6 @@
 (() => {
   const APP_KEY = 'laya_mod_checklist_v1';
-  const APP_VERSION = window.LAYA_APP_VERSION || 'v99-department-standardize-fix';
+  const APP_VERSION = window.LAYA_APP_VERSION || 'v104-permission-rules-hardening';
   const APP_VERSION_KEY = 'laya_mod_active_version_v1';
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 
@@ -5619,6 +5619,10 @@ function switchView(viewId) {
   function openIssueModal(issueId) {
     const issue = state.data.issues.find(i => i.id === issueId);
     if (!issue) return;
+    if (!canViewIssue(issue)) {
+      alert(txt('คุณไม่มีสิทธิ์เปิดดูงานนี้', 'You do not have permission to view this issue.'));
+      return;
+    }
     state.ui.openIssueId = issueId;
     state.ui.openChecklistRunId = null;
     if (isFirebaseLive()) {
@@ -5668,7 +5672,7 @@ function switchView(viewId) {
             ${canWorkIssue(issue) && issue.status === 'waiting' ? `<button class="btn btn-ghost" data-detail-status="in_progress">${txt('ทำต่อ', 'Resume')}</button>` : ''}
           </div>
 
-          ${canWorkIssue(issue) ? `
+          ${canManageIssue(issue) ? `
             <div class="evidence-box">
               <div class="evidence-box-head">
                 <strong>${txt('หลักฐานส่งงาน', 'Completion evidence')}</strong>
@@ -5686,6 +5690,9 @@ function switchView(viewId) {
               </div>
               <div id="detailEvidenceStatus" class="detail-evidence-status muted">${txt('หลักฐานที่อัปแล้วจะแสดงด้านซ้ายทันที • เลือกรูปได้หลายรูป', 'Uploaded evidence will appear on the left immediately • Multiple images allowed')}</div>
             </div>
+          ` : ''}
+
+          ${canCommentIssue(issue) ? `
             <div class="comment-box">
               <textarea id="detailCommentText" rows="3" placeholder="${txt('พิมพ์คอมเมนต์ หรือพิมพ์ @ ตามด้วยชื่อเพื่อสั่งงาน', 'Type a comment, or use @name to mention a team member')}"></textarea>
               <div id="detailMentionBox" class="mention-box hidden"></div>
@@ -6519,7 +6526,7 @@ function switchView(viewId) {
 
   async function addIssueComment(issueId, message, mentions = []) {
     const issue = state.data.issues.find(i => i.id === issueId);
-    if (!issue || !canWorkIssue(issue)) return;
+    if (!issue || !canCommentIssue(issue)) return;
 
     if (!isFirebaseLive()) {
       const now = new Date().toISOString();
@@ -6567,7 +6574,7 @@ function switchView(viewId) {
         const snap = await tx.get(issueRef);
         if (!snap.exists()) throw new Error('issue_not_found');
         const liveIssue = { id: snap.id, ...snap.data() };
-        if (!canWorkIssue(liveIssue)) throw new Error('permission_denied');
+        if (!canCommentIssue(liveIssue)) throw new Error('permission_denied');
 
         const commentRef = sdk.doc(sdk.collection(fb.db, `issues/${issueId}/comments`));
         const activityRef = sdk.doc(sdk.collection(fb.db, `issues/${issueId}/activity`));
@@ -7696,8 +7703,41 @@ function humanizeLogAction(action) {
     return run.inspection_date || run.submitted_at || run.created_at || '';
   }
 
+  function getCurrentUserDeptCode() {
+    return normalizeDepartmentValue(state.currentUser?.department, '');
+  }
+
+  function isIssueReporter(issue) {
+    return !!(state.currentUser && issue && String(issue.reported_by_uid || '') === String(state.currentUser.uid || ''));
+  }
+
+  function isIssueAssignedToMyDepartment(issue) {
+    if (!state.currentUser || !issue) return false;
+    const myDept = getCurrentUserDeptCode();
+    const issueDept = normalizeDepartmentValue(issue.assigned_department, '');
+    return !!(myDept && issueDept && myDept === issueDept);
+  }
+
+  function canViewIssue(issue) {
+    return !!(state.currentUser && issue && (canManageAllWork() || isIssueAssignedToMyDepartment(issue) || isIssueReporter(issue)));
+  }
+
+  function canCommentIssue(issue) {
+    // Reporter can follow up on their own issue even when it is assigned to another department.
+    // Managing/closing/evidence actions are still reserved for the assigned department or privileged roles.
+    return canViewIssue(issue);
+  }
+
+  function canManageIssue(issue) {
+    // Admin / Manager / MOD can work every issue.
+    // Staff / Supervisor can work only issues assigned to their own department.
+    // Position is display-only and must not grant permissions.
+    return !!(state.currentUser && issue && (canManageAllWork() || isIssueAssignedToMyDepartment(issue)));
+  }
+
   function canWorkIssue(issue) {
-    return !!(state.currentUser && issue);
+    // Backward-compatible alias used by older buttons: work means status/evidence/cover management.
+    return canManageIssue(issue);
   }
 
   function applyBoardFilters(issues) {
