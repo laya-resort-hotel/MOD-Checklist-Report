@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v102-board-mobile-card-ui';
-const APP_VERSION = 'v102-board-mobile-card-ui';
+const CACHE_NAME = 'laya-mod-v103-media-box-fix';
+const APP_VERSION = 'v103-media-box-fix';
 const APP_SHELL = [
   './',
   './index.html',

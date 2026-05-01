@@ -4057,3 +4057,199 @@ body.laya-ui-v102 .empty-state {
     flex-basis: 58px !important;
   }
 }
+
+
+/* ============================================================
+   PATCH v103: Media Box Fix
+   - Keep preview images inside a dedicated frame.
+   - Prevent large photos from covering title/text/buttons.
+   - Works for media preview modal and issue detail modal.
+============================================================ */
+body.laya-ui-v103 #mediaPreviewModal {
+  z-index: 140 !important;
+}
+body.laya-ui-v103 #mediaPreviewModal .modal-backdrop {
+  background: rgba(20, 18, 12, 0.48) !important;
+  backdrop-filter: blur(4px) !important;
+}
+body.laya-ui-v103 .media-preview-card {
+  position: relative !important;
+  width: min(1180px, calc(100vw - 28px)) !important;
+  height: auto !important;
+  max-height: calc(100vh - 28px) !important;
+  min-height: 0 !important;
+  margin: 14px auto !important;
+  padding: 18px !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(260px, 1fr) auto !important;
+  gap: 12px !important;
+  overflow: hidden !important;
+  border-radius: 24px !important;
+  background: #FFFDF7 !important;
+  border: 1.5px solid #D4B87A !important;
+}
+body.laya-ui-v103 .media-preview-card > .modal-close {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  z-index: 8 !important;
+  margin: 0 !important;
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,.92) !important;
+  color: #3D2E0D !important;
+  border: 1px solid rgba(92,74,30,.12) !important;
+  box-shadow: 0 8px 20px rgba(36,30,18,.12) !important;
+}
+body.laya-ui-v103 .media-preview-head {
+  grid-row: 1 !important;
+  position: relative !important;
+  z-index: 3 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 12px !important;
+  align-items: start !important;
+  padding: 0 48px 0 0 !important;
+  min-width: 0 !important;
+}
+body.laya-ui-v103 .media-preview-head h3 {
+  color: #3D2E0D !important;
+  line-height: 1.25 !important;
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+}
+body.laya-ui-v103 .media-preview-meta,
+body.laya-ui-v103 .media-preview-description {
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+}
+body.laya-ui-v103 #mediaPreviewOpenDetailBtn {
+  white-space: nowrap !important;
+  background: #3D2E0D !important;
+  color: #FFF8E7 !important;
+  border: none !important;
+  z-index: 4 !important;
+}
+body.laya-ui-v103 .media-preview-body {
+  grid-row: 2 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: calc(100vh - 190px) !important;
+  overflow: hidden !important;
+  padding: 12px !important;
+  border-radius: 22px !important;
+  background: #F5F0E8 !important;
+  border: 1.5px solid #E3D6BF !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+body.laya-ui-v103 .media-preview-body img,
+body.laya-ui-v103 .media-preview-body video {
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  border-radius: 16px !important;
+  box-shadow: none !important;
+  background: #111 !important;
+}
+body.laya-ui-v103 .media-preview-footer {
+  grid-row: 3 !important;
+  position: relative !important;
+  z-index: 3 !important;
+  margin: 0 auto !important;
+  flex-shrink: 0 !important;
+}
+
+/* Issue detail modal media frame */
+body.laya-ui-v103 #issueModal .modal-card {
+  overflow: auto !important;
+}
+body.laya-ui-v103 .issue-detail-grid {
+  align-items: start !important;
+}
+body.laya-ui-v103 .issue-media-section {
+  min-width: 0 !important;
+}
+body.laya-ui-v103 .issue-media-stack {
+  min-width: 0 !important;
+}
+body.laya-ui-v103 .issue-media-card {
+  overflow: hidden !important;
+  border-radius: 18px !important;
+  background: #F5F0E8 !important;
+  border: 1.5px solid #E3D6BF !important;
+  padding: 8px !important;
+}
+body.laya-ui-v103 .issue-hero,
+body.laya-ui-v103 .issue-video {
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: min(420px, 58vh) !important;
+  object-fit: contain !important;
+  border-radius: 14px !important;
+  background: #111 !important;
+}
+
+@media (max-width: 760px) {
+  body.laya-ui-v103 .media-preview-card {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    padding: max(12px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom)) 12px !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    gap: 10px !important;
+  }
+  body.laya-ui-v103 .media-preview-card > .modal-close {
+    top: max(8px, env(safe-area-inset-top)) !important;
+    right: 8px !important;
+  }
+  body.laya-ui-v103 .media-preview-head {
+    grid-template-columns: 1fr !important;
+    padding-right: 46px !important;
+    gap: 8px !important;
+  }
+  body.laya-ui-v103 #mediaPreviewOpenDetailBtn {
+    width: fit-content !important;
+    max-width: 100% !important;
+    min-height: 40px !important;
+    padding: 0 14px !important;
+    border-radius: 14px !important;
+  }
+  body.laya-ui-v103 .media-preview-body {
+    max-height: none !important;
+    padding: 8px !important;
+    border-radius: 18px !important;
+  }
+  body.laya-ui-v103 .media-preview-body img,
+  body.laya-ui-v103 .media-preview-body video {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    border-radius: 14px !important;
+  }
+  body.laya-ui-v103 .media-preview-footer {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 56px minmax(0, 1fr) 56px !important;
+    padding: 8px !important;
+    border-radius: 18px !important;
+  }
+  body.laya-ui-v103 .media-preview-counter {
+    font-size: 14px !important;
+    line-height: 1.25 !important;
+  }
+  body.laya-ui-v103 .issue-hero,
+  body.laya-ui-v103 .issue-video {
+    max-height: 48vh !important;
+  }
+}

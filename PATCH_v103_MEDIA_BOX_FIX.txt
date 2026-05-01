@@ -1,0 +1,13 @@
+PATCH v103 – Media Box Fix
+
+Purpose:
+- Add a dedicated image/video frame for media preview modal.
+- Prevent large photos from overflowing and covering title, text, or action buttons.
+- Keep issue detail images contained using object-fit: contain.
+
+Changed files:
+- index.html: version bump and body class laya-ui-v103.
+- style.css: media preview + issue detail media box CSS override.
+- sw.js: cache version bump.
+
+No Firestore rules or Storage rules changes required.
