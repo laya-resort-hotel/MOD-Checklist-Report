@@ -1,0 +1,11 @@
+PATCH v101 – Force Visible Claude UI/UX
+
+Fix for v100 appearing unchanged after deployment.
+This patch scopes a stronger Claude-style UI under body.laya-ui-v101 and bumps cache/version to v101-claude-ui-force.
+
+Changed files:
+- index.html
+- style.css
+- sw.js
+
+No Firestore rules or Storage rules change.

@@ -3477,3 +3477,143 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   PATCH v101 — FORCE VISIBLE CLAUDE UI/UX POLISH
+   Purpose: make the Claude layout visually obvious on deployed app.
+   Keeps original IDs/logic intact; CSS-only UI forcing.
+============================================================ */
+body.laya-ui-v101 {
+  --v101-dark: #3D2E0D;
+  --v101-brown: #5C4A1E;
+  --v101-gold: #D4B87A;
+  --v101-gold-deep: #B8960C;
+  --v101-sand: #F5F0E8;
+  --v101-cream: #FFFDF7;
+  --v101-cream-2: #FFF8E7;
+  --v101-border: #D4B87A;
+  --v101-muted: #7A6A50;
+  --v101-text: #3D2E0D;
+  --v101-blue: #1E3D5C;
+  --v101-green: #19A84C;
+  background: var(--v101-sand) !important;
+  font-family: 'Sarabun', 'DM Sans', system-ui, -apple-system, sans-serif !important;
+}
+body.laya-ui-v101 .glass, body.laya-ui-v101 .panel, body.laya-ui-v101 .toolbar, body.laya-ui-v101 .summary-card, body.laya-ui-v101 .issue-card, body.laya-ui-v101 .template-card, body.laya-ui-v101 .section-card, body.laya-ui-v101 .item-card { box-shadow: none !important; backdrop-filter: none !important; }
+body.laya-ui-v101 .app-shell { background: var(--v101-sand) !important; }
+@media (min-width: 861px) {
+  body.laya-ui-v101 .app-shell { display: grid !important; grid-template-columns: 220px minmax(0, 1fr) !important; min-height: 100vh !important; }
+  body.laya-ui-v101 .sidebar { margin: 0 !important; border-radius: 0 !important; background: var(--v101-dark) !important; border: 0 !important; min-height: 100vh !important; position: sticky !important; top: 0 !important; padding: 0 !important; }
+  body.laya-ui-v101 .sidebar-brand { min-height: 92px !important; padding: 18px 14px !important; border-bottom: 1px solid rgba(255,255,255,.1) !important; background: linear-gradient(180deg, #4D3B14, var(--v101-dark)) !important; }
+  body.laya-ui-v101 .sidebar-logo { max-width: 150px !important; max-height: 60px !important; object-fit: contain !important; filter: drop-shadow(0 8px 12px rgba(0,0,0,.25)) !important; }
+  body.laya-ui-v101 .sidebar-nav { padding: 14px 10px !important; gap: 6px !important; }
+  body.laya-ui-v101 .nav-link { border-radius: 10px !important; padding: 15px 15px !important; color: #C8B99A !important; background: transparent !important; border: 0 !important; font-size: 15px !important; font-weight: 700 !important; }
+  body.laya-ui-v101 .nav-link:hover { background: rgba(255,255,255,.08) !important; color: var(--v101-cream-2) !important; transform: none !important; }
+  body.laya-ui-v101 .nav-link.active { background: var(--v101-brown) !important; color: var(--v101-cream-2) !important; border-left: 4px solid var(--v101-gold) !important; }
+  body.laya-ui-v101 .main-shell { padding: 0 0 42px !important; min-width: 0 !important; }
+  body.laya-ui-v101 .topbar { position: sticky !important; top: 0 !important; z-index: 40 !important; margin: 0 !important; border-radius: 0 !important; background: var(--v101-brown) !important; border: 0 !important; padding: 12px 28px !important; min-height: 66px !important; color: var(--v101-cream-2) !important; align-items: center !important; }
+  body.laya-ui-v101 .eyebrow { color: var(--v101-gold) !important; }
+  body.laya-ui-v101 .topbar-title { color: var(--v101-cream-2) !important; font-size: 24px !important; margin: 2px 0 2px !important; font-family: 'Sarabun', sans-serif !important; }
+  body.laya-ui-v101 .topbar-sub { color: #E7D6AD !important; }
+  body.laya-ui-v101 .view.active { padding: 24px 32px !important; }
+}
+body.laya-ui-v101 .account-chip, body.laya-ui-v101 .badge.success, body.laya-ui-v101 .lang-btn, body.laya-ui-v101 .btn-cache { border-radius: 999px !important; }
+body.laya-ui-v101 .account-chip { background: #7A6230 !important; color: var(--v101-cream-2) !important; border: 1px solid rgba(255,255,255,.16) !important; box-shadow: none !important; }
+body.laya-ui-v101 .account-chip-name, body.laya-ui-v101 .account-chip-meta { color: var(--v101-cream-2) !important; }
+body.laya-ui-v101 .topbar-avatar, body.laya-ui-v101 .account-mini-avatar, body.laya-ui-v101 .user-avatar { background: var(--v101-gold) !important; color: var(--v101-brown) !important; }
+/* Board */
+body.laya-ui-v101 .summary-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 16px !important; margin-bottom: 22px !important; }
+body.laya-ui-v101 .summary-card { background: var(--v101-cream) !important; border: 1.5px solid #E3D0A8 !important; border-radius: 16px !important; padding: 20px 20px !important; position: relative !important; overflow: hidden !important; }
+body.laya-ui-v101 .summary-card::before { content: '' !important; position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important; height: 5px !important; background: var(--v101-gold) !important; }
+body.laya-ui-v101 .summary-value { font-size: 46px !important; color: var(--v101-text) !important; }
+body.laya-ui-v101 .summary-label { color: var(--v101-text) !important; font-weight: 800 !important; }
+body.laya-ui-v101 .toolbar, body.laya-ui-v101 .panel { background: var(--v101-cream) !important; border: 1.5px solid var(--v101-border) !important; border-radius: 16px !important; }
+body.laya-ui-v101 .issue-card { background: var(--v101-cream) !important; border: 1.5px solid #E0D1AF !important; border-left: 5px solid var(--v101-gold) !important; border-radius: 16px !important; padding: 18px !important; }
+body.laya-ui-v101 .issue-title, body.laya-ui-v101 .issue-card h3, body.laya-ui-v101 .issue-card h4 { color: var(--v101-text) !important; font-weight: 800 !important; }
+/* New Issue */
+body.laya-ui-v101 #newIssueView.new-issue-luxury-view { background: var(--v101-sand) !important; }
+body.laya-ui-v101 #newIssueView .new-issue-mobile-shell { max-width: 1120px !important; margin: 0 auto !important; background: transparent !important; border: 0 !important; padding: 0 !important; }
+body.laya-ui-v101 #newIssueView .new-issue-top-strip { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 12px !important; background: var(--v101-brown) !important; border-radius: 16px !important; padding: 12px 16px !important; margin-bottom: 14px !important; color: var(--v101-cream-2) !important; }
+body.laya-ui-v101 #newIssueView .new-issue-logo-box { background: var(--v101-cream-2) !important; color: var(--v101-brown) !important; border-radius: 8px !important; width: 42px !important; height: 42px !important; display: grid !important; place-items: center !important; font-weight: 800 !important; font-size: 10px !important; line-height: 1.1 !important; }
+body.laya-ui-v101 #newIssueView .new-issue-brand-name { color: var(--v101-cream-2) !important; font-weight: 800 !important; }
+body.laya-ui-v101 #newIssueView .new-issue-brand-sub { color: var(--v101-gold) !important; }
+body.laya-ui-v101 #newIssueView .new-issue-user-chip { background: #7A6230 !important; border-radius: 999px !important; padding: 6px 12px !important; border: 0 !important; }
+body.laya-ui-v101 #newIssueView .new-issue-progress { background: #EAE0CC !important; border: 1.5px solid var(--v101-border) !important; border-radius: 14px !important; padding: 14px 22px !important; margin-bottom: 16px !important; }
+body.laya-ui-v101 #newIssueView .new-issue-step-num { background: #C8B99A !important; color: var(--v101-cream-2) !important; width: 36px !important; height: 36px !important; }
+body.laya-ui-v101 #newIssueView .new-issue-step.active .new-issue-step-num { background: var(--v101-brown) !important; }
+body.laya-ui-v101 #newIssueView .new-issue-card, body.laya-ui-v101 #newIssueView .new-issue-tip-box { background: var(--v101-cream) !important; border: 1.5px solid var(--v101-border) !important; border-radius: 16px !important; padding: 18px !important; margin-bottom: 14px !important; }
+body.laya-ui-v101 #newIssueView .new-issue-tip-box { background: #E8F5E4 !important; border-color: #8DC484 !important; }
+body.laya-ui-v101 #newIssueView .new-issue-card-title { color: var(--v101-text) !important; font-size: 17px !important; font-weight: 800 !important; margin-bottom: 14px !important; }
+body.laya-ui-v101 #newIssueView .new-issue-media-btn { min-height: 108px !important; border-radius: 14px !important; font-size: 16px !important; }
+body.laya-ui-v101 #newIssueView .photo-choose, body.laya-ui-v101 #newIssueView .btn-save { background: var(--v101-brown) !important; color: var(--v101-cream-2) !important; border: 0 !important; }
+body.laya-ui-v101 #newIssueView .photo-take { background: #FAF6EE !important; border: 2.5px dashed #C8B99A !important; color: var(--v101-text) !important; }
+body.laya-ui-v101 #newIssueView .video-choose { background: var(--v101-blue) !important; color: var(--v101-cream-2) !important; }
+body.laya-ui-v101 #newIssueView .video-record { background: #FAF6EE !important; border: 2.5px dashed #A0B8C8 !important; color: var(--v101-blue) !important; }
+body.laya-ui-v101 #newIssueView .big-input, body.laya-ui-v101 #newIssueView .big-select, body.laya-ui-v101 #newIssueView .big-textarea { background: #FAF6EE !important; border: 2px solid #C8B99A !important; border-radius: 12px !important; padding: 13px 16px !important; font-size: 16px !important; }
+body.laya-ui-v101 #newIssueView .priority-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+body.laya-ui-v101 #newIssueView .priority-btn { min-height: 58px !important; border-radius: 12px !important; border: 2px solid #C8B99A !important; background: #FAF6EE !important; font-weight: 800 !important; }
+body.laya-ui-v101 #newIssueView .priority-btn.active.p-low { background: #E4F5E2 !important; border-color: #4A8C3F !important; color: #2E6B25 !important; }
+body.laya-ui-v101 #newIssueView .priority-btn.active.p-medium { background: #FFF3CD !important; border-color: #BA8C00 !important; color: #7A5C00 !important; }
+body.laya-ui-v101 #newIssueView .priority-btn.active.p-high { background: #FFE4CC !important; border-color: #CC6600 !important; color: #994D00 !important; }
+body.laya-ui-v101 #newIssueView .priority-btn.active.p-critical { background: #FFD0D0 !important; border-color: #CC2222 !important; color: #991111 !important; }
+@media (min-width: 980px) {
+  body.laya-ui-v101 #newIssueView .new-issue-top-strip, body.laya-ui-v101 #newIssueView .new-issue-progress, body.laya-ui-v101 #newIssueView .new-issue-headline, body.laya-ui-v101 #newIssueView .new-issue-tip-box, body.laya-ui-v101 #newIssueView .new-issue-bottom-actions { grid-column: 1 / -1 !important; }
+  body.laya-ui-v101 #newIssueView .new-issue-mobile-shell { display: grid !important; grid-template-columns: minmax(320px, .86fr) minmax(420px, 1.14fr) !important; gap: 18px !important; align-items: start !important; }
+  body.laya-ui-v101 #newIssueView .media-card { grid-row: span 3 !important; }
+}
+/* Checklist */
+body.laya-ui-v101 #checklistView .panel-header h3 { color: var(--v101-text) !important; font-size: 22px !important; font-weight: 800 !important; }
+body.laya-ui-v101 #checklistView .template-grid { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important; gap: 14px !important; }
+body.laya-ui-v101 #checklistView .template-card { background: var(--v101-cream) !important; border: 1.5px solid var(--v101-border) !important; border-radius: 16px !important; padding: 16px !important; }
+body.laya-ui-v101 #checklistView .template-card .eyebrow { display: inline-block !important; color: #7A5C00 !important; background: #FFF3CD !important; border-radius: 999px !important; padding: 4px 12px !important; letter-spacing: .02em !important; font-size: 11px !important; }
+body.laya-ui-v101 #checklistView .template-card h4 { font-size: 19px !important; color: var(--v101-text) !important; font-weight: 800 !important; margin-top: 10px !important; }
+body.laya-ui-v101 #checklistView .template-actions { display: grid !important; grid-template-columns: 2fr 1fr !important; gap: 10px !important; margin-top: 14px !important; }
+body.laya-ui-v101 #checklistView #checklistRunPanel { background: transparent !important; border: 0 !important; padding: 0 !important; }
+body.laya-ui-v101 #checklistView .checklist-run-head { background: var(--v101-cream) !important; border: 1.5px solid var(--v101-border) !important; border-radius: 16px !important; padding: 16px !important; margin-bottom: 14px !important; }
+body.laya-ui-v101 #checklistView .section-card { background: var(--v101-cream) !important; border: 1.5px solid var(--v101-border) !important; border-radius: 16px !important; margin-bottom: 14px !important; overflow: hidden !important; }
+body.laya-ui-v101 #checklistView .section-head { background: var(--v101-brown) !important; color: var(--v101-cream-2) !important; padding: 14px 16px !important; border: 0 !important; }
+body.laya-ui-v101 #checklistView .section-head h4 { color: var(--v101-cream-2) !important; font-size: 17px !important; }
+body.laya-ui-v101 #checklistView .section-head .muted { color: var(--v101-gold) !important; }
+body.laya-ui-v101 #checklistView .item-card { border-bottom: 1.5px solid #EAE0CC !important; padding: 16px !important; border-radius: 0 !important; background: var(--v101-cream) !important; }
+body.laya-ui-v101 #checklistView .item-text { color: var(--v101-text) !important; font-size: 16px !important; font-weight: 700 !important; line-height: 1.45 !important; }
+body.laya-ui-v101 #checklistView .inline-options { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 10px !important; }
+body.laya-ui-v101 #checklistView .option-btn { min-height: 58px !important; border-radius: 14px !important; font-size: 17px !important; font-weight: 800 !important; background: #DCDCDC !important; border: 2.5px solid #BBBBBB !important; color: #777 !important; }
+body.laya-ui-v101 #checklistView .option-btn.pass.active { background: #E4F5E2 !important; border-color: #4A8C3F !important; color: #1A6B39 !important; }
+body.laya-ui-v101 #checklistView .option-btn.fail.active { background: #FFD0D0 !important; border-color: #CC2222 !important; color: #991111 !important; }
+body.laya-ui-v101 #checklistView .option-btn.na.active { background: #EAE0CC !important; border-color: #888 !important; color: #444 !important; }
+body.laya-ui-v101 #checklistView textarea, body.laya-ui-v101 #checklistView input, body.laya-ui-v101 #checklistView select { background: #FAF6EE !important; border: 2px solid #C8B99A !important; border-radius: 12px !important; }
+/* Settings */
+body.laya-ui-v101 #settingsView .settings-grid { display: grid !important; grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr) !important; gap: 18px !important; align-items: start !important; }
+body.laya-ui-v101 #settingsView .panel { background: var(--v101-cream) !important; border: 1.5px solid var(--v101-border) !important; border-radius: 16px !important; padding: 18px !important; }
+body.laya-ui-v101 #settingsView .panel-header h3 { color: var(--v101-text) !important; font-size: 21px !important; font-weight: 800 !important; }
+body.laya-ui-v101 #settingsView .settings-profile-hero { display: grid !important; grid-template-columns: 240px minmax(0, 1fr) !important; gap: 16px !important; }
+body.laya-ui-v101 #settingsView .settings-avatar-card, body.laya-ui-v101 #settingsView .settings-identity-card { background: #FFF8E7 !important; border: 1.5px dashed #C8B99A !important; border-radius: 14px !important; padding: 16px !important; }
+body.laya-ui-v101 #settingsView .settings-profile-avatar { width: 76px !important; height: 76px !important; border-radius: 50% !important; background: var(--v101-gold) !important; color: var(--v101-brown) !important; border: 3px solid var(--v101-brown) !important; font-size: 28px !important; font-weight: 800 !important; }
+body.laya-ui-v101 #settingsView .settings-readout { background: #FAF6EE !important; border: 2px solid #C8B99A !important; border-radius: 12px !important; padding: 13px 16px !important; color: var(--v101-text) !important; font-weight: 700 !important; }
+body.laya-ui-v101 #settingsView .settings-badge, body.laya-ui-v101 #settingsView .account-mini-badge { border-radius: 999px !important; padding: 5px 12px !important; font-weight: 800 !important; }
+body.laya-ui-v101 #settingsView #settingsAdminToolsPanel .stack { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+body.laya-ui-v101 #settingsView #settingsAdminToolsPanel .btn { min-height: 54px !important; justify-content: center !important; font-size: 15px !important; }
+body.laya-ui-v101 #settingsView #settingsAdminToolsPanel .small-note, body.laya-ui-v101 #settingsView #settingsAdminToolsPanel .settings-status { grid-column: 1 / -1 !important; }
+/* Buttons */
+body.laya-ui-v101 .btn-primary, body.laya-ui-v101 .btn-save, body.laya-ui-v101 .add-btn, body.laya-ui-v101 .open-btn { background: var(--v101-brown) !important; color: var(--v101-cream-2) !important; border: 0 !important; }
+body.laya-ui-v101 .btn-secondary { background: var(--v101-gold-deep) !important; color: var(--v101-cream-2) !important; border: 0 !important; }
+body.laya-ui-v101 .btn-ghost, body.laya-ui-v101 .btn-clear { background: #EAE0CC !important; color: var(--v101-muted) !important; border: 1.5px solid #C8B99A !important; }
+@media (max-width: 860px) {
+  body.laya-ui-v101 .topbar { background: var(--v101-brown) !important; border-radius: 0 !important; margin: 0 !important; padding: 10px 12px !important; min-height: 58px !important; }
+  body.laya-ui-v101 .topbar-title { color: var(--v101-cream-2) !important; font-size: 17px !important; }
+  body.laya-ui-v101 .topbar-sub, body.laya-ui-v101 .eyebrow { color: var(--v101-gold) !important; }
+  body.laya-ui-v101 .view.active { padding: 14px !important; }
+  body.laya-ui-v101 .summary-grid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 10px !important; }
+  body.laya-ui-v101 .summary-card { padding: 14px !important; border-radius: 14px !important; }
+  body.laya-ui-v101 .summary-value { font-size: 34px !important; }
+  body.laya-ui-v101 #newIssueView .new-issue-top-strip { border-radius: 0 !important; margin: -14px -14px 14px !important; }
+  body.laya-ui-v101 #newIssueView .new-issue-progress { border-radius: 0 !important; margin: 0 -14px 14px !important; border-left: 0 !important; border-right: 0 !important; }
+  body.laya-ui-v101 #newIssueView .new-issue-media-row, body.laya-ui-v101 #newIssueView .photo-action-row { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+  body.laya-ui-v101 #newIssueView .new-issue-card { padding: 16px !important; }
+  body.laya-ui-v101 #checklistView .template-grid { grid-template-columns: 1fr !important; }
+  body.laya-ui-v101 #settingsView .settings-grid, body.laya-ui-v101 #settingsView .settings-profile-hero { grid-template-columns: 1fr !important; }
+  body.laya-ui-v101 #settingsView #settingsAdminToolsPanel .stack { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 420px) {
+  body.laya-ui-v101 #newIssueView .new-issue-media-row, body.laya-ui-v101 #newIssueView .photo-action-row, body.laya-ui-v101 #newIssueView .priority-grid, body.laya-ui-v101 #checklistView .inline-options { grid-template-columns: 1fr !important; }
+}

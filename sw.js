@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v100-ui-ux-polish';
-const APP_VERSION = 'v100-ui-ux-polish';
+const CACHE_NAME = 'laya-mod-v101-claude-ui-force';
+const APP_VERSION = 'v101-claude-ui-force';
 const APP_SHELL = [
   './',
   './index.html',
