@@ -22,6 +22,10 @@ service cloud.firestore {
       return get(userPath(request.auth.uid));
     }
 
+    function isActiveUser() {
+      return myUserExists() && myUser().data.is_active != false;
+    }
+
     function myRole() {
       return myUser().data.role;
     }
@@ -69,6 +73,12 @@ service cloud.firestore {
 
     function canWorkOwnDept() {
       return isSupervisor() || isStaff() || isDeptUser();
+    }
+
+    // v96: ทุกบัญชีที่ Active สามารถเปิด Issue ใหม่ได้ ไม่ผูกกับ Position/Role
+    // Role ยังคุมสิทธิ์จัดการระบบ ส่วน Position ใช้แสดงตำแหน่งจริงเท่านั้น
+    function canCreateIssueWork() {
+      return isActiveUser();
     }
 
     function validRole(v) {
@@ -639,7 +649,7 @@ service cloud.firestore {
         canWorkOwnDept()
       );
 
-      allow create: if canManageAllWork() && issueCreateDataValid();
+      allow create: if canCreateIssueWork() && issueCreateDataValid();
 
       allow update: if signedIn() &&
         canWorkIssueDoc(resource.data) &&
@@ -701,8 +711,11 @@ service cloud.firestore {
     ========================== */
 
     match /counters/{counterId} {
-      allow read: if canManageAllWork();
-      allow write: if canManageAllWork();
+      // issue_counter ต้องเปิดให้ทุก Active user อ่าน/เพิ่มเลขได้ เพราะทุก Role สร้าง Issue ได้ใน v96
+      allow get: if canManageAllWork() || (counterId == 'issue_counter' && canCreateIssueWork());
+      allow list: if canManageAllWork();
+      allow create, update: if canManageAllWork() || (counterId == 'issue_counter' && canCreateIssueWork());
+      allow delete: if isAdmin();
     }
   }
 }

@@ -190,7 +190,10 @@
   }
 
   function canCreateIssueForRole() {
-    return canManageAllWork();
+    // v96: ทุก Role/Position ที่ยัง Active สามารถเปิด Issue ใหม่ได้
+    // Role ยังใช้คุมสิทธิ์ Admin/Manager/MOD ส่วน Position ใช้โชว์ตำแหน่งเท่านั้น
+    if (!state.currentUser) return false;
+    return state.currentUser.is_active !== false;
   }
 
   function canUseChecklistForRole() {
@@ -3420,7 +3423,7 @@ function switchView(viewId) {
     if (viewId === 'activityView') viewId = 'logView';
     if (viewId === 'newIssueView') {
       if (!canCreateIssueForRole()) {
-        setAuthStatus(txt('บัญชีนี้รับงานและอัปเดตงานของแผนกได้ แต่ยังไม่มีสิทธิ์เปิด Issue ใหม่', 'This account can receive/update department jobs, but cannot create new issues yet.'), 'info');
+        setAuthStatus(txt('บัญชีนี้ถูกปิดใช้งาน จึงไม่สามารถเปิด Issue ใหม่ได้', 'This account is inactive and cannot create new issues.'), 'info');
         viewId = 'boardView';
       } else {
         clearIssueForm();
@@ -4205,7 +4208,7 @@ function switchView(viewId) {
 
   async function saveIssueFromForm() {
     if (!canCreateIssueForRole()) {
-      alert(txt('บัญชีนี้ยังไม่มีสิทธิ์เปิด Issue ใหม่ ให้ Admin ปรับ Role เป็น MOD / Manager / Admin', 'This account cannot create new issues yet. Ask an Admin to set the role to MOD / Manager / Admin.'));
+      alert(txt('บัญชีนี้ถูกปิดใช้งาน จึงไม่สามารถเปิด Issue ใหม่ได้', 'This account is inactive and cannot create new issues.'));
       return;
     }
     const title = el.issueTitle.value.trim();

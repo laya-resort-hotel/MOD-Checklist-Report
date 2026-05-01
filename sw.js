@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v95-new-issue-ui';
-const APP_VERSION = 'v95-new-issue-ui';
+const CACHE_NAME = 'laya-mod-v96-all-roles-can-post';
+const APP_VERSION = 'v96-all-roles-can-post';
 const APP_SHELL = [
   './',
   './index.html',

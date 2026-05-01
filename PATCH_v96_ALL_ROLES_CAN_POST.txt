@@ -1,0 +1,24 @@
+PATCH v96 – All Roles Can Post Issue
+
+Purpose:
+- Fix Role Staff / Supervisor / any active user cannot create New Issue.
+- Position remains display-only and must not block workflow.
+
+Changed:
+1) js/app.js and app.js
+   - canCreateIssueForRole() now allows every active account to create New Issue.
+   - New Issue page no longer blocks Staff role.
+   - Only inactive accounts are blocked.
+
+2) firestore.rules
+   - Added isActiveUser() and canCreateIssueWork().
+   - issues create permission changed from canManageAllWork() to canCreateIssueWork().
+   - counters/issue_counter can be read/created/updated by active users so Firestore transaction can generate issue_no.
+   - Admin/Manager/MOD permissions remain unchanged for user management and system-level actions.
+
+3) index.html / sw.js
+   - Cache version updated to v96-all-roles-can-post.
+
+Important:
+- Upload firestore.rules to Firebase Console after uploading files to GitHub.
+- Without the rules update, Staff may still get Missing or insufficient permission when saving New Issue.
