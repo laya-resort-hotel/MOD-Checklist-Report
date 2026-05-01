@@ -1372,10 +1372,10 @@
 
     setNodeText('#newIssueView .panel-header h3', 'แจ้งปัญหาใหม่', 'New Issue');
     setNodeText('#newIssueView .panel-header p', 'แจ้งปัญหาใหม่แบบเร็ว เน้นถ่ายรูปและ assign แผนกให้ชัด', 'Quick issue report with clear photos and department assignment.');
-    setNodeText('#issuePhotoGalleryPickBtn', 'เลือกรูป', 'Choose Photo');
-    setNodeText('#issuePhotoCameraPickBtn', 'ถ่ายรูป', 'Take Photo');
-    setNodeText('#issueVideoGalleryPickBtn', 'เลือกวิดีโอ', 'Choose Video');
-    setNodeText('#issueVideoCameraPickBtn', 'ถ่ายวิดีโอ', 'Record Video');
+    setNodeText('#issuePhotoGalleryPickBtn .media-btn-label', 'เลือกรูป', 'Choose Photo');
+    setNodeText('#issuePhotoCameraPickBtn .media-btn-label', 'ถ่ายรูป', 'Take Photo');
+    setNodeText('#issueVideoGalleryPickBtn .media-btn-label', 'เลือกวิดีโอ', 'Choose Video');
+    setNodeText('#issueVideoCameraPickBtn .media-btn-label', 'ถ่ายวิดีโอ', 'Record Video');
     setNodeText('#issuePhotoHint', 'แนะนำรูปไม่เกิน 10 MB ต่อรูป • เลือกได้หลายรูป • ระบบจะย่อรูปให้อัตโนมัติก่อนบันทึก', 'Recommended max 10 MB per image • Multiple images allowed • Images will be compressed automatically before save');
     setNodeText('#issueVideoHint', `รองรับวิดีโอไม่เกิน ${MAX_VIDEO_UPLOAD_MB} MB • แนะนำ MP4/MOV • ระบบจะสร้าง poster ให้ใช้อัตโนมัติ`, `Video up to ${MAX_VIDEO_UPLOAD_MB} MB • Recommended MP4/MOV • Poster image will be generated automatically`);
 
@@ -1388,7 +1388,13 @@
       txt('มอบหมายแผนก', 'Assign Department'),
     ];
     issueLabels.forEach((label, index) => {
-      if (issueLabelTexts[index]) label.textContent = issueLabelTexts[index];
+      if (!issueLabelTexts[index]) return;
+      const firstText = Array.from(label.childNodes || []).find(node => node.nodeType === Node.TEXT_NODE);
+      if (firstText) {
+        firstText.nodeValue = issueLabelTexts[index] + ' ';
+      } else {
+        label.textContent = issueLabelTexts[index];
+      }
     });
     setNodePlaceholder('#issueTitle', 'เช่น น้ำรั่วบริเวณทางเข้าล็อบบี้', 'e.g. Water leak at lobby entrance');
     setNodePlaceholder('#issueDescription', 'รายละเอียดเพิ่มเติม', 'Additional details');
@@ -1410,10 +1416,16 @@
     const priorityLabel = qsa('#newIssueView > .panel glass label');
     setNodeText('#newIssueView > .panel > div:nth-last-of-type(2) > label', 'ระดับความสำคัญ', 'Priority');
     qsa('#prioritySegment .segment').forEach(btn => {
-      btn.textContent = translatePriority(btn.dataset.value);
+      const textNode = qs('.priority-text', btn);
+      const priorityLabelText = translatePriority(btn.dataset.value);
+      if (textNode) {
+        textNode.textContent = priorityLabelText;
+      } else {
+        btn.textContent = priorityLabelText;
+      }
     });
-    setNodeText('#saveIssueBtn', 'บันทึก Issue', 'Save Issue');
-    setNodeText('#clearIssueBtn', 'ล้างข้อมูล', 'Clear');
+    setNodeText('#saveIssueBtn', '💾 บันทึกปัญหา', '💾 Save Issue');
+    setNodeText('#clearIssueBtn', '🗑 ล้าง', '🗑 Clear');
 
     setNodeText('#checklistView .panel-header h3', 'โมดูลเช็กลิสต์', 'Checklist Module');
     setNodeText('#checklistView .panel-header p', 'แยกจาก Board เพื่อให้หน้าบอร์ดสะอาด และเมื่อ submit แล้วจะขึ้นบน Board เพื่อบอกว่าตรวจแล้ว', 'Separated from the board to keep it clean. Submitted checklist cards will appear on the board to show inspection is completed.');
@@ -2772,6 +2784,10 @@
     if (el.accountMenuRoleBadge) el.accountMenuRoleBadge.textContent = roleName;
     if (el.accountMenuDepartmentBadge) el.accountMenuDepartmentBadge.textContent = departmentName;
     if (el.topbarAvatarInitials) el.topbarAvatarInitials.textContent = initials;
+    const newIssueInitials = qs('#newIssueUserInitials');
+    const newIssueUserName = qs('#newIssueUserName');
+    if (newIssueInitials) newIssueInitials.textContent = initials;
+    if (newIssueUserName) newIssueUserName.textContent = fullName.split(' ')[0] || fullName;
     if (el.accountMiniAvatarInitials) el.accountMiniAvatarInitials.textContent = initials;
     const imagePairs = [
       [el.topbarAvatarImg, el.topbarAvatarInitials, el.topbarAvatar],
@@ -4243,7 +4259,7 @@ function switchView(viewId) {
       alert(friendlyIssueError(err));
     } finally {
       el.saveIssueBtn.disabled = false;
-      el.saveIssueBtn.textContent = 'Save Issue';
+      el.saveIssueBtn.textContent = txt('💾 บันทึกปัญหา', '💾 Save Issue');
     }
   }
 

@@ -1,0 +1,18 @@
+PATCH v95 – Luxury New Issue UI
+
+Changed files:
+- index.html
+- style.css
+- sw.js
+- js/app.js
+- app.js
+
+Summary:
+- Rebuilt New Issue screen with luxury mobile-first layout based on laya_mod_new_issue.html reference.
+- Kept all original Firebase IDs and save logic: issueTitle, issueType, issueDescription, issueLocation, issueDepartment, issuePhotoInput, issuePhotoCameraInput, issueVideoInput, issueVideoCameraInput, prioritySegment, saveIssueBtn, clearIssueBtn.
+- Added large touch-friendly media buttons for gallery/camera photo and video upload.
+- Added progress strip, tip box, bigger form fields, and priority buttons.
+- Updated translation handling to preserve inner button/icon layout.
+- Updated app version/cache to v95-new-issue-ui.
+
+No Firestore rules change required.
