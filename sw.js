@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v101-claude-ui-force';
-const APP_VERSION = 'v101-claude-ui-force';
+const CACHE_NAME = 'laya-mod-v102-board-mobile-card-ui';
+const APP_VERSION = 'v102-board-mobile-card-ui';
 const APP_SHELL = [
   './',
   './index.html',

@@ -1,0 +1,20 @@
+v102 Board Mobile Card UI Patch
+
+ปรับหน้า Board ตามไฟล์ตัวอย่าง laya_mod_board.html ที่ผู้ใช้ส่งมา โดยยังคง logic Firebase เดิมทั้งหมด
+
+Changed files:
+- index.html
+- style.css
+- sw.js
+- app.js
+- js/app.js
+
+Highlights:
+1. เพิ่มหัวข้อ Board แบบใหม่และปุ่มแจ้งปัญหาใหม่บน desktop
+2. ปรับ Issue card เป็น mobile card: strip สีความเร่งด่วน, thumbnail ด้านขวา, meta badge, status/priority tag, footer action
+3. ปรับ Checklist submission card ให้เข้ากับ UI ใหม่
+4. การ์ดทั้งใบกดเปิดรายละเอียดได้ ยกเว้นเมื่อกดปุ่ม action/thumbnail
+5. ปรับ filter chip / search / summary card ให้เข้าธีม LAYA cream-gold-brown
+6. เปลี่ยน cache version เป็น v102-board-mobile-card-ui
+
+No Firestore rules / Storage rules changes.

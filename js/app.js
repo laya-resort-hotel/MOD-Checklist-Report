@@ -3650,53 +3650,71 @@ function switchView(viewId) {
       const issue = item;
       const deptName = getDepartmentName(normalizeDepartmentValue(issue.assigned_department, 'ENG'));
       const { thumb, full: fullCover, hasVideo, photoCount, videoCount, videoPreviewUrl } = getIssueCoverMedia(issue);
-      const mediaBits = [];
-      if (photoCount > 0) mediaBits.push(`<span>${photoCount} ${txt('รูป', `photo${photoCount > 1 ? 's' : ''}`)}</span>`);
-      if (videoCount > 0) mediaBits.push(`<span>${videoCount} ${txt('วิดีโอ', `video${videoCount > 1 ? 's' : ''}`)}</span>`);
-      const mediaNote = mediaBits.length ? `<span>•</span>${mediaBits.join('<span>•</span>')}` : '';
-      const thumbHtml = thumb
-        ? `<button type="button" class="issue-thumb-trigger media-open-immediate" data-open-issue-thumb="${issue.id}" aria-label="${txt('ดูรูปใหญ่', 'Open media preview')}"><div class="issue-thumb-wrap">${fullCover ? `<img class="issue-thumb" src="${thumb}" alt="Issue photo" />` : `<img class="issue-thumb" src="${thumb}" alt="Issue media poster" />`} ${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div></button>`
+      const priority = issue.priority || 'medium';
+      const status = issue.status || 'open';
+      const stripClass = status === 'closed' ? 'done' : priority;
+      const mediaSummary = [];
+      mediaSummary.push(`💬 ${issue.comment_count || 0}`);
+      if (photoCount > 0) mediaSummary.push(`📷 ${photoCount}`);
+      if (videoCount > 0) mediaSummary.push(`🎥 ${videoCount}`);
+      const thumbInner = thumb
+        ? `<img src="${thumb}" alt="Issue photo" />`
         : videoPreviewUrl
-          ? `<button type="button" class="issue-thumb-trigger media-open-immediate" data-open-issue-thumb="${issue.id}" aria-label="${txt('ดูรูปใหญ่', 'Open media preview')}"><div class="issue-thumb-wrap"><video class="issue-thumb" src="${videoPreviewUrl}" muted playsinline preload="metadata"></video><span class="media-badge">VIDEO</span></div></button>`
-          : `<button type="button" class="issue-thumb-trigger media-open-immediate" data-open-issue-thumb="${issue.id}" aria-label="${txt('ดูรูปใหญ่', 'Open media preview')}"><div class="issue-thumb placeholder">${hasVideo ? 'VIDEO' : (issue.issue_type === 'checklist_submission' ? 'CHECKLIST' : 'NO PHOTO')}</div></button>`;
+          ? `<video src="${videoPreviewUrl}" muted playsinline preload="metadata"></video>`
+          : `<div class="laya-board-thumb-placeholder">${hasVideo ? 'VIDEO' : (issue.issue_type === 'checklist_submission' ? 'CHECK' : 'NO PHOTO')}</div>`;
+      const thumbHtml = `<button type="button" class="laya-board-thumb-trigger issue-thumb-trigger media-open-immediate" data-open-issue-thumb="${issue.id}" aria-label="${txt('ดูรูปใหญ่', 'Open media preview')}"><div class="laya-board-thumb">${thumbInner}${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div></button>`;
+      const statusLabel = translateStatus(status);
+      const priorityLabel = translatePriority(priority);
       return `
-        <article class="issue-card ${getIssueCardToneClass(issue)}">
-          ${thumbHtml}
-          <div>
-            <div class="issue-title-row">
-              <div>
-                <div class="issue-title">${escapeHtml(issue.title)}</div>
-                <div class="meta-row">
-                  <span>${escapeHtml(deptName)}</span>
-                  <span>•</span>
+        <article class="issue-card laya-board-card ${getIssueCardToneClass(issue)} laya-board-priority-${priority}" data-board-card-open="${issue.id}">
+          <div class="laya-card-strip strip-${stripClass}"></div>
+          <div class="laya-board-card-body">
+            <div class="laya-board-title-row">
+              <div class="laya-board-title-area">
+                <div class="laya-board-title">${escapeHtml(issue.title)}</div>
+                <div class="laya-board-meta">
+                  <span class="laya-meta-dept">${escapeHtml(deptName)}</span>
+                  <span class="laya-meta-dot"></span>
                   <span>${escapeHtml(issue.location_text || '-')}</span>
-                  <span>•</span>
+                  <span class="laya-meta-dot"></span>
                   <span>${formatDateTime(issue.created_at)}</span>
                 </div>
               </div>
-              <div class="issue-badges">
-                ${issue.issue_type === 'checklist_submission' ? `<div class="status-pill status-closed">${txt('เช็กลิสต์', 'Checklist')}</div>` : `<div class="priority-pill priority-${issue.priority}">${translatePriority(issue.priority)}</div>`}
-                <div class="status-pill status-${issue.status}">${translateStatus(issue.status)}</div>
+              ${thumbHtml}
+            </div>
+            <div class="laya-board-tags">
+              ${issue.issue_type === 'checklist_submission'
+                ? `<span class="laya-board-tag laya-status-closed">${txt('เช็กลิสต์', 'Checklist')}</span>`
+                : `<span class="laya-board-tag laya-status-${status}">${escapeHtml(statusLabel)}</span><span class="laya-board-tag laya-priority-${priority}">${escapeHtml(priorityLabel)}</span>`}
+            </div>
+            <div class="laya-board-desc">${escapeHtml(issue.description || '')}</div>
+            <div class="laya-board-footer">
+              <div class="laya-board-info">
+                <div class="laya-board-footer-meta">
+                  <span>${mediaSummary.join(' • ')}</span>
+                  <span class="laya-meta-dot"></span>
+                  <span>${txt('แจ้งโดย', 'Reported by')} ${escapeHtml(issue.reported_by_name || '-')}</span>
+                </div>
+                <div class="laya-board-id">${escapeHtml(issue.issue_no || issue.id)}</div>
               </div>
-            </div>
-            <div class="issue-desc">${escapeHtml(issue.description || '')}</div>
-            <div class="meta-row">
-              <span>${issue.comment_count || 0} ${txt('คอมเมนต์', 'comments')}</span>
-              ${mediaNote}
-              <span>•</span>
-              <span>${escapeHtml(issue.issue_no || issue.id)}</span>
-              <span>•</span>
-              <span>${txt('แจ้งโดย', 'Reported by')} ${escapeHtml(issue.reported_by_name || '-')}</span>
-            </div>
-            <div class="issue-actions">
-              <button class="mini-btn" data-open-issue="${issue.id}">${txt('เปิดรายละเอียด', 'Open Detail')}</button>
-              ${renderQuickStatusButtons(issue)}
+              <div class="issue-actions laya-board-actions">
+                <button class="mini-btn" data-open-issue="${issue.id}">${txt('ดูรายละเอียด', 'Open Detail')}</button>
+                ${renderQuickStatusButtons(issue)}
+              </div>
             </div>
           </div>
         </article>
       `;
     }).join('');
 
+    qsa('[data-board-card-open]', el.boardList).forEach(card => card.addEventListener('click', (event) => {
+      if (event.target.closest('button, a, input, select, textarea, label')) return;
+      openIssueModal(card.dataset.boardCardOpen);
+    }));
+    qsa('[data-board-checklist-open]', el.boardList).forEach(card => card.addEventListener('click', (event) => {
+      if (event.target.closest('button, a, input, select, textarea, label')) return;
+      openChecklistRunSummary(card.dataset.boardChecklistOpen);
+    }));
     qsa('[data-open-issue]', el.boardList).forEach(btn => btn.addEventListener('click', () => openIssueModal(btn.dataset.openIssue)));
     qsa('[data-open-issue-thumb]', el.boardList).forEach(btn => btn.addEventListener('click', () => openIssueMediaPreview(btn.dataset.openIssueThumb)));
     qsa('[data-status-action]', el.boardList).forEach(btn => btn.addEventListener('click', () => {
@@ -3728,33 +3746,44 @@ function switchView(viewId) {
     const failCount = run.fail_count || 0;
     const issueCount = run.issue_count || 0;
     const desc = `${runTemplateLabel(run)} • ${run.pass_count || 0} ${txt('ผ่าน', 'pass')} • ${failCount} ${txt('ไม่ผ่าน', 'fail')} • ${run.na_count || 0} N/A${issueCount ? ` • ${issueCount} ${txt('รายการ', 'issue')}` : ''}`;
+    const statusText = txt('ส่งแล้ว', 'Submitted');
     return `
-      <article class="issue-card issue-tone-closed checklist-board-card">
-        <div class="issue-thumb placeholder checklist-placeholder">DONE</div>
-        <div>
-          <div class="issue-title-row">
-            <div>
-              <div class="issue-title">${txt('ส่งเช็กลิสต์แล้ว:', 'Checklist submitted:')} ${escapeHtml(runTemplateLabel(run))}</div>
-              <div class="meta-row">
+      <article class="issue-card laya-board-card laya-board-checklist-card issue-tone-closed" data-board-checklist-open="${run.id}">
+        <div class="laya-card-strip strip-checklist"></div>
+        <div class="laya-board-card-body">
+          <div class="laya-board-title-row">
+            <div class="laya-board-title-area">
+              <div class="laya-board-title">📋 ${txt('ส่งเช็กลิสต์แล้ว:', 'Checklist submitted:')} ${escapeHtml(runTemplateLabel(run))}</div>
+              <div class="laya-board-meta">
+                <span class="laya-meta-dept">${txt('Checklist', 'Checklist')}</span>
+                <span class="laya-meta-dot"></span>
                 <span>${escapeHtml(run.location_text || '-')}</span>
-                <span>•</span>
+                <span class="laya-meta-dot"></span>
                 <span>${formatDateTime(run.submitted_at || run.created_at)}</span>
               </div>
             </div>
-            <div class="issue-badges">
-              <div class="status-pill status-closed">Submitted</div>
-              <div class="priority-pill priority-low">${txt('เช็กลิสต์', 'Checklist')}</div>
+            <button type="button" class="laya-board-thumb-trigger" data-open-checklist-run="${run.id}" aria-label="${txt('เปิดสรุปเช็กลิสต์', 'Open checklist summary')}">
+              <div class="laya-board-thumb"><div class="laya-board-thumb-placeholder">DONE</div></div>
+            </button>
+          </div>
+          <div class="laya-board-tags">
+            <span class="laya-board-tag laya-status-closed">✅ ${escapeHtml(statusText)}</span>
+            <span class="laya-board-tag laya-priority-low">${txt('เช็กลิสต์', 'Checklist')}</span>
+          </div>
+          <div class="laya-board-desc">${escapeHtml(desc)}</div>
+          <div class="laya-board-footer">
+            <div class="laya-board-info">
+              <div class="laya-board-footer-meta">
+                <span>${txt('ผู้ตรวจ', 'Inspector')} ${escapeHtml(run.inspector_name || '-')}</span>
+                <span class="laya-meta-dot"></span>
+                <span>${issueCount || 0} ${txt('Issue', 'Issue')}</span>
+              </div>
+              <div class="laya-board-id">${escapeHtml(run.run_no || run.id)}</div>
             </div>
-          </div>
-          <div class="issue-desc">${escapeHtml(desc)}</div>
-          <div class="meta-row">
-            <span>${escapeHtml(run.run_no || run.id)}</span>
-            <span>•</span>
-            <span>${txt('ผู้ตรวจ', 'Inspector')} ${escapeHtml(run.inspector_name || '-')}</span>
-          </div>
-          <div class="issue-actions">
-            <button class="mini-btn" data-open-checklist-run="${run.id}">${txt('เปิดสรุป', 'Open Summary')}</button>
-            <button class="mini-btn" data-archive-checklist-run="${run.id}">${txt('ปิดการ์ด', 'Close')}</button>
+            <div class="issue-actions laya-board-actions">
+              <button class="mini-btn" data-open-checklist-run="${run.id}">${txt('เปิดสรุป', 'Open Summary')}</button>
+              <button class="mini-btn" data-archive-checklist-run="${run.id}">${txt('ปิดการ์ด', 'Close')}</button>
+            </div>
           </div>
         </div>
       </article>

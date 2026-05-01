@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
   <script>
-    window.LAYA_APP_VERSION = 'v101-claude-ui-force';
+    window.LAYA_APP_VERSION = 'v102-board-mobile-card-ui';
     (function () {
       var VERSION = window.LAYA_APP_VERSION;
       var VERSION_KEY = 'laya_mod_active_version_v1';
@@ -56,12 +56,12 @@
       } catch (err) {}
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=v101-claude-ui-force" />
+  <link rel="stylesheet" href="style.css?v=v102-board-mobile-card-ui" />
 </head>
-<body class="laya-ui-v101">
+<body class="laya-ui-v102">
   <div id="loginScreen" class="login-shell">
     <div class="login-card glass">
-      <img src="assets/logo.png?v=v101-claude-ui-force" alt="Laya Resort Phuket" class="login-logo" />
+      <img src="assets/logo.png?v=v102-board-mobile-card-ui" alt="Laya Resort Phuket" class="login-logo" />
       <div class="brand-subtitle">MOD Checklist Report</div>
       <h1>Hotel Inspection & Issue Board</h1>
       <div id="authStatus" class="auth-status hidden"></div>
@@ -140,10 +140,10 @@
     </div>
   </div>
 
-  <div id="appShell" class="app-shell hidden" data-ui-version="v101-claude-ui-force">
+  <div id="appShell" class="app-shell hidden" data-ui-version="v102-board-mobile-card-ui">
     <aside class="sidebar glass desktop-only">
       <div class="sidebar-brand">
-        <img src="assets/logo.png?v=v101-claude-ui-force" alt="Laya Resort Phuket" class="sidebar-logo" />
+        <img src="assets/logo.png?v=v102-board-mobile-card-ui" alt="Laya Resort Phuket" class="sidebar-logo" />
       </div>
       <nav class="sidebar-nav">
         <button class="nav-link active" data-view="boardView">Board</button>
@@ -206,7 +206,14 @@
         </div>
       </header>
 
-      <section id="boardView" class="view active">
+      <section id="boardView" class="view active board-mobile-card-view">
+        <div class="laya-board-headline">
+          <div>
+            <div class="laya-board-page-title">📋 รายการปัญหา</div>
+            <div class="laya-board-page-sub">ติดตามงานล่าสุด แยกตามแผนก สถานะ และความเร่งด่วน</div>
+          </div>
+          <button class="laya-board-new-btn" type="button" data-view="newIssueView">＋ แจ้งปัญหาใหม่</button>
+        </div>
         <div class="summary-grid" id="summaryGrid"></div>
 
         <div class="toolbar glass">
@@ -741,9 +748,9 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=v101-claude-ui-force"></script>
-  <script type="module" src="js/firebase-init.js?v=v101-claude-ui-force"></script>
-  <script src="js/app.js?v=v101-claude-ui-force"></script>
+  <script src="js/firebase-config.js?v=v102-board-mobile-card-ui"></script>
+  <script type="module" src="js/firebase-init.js?v=v102-board-mobile-card-ui"></script>
+  <script src="js/app.js?v=v102-board-mobile-card-ui"></script>
 
   <div id="tempPasswordResultModal" class="modal hidden">
     <div class="modal-backdrop" data-close-temp-password-modal="true"></div>
