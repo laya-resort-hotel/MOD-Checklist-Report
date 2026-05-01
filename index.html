@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
   <script>
-    window.LAYA_APP_VERSION = 'v97-reporter-visibility-staff-permission';
+    window.LAYA_APP_VERSION = 'v98-department-canonical-it';
     (function () {
       var VERSION = window.LAYA_APP_VERSION;
       var VERSION_KEY = 'laya_mod_active_version_v1';
@@ -56,12 +56,12 @@
       } catch (err) {}
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=v97-reporter-visibility-staff-permission" />
+  <link rel="stylesheet" href="style.css?v=v98-department-canonical-it" />
 </head>
 <body>
   <div id="loginScreen" class="login-shell">
     <div class="login-card glass">
-      <img src="assets/logo.png?v=v97-reporter-visibility-staff-permission" alt="Laya Resort Phuket" class="login-logo" />
+      <img src="assets/logo.png?v=v98-department-canonical-it" alt="Laya Resort Phuket" class="login-logo" />
       <div class="brand-subtitle">MOD Checklist Report</div>
       <h1>Hotel Inspection & Issue Board</h1>
       <div id="authStatus" class="auth-status hidden"></div>
@@ -143,7 +143,7 @@
   <div id="appShell" class="app-shell hidden">
     <aside class="sidebar glass desktop-only">
       <div class="sidebar-brand">
-        <img src="assets/logo.png?v=v97-reporter-visibility-staff-permission" alt="Laya Resort Phuket" class="sidebar-logo" />
+        <img src="assets/logo.png?v=v98-department-canonical-it" alt="Laya Resort Phuket" class="sidebar-logo" />
       </div>
       <nav class="sidebar-nav">
         <button class="nav-link active" data-view="boardView">Board</button>
@@ -545,8 +545,9 @@
             <div class="stack">
               <button id="openTeamMembersFromSettings" class="btn btn-secondary" type="button">Manage Users</button>
               <button id="applyUserProfilePresetBtn" class="btn btn-primary" type="button">อัปเดตชื่อ/ตำแหน่ง/แผนก HOD</button>
+              <button id="standardizeDepartmentCodesBtn" class="btn btn-secondary" type="button">จัดมาตรฐาน Department Code + เพิ่ม IT</button>
               <div id="userProfilePresetStatus" class="settings-status hidden"></div>
-              <p class="muted small-note">ปุ่มนี้จะอัปเดตเฉพาะบัญชี HOD/Manager ตาม Employee ID ที่สรุปไว้ และจะไม่แตะ ID 24174, 32052, 25000, 25285, 26432</p>
+              <p class="muted small-note">ระบบใช้ Department Code เป็นตัวจับคู่งาน เช่น ENG, HK, IT ส่วนชื่อเต็มเช่น Engineering / Maintenance เป็นเพียงชื่อแสดงผล ปุ่มนี้จะจัดชื่อแผนกเก่าให้เป็น code มาตรฐาน และจะไม่แตะ ID 24174, 32052, 25000, 25285, 26432</p>
             </div>
           </div>
         </div>
@@ -740,9 +741,9 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=v97-reporter-visibility-staff-permission"></script>
-  <script type="module" src="js/firebase-init.js?v=v97-reporter-visibility-staff-permission"></script>
-  <script src="js/app.js?v=v97-reporter-visibility-staff-permission"></script>
+  <script src="js/firebase-config.js?v=v98-department-canonical-it"></script>
+  <script type="module" src="js/firebase-init.js?v=v98-department-canonical-it"></script>
+  <script src="js/app.js?v=v98-department-canonical-it"></script>
 
   <div id="tempPasswordResultModal" class="modal hidden">
     <div class="modal-backdrop" data-close-temp-password-modal="true"></div>
