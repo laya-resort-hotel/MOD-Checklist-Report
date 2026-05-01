@@ -1,6 +1,6 @@
 (() => {
   const APP_KEY = 'laya_mod_checklist_v1';
-  const APP_VERSION = window.LAYA_APP_VERSION || 'v93-user-profile-bulk-update';
+  const APP_VERSION = window.LAYA_APP_VERSION || 'v99-department-standardize-fix';
   const APP_VERSION_KEY = 'laya_mod_active_version_v1';
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 
@@ -94,7 +94,7 @@
     { code: 'FNA', name: 'Finance & Accounting', name_th: 'การเงินและบัญชี' },
     { code: 'PUR', name: 'Purchasing / Procurement', name_th: 'จัดซื้อ / จัดหา' },
     { code: 'SPA', name: 'Spa & Wellness', name_th: 'สปาและเวลเนส' },
-    { code: 'IT', name: 'Information Technology', name_th: 'เทคโนโลยีสารสนเทศ' },
+    { code: 'IT', name: 'IT Department / Information Technology', name_th: 'แผนก IT / เทคโนโลยีสารสนเทศ' },
     { code: 'GM', name: "Administration / General Manager's Office", name_th: 'ฝ่ายบริหาร / สำนักงานผู้จัดการทั่วไป' },
     { code: 'ROOMS', name: 'Room Division', name_th: 'รูมดิวิชั่น' },
     { code: 'MOD', name: 'MOD', name_th: 'MOD' },
@@ -103,6 +103,49 @@
   const WORK_DEPARTMENT_CODES = ['ENG', 'HK', 'FO', 'FB', 'SEC', 'HR', 'RSV', 'SALES', 'REC', 'KIT', 'FNA', 'PUR', 'SPA', 'IT', 'GM', 'ROOMS'];
   const USER_DEPARTMENT_CODES = [...WORK_DEPARTMENT_CODES, 'MOD', 'ADMIN'];
   const ALL_DEPARTMENT_CODES = DEPARTMENTS.map(dept => dept.code);
+
+  // v98: ใช้ Department Code เป็นมาตรฐานใน Firestore
+  // เช่น assigned_department = ENG และ user.department = ENG; ชื่อเต็มเป็นแค่ label สำหรับแสดงผล
+  const DEPARTMENT_ALIASES = {
+    ENG: ['ENGINEER', 'ENGINEERING', 'ENGINEERING / MAINTENANCE', 'ENGINEERING/MAINTENANCE', 'ENGINEERING & MAINTENANCE', 'MAINTENANCE', 'DIRECTOR OF ENGINEER', 'วิศวกรรม', 'ซ่อมบำรุง', 'ช่าง'],
+    HK: ['HOUSEKEEPING', 'HOUSE KEEPING', 'แม่บ้าน'],
+    FO: ['FRONT OFFICE', 'FRONT OFFICE - RESORT', 'ฟร้อนท์', 'ฟร้อนท์ออฟฟิศ'],
+    FB: ['FOOD & BEVERAGE', 'F&B', 'FB', 'FOOD AND BEVERAGE', 'อาหารและเครื่องดื่ม', 'ห้องอาหาร'],
+    SEC: ['SECURITY', 'รักษาความปลอดภัย'],
+    HR: ['HUMAN RESOURCES', 'HUMAN RESOURCE', 'HR', 'ทรัพยากรบุคคล'],
+    RSV: ['RESERVATION', 'RESERVATIONS', 'สำรองห้องพัก'],
+    SALES: ['SALES & MARKETING', 'SALES AND MARKETING', 'DIGITAL MARKETING', 'MARKETING', 'ฝ่ายขายและการตลาด'],
+    REC: ['RECREATION', 'สันทนาการ'],
+    KIT: ['KITCHEN', 'CULINARY', 'ครัว'],
+    FNA: ['FINANCE & ACCOUNTING', 'FINANCE AND ACCOUNTING', 'ACCOUNTING', 'FINANCE', 'การเงินและบัญชี'],
+    PUR: ['PURCHASING / PROCUREMENT', 'PURCHASING', 'PROCUREMENT', 'จัดซื้อ', 'จัดหา'],
+    SPA: ['SPA & WELLNESS', 'SPA', 'WELLNESS', 'สปา'],
+    IT: ['I.T.', 'IT DEPARTMENT', 'INFORMATION TECHNOLOGY', 'INFORMATION TECHNOLOGY DEPARTMENT', 'INFORMATION TECHNOLOGY MANAGER - RESORT', 'เทคโนโลยีสารสนเทศ', 'แผนก IT'],
+    GM: ["ADMINISTRATION / GENERAL MANAGER'S OFFICE", "GENERAL MANAGER'S OFFICE", 'ADMINISTRATION', 'GM OFFICE', 'EXECUTIVE OFFICE', 'ฝ่ายบริหาร'],
+    ROOMS: ['ROOM DIVISION', 'ROOMS DIVISION', 'DIRECTOR OF ROOM', 'ROOMS', 'รูมดิวิชั่น'],
+    MOD: ['MOD TEAM'],
+    ADMIN: ['SYSTEM ADMIN', 'ADMINISTRATOR', 'ผู้ดูแลระบบ'],
+  };
+
+  function normalizeDepartmentCode(value, fallback = 'ENG') {
+    const raw = String(value || '').trim();
+    if (!raw) return fallback;
+    const direct = raw.toUpperCase();
+    if (ALL_DEPARTMENT_CODES.includes(direct)) return direct;
+    const normalized = direct.replace(/\s+/g, ' ').replace(/ /g, ' ').trim();
+    for (const dept of DEPARTMENTS) {
+      if (normalized === String(dept.name || '').toUpperCase()) return dept.code;
+      if (normalized === String(dept.name_th || '').toUpperCase()) return dept.code;
+    }
+    for (const [code, aliases] of Object.entries(DEPARTMENT_ALIASES)) {
+      if ((aliases || []).some(alias => normalized === String(alias || '').toUpperCase())) return code;
+    }
+    return fallback;
+  }
+
+  function normalizeDepartmentValue(value, fallback = 'ENG') {
+    return normalizeDepartmentCode(value, fallback);
+  }
 
   const ROLES = [
     { code: 'admin', name: 'Admin', name_th: 'ผู้ดูแลระบบ' },
@@ -157,7 +200,9 @@
   }
 
   function getDepartmentMeta(code) {
-    return DEPARTMENTS.find(d => d.code === code) || null;
+    const raw = String(code || '').trim();
+    const normalized = normalizeDepartmentCode(raw, raw || '');
+    return DEPARTMENTS.find(d => d.code === normalized) || DEPARTMENTS.find(d => d.code === raw) || null;
   }
 
   function getDepartmentName(code) {
@@ -1122,7 +1167,7 @@
     if (!window.LAYA_FIREBASE_CONFIG_PRESENT && !state.data.issues.length && !state.data.activity.length) {
       seedDemoData();
     }
-    state.data.teamMembers = DEMO_USERS.map(user => ({ uid: user.uid, employee_id: user.employee_id, full_name: user.full_name, role: normalizeRole(user.role), department: user.department || 'MOD', position: user.position || getRoleName(user.role), is_active: true }));
+    state.data.teamMembers = DEMO_USERS.map(user => ({ uid: user.uid, employee_id: user.employee_id, full_name: user.full_name, role: normalizeRole(user.role), department: normalizeDepartmentValue(user.department, 'MOD'), position: user.position || getRoleName(user.role), is_active: true }));
     renderTemplateCards();
     renderUsageLogs();
     renderAll();
@@ -1346,6 +1391,7 @@
     setNodeText('#settingsAdminToolsPanel .panel-header p', 'แก้ Role / Department / Position และออกรหัสชั่วคราวให้พนักงาน', 'Manage role, department, position, and temporary passwords for staff.');
     setNodeText('#openTeamMembersFromSettings', 'จัดการผู้ใช้งาน', 'Manage Users');
     setNodeText('#applyUserProfilePresetBtn', 'อัปเดตชื่อ/ตำแหน่ง/แผนก HOD', 'Update HOD profiles');
+    setNodeText('#standardizeDepartmentCodesBtn', 'จัดมาตรฐาน Department Code + เพิ่ม IT', 'Standardize Department Codes + IT');
     setNodeText('#logoutBtn', 'ออกจากระบบ', 'Logout');
     setNodeText('#topbarAccountName', 'บัญชีของฉัน', 'My Account');
     setNodeText('#topbarAccountMeta', 'ทีม MOD', 'MOD Team');
@@ -1570,7 +1616,7 @@
       employee_id: employeeId,
       full_name: fullName,
       role: normalizeRole(role),
-      department,
+      department: normalizeDepartmentValue(department, 'ENG'),
       position: position || getRoleName(role),
       is_active: true,
       phone: '',
@@ -1733,7 +1779,7 @@
         resetSignedOutState();
         return false;
       }
-      state.currentUser = { uid: user.uid, password_change_required: false, temporary_password_issued_at: null, temporary_password_issued_by_uid: '', ...profile, role: normalizeRole(profile.role) };
+      state.currentUser = { uid: user.uid, password_change_required: false, temporary_password_issued_at: null, temporary_password_issued_by_uid: '', ...profile, role: normalizeRole(profile.role), department: normalizeDepartmentValue(profile.department, 'MOD') };
       hydrateFastDashboardCache();
       renderAll();
 
@@ -1927,6 +1973,7 @@
       settingsAdminToolsPanel: qs('#settingsAdminToolsPanel'),
       openTeamMembersFromSettings: qs('#openTeamMembersFromSettings'),
       applyUserProfilePresetBtn: qs('#applyUserProfilePresetBtn'),
+      standardizeDepartmentCodesBtn: qs('#standardizeDepartmentCodesBtn'),
       userProfilePresetStatus: qs('#userProfilePresetStatus'),
       settingsProfileAvatarPreview: qs('#settingsProfileAvatarPreview'),
       settingsProfileAvatarImg: qs('#settingsProfileAvatarImg'),
@@ -2101,6 +2148,7 @@
     if (el.openSettingsFromMore) el.openSettingsFromMore.addEventListener('click', () => switchView('settingsView'));
     if (el.openTeamMembersFromSettings) el.openTeamMembersFromSettings.addEventListener('click', handleOpenTeamMembersShortcut);
     if (el.applyUserProfilePresetBtn) el.applyUserProfilePresetBtn.addEventListener('click', applyHodProfilePreset);
+    if (el.standardizeDepartmentCodesBtn) el.standardizeDepartmentCodesBtn.addEventListener('click', applyDepartmentCodeStandardization);
     if (el.backToBoardBtn) el.backToBoardBtn.addEventListener('click', () => switchView('boardView'));
     el.boardFilterChips.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');
@@ -2321,11 +2369,11 @@
       issue_type: issue.issue_type || 'other',
       priority: issue.priority || 'medium',
       status: issue.status || 'open',
-      assigned_department: issue.assigned_department || '',
+      assigned_department: normalizeDepartmentValue(issue.assigned_department, ''),
       location_text: issue.location_text || '',
       reported_by_uid: issue.reported_by_uid || '',
       reported_by_name: issue.reported_by_name || '',
-      reported_by_department: issue.reported_by_department || '',
+      reported_by_department: normalizeDepartmentValue(issue.reported_by_department, ''),
       closed_by_name: issue.closed_by_name || '',
       comment_count: issue.comment_count || 0,
       cover_thumb_url: issue.cover_thumb_url || '',
@@ -2571,7 +2619,7 @@
       alert(txt('Employee ID หรือ Password ไม่ถูกต้อง', 'Employee ID or Password is incorrect'));
       return;
     }
-    state.currentUser = { ...user };
+    state.currentUser = { ...user, department: normalizeDepartmentValue(user.department, 'MOD') };
     recordUsageLogLocal({
       category: 'auth',
       action: 'login',
@@ -2596,7 +2644,7 @@
     const employeeId = el.registerEmployeeId.value.trim();
     const fullName = el.registerFullName.value.trim();
     const role = 'staff';
-    const department = el.registerDepartment?.value || 'ENG';
+    const department = normalizeDepartmentValue(el.registerDepartment?.value, 'ENG');
     const position = String(el.registerPosition?.value || '').trim() || getRoleName(role);
     const password = el.registerPassword.value.trim();
     const confirmPassword = el.registerConfirmPassword.value.trim();
@@ -2764,7 +2812,7 @@
       closeAccountMiniMenu(true);
       return;
     }
-    const teamName = state.currentUser.department ? getDepartmentName(state.currentUser.department) : 'MOD';
+    const teamName = state.currentUser.department ? getDepartmentName(normalizeDepartmentValue(state.currentUser.department, 'MOD')) : 'MOD';
     el.welcomeText.textContent = `${state.currentUser.full_name} • ${teamName} ${txt('ทีม', 'Team')}`;
     renderTopbarAccount();
     renderTeamMembers();
@@ -2777,7 +2825,7 @@
     const fullName = String(user.full_name || txt('บัญชีของฉัน', 'My Account'));
     const employeeId = String(user.employee_id || '-');
     const roleName = getRoleName(user.role || 'staff');
-    const departmentName = getDepartmentName(user.department || 'MOD');
+    const departmentName = getDepartmentName(normalizeDepartmentValue(user.department, 'MOD'));
     const avatarUrl = String(user.avatar_url || '');
     const initials = getUserInitials(fullName || 'M');
     if (el.topbarAccountName) el.topbarAccountName.textContent = fullName;
@@ -3133,7 +3181,7 @@ function openPasswordEditorModal(mode = 'normal') {
     const fullName = state.currentUser.full_name || '';
     const employeeId = state.currentUser.employee_id || '';
     const roleName = getRoleName(state.currentUser.role || 'staff');
-    const departmentName = getDepartmentName(state.currentUser.department || 'MOD');
+    const departmentName = getDepartmentName(normalizeDepartmentValue(state.currentUser.department, 'MOD'));
     const positionName = state.currentUser.position || '-';
     setFieldValue(el.settingsEmployeeId, employeeId);
     setFieldValue(el.settingsRole, roleName);
@@ -3531,7 +3579,7 @@ function switchView(viewId) {
       }
 
       const issue = item;
-      const deptName = getDepartmentName(issue.assigned_department);
+      const deptName = getDepartmentName(normalizeDepartmentValue(issue.assigned_department, 'ENG'));
       const { thumb, full: fullCover, hasVideo, videoPreviewUrl } = getIssueCoverMedia(issue);
       const thumbHtml = thumb
         ? `<button type="button" class="issue-thumb-trigger media-open-immediate" data-open-issue-thumb="${issue.id}" aria-label="${txt('ดูรูปใหญ่', 'Open media preview')}"><div class="issue-thumb-wrap">${thumb ? `<img class="issue-thumb" src="${thumb}" alt="Closed issue media" />` : ''}${hasVideo ? '<span class="media-badge">VIDEO</span>' : ''}</div></button>`
@@ -3600,7 +3648,7 @@ function switchView(viewId) {
         return renderChecklistBoardCard(item);
       }
       const issue = item;
-      const deptName = getDepartmentName(issue.assigned_department);
+      const deptName = getDepartmentName(normalizeDepartmentValue(issue.assigned_department, 'ENG'));
       const { thumb, full: fullCover, hasVideo, photoCount, videoCount, videoPreviewUrl } = getIssueCoverMedia(issue);
       const mediaBits = [];
       if (photoCount > 0) mediaBits.push(`<span>${photoCount} ${txt('รูป', `photo${photoCount > 1 ? 's' : ''}`)}</span>`);
@@ -3958,7 +4006,7 @@ function switchView(viewId) {
       startIndex: 0,
       issueId: issue.id,
       title: issue.title || txt('ดูสื่อ', 'Media preview'),
-      meta: `${getDepartmentName(issue.assigned_department)} • ${issue.location_text || '-'} • ${formatDateTime(issue.created_at)}`,
+      meta: `${getDepartmentName(normalizeDepartmentValue(issue.assigned_department, 'ENG'))} • ${issue.location_text || '-'} • ${formatDateTime(issue.created_at)}`,
       description: issue.description || ''
     });
   }
@@ -4215,7 +4263,7 @@ function switchView(viewId) {
     const description = el.issueDescription.value.trim();
     const issueType = el.issueType.value;
     const location = el.issueLocation.value.trim();
-    const assignedDepartment = el.issueDepartment.value;
+    const assignedDepartment = normalizeDepartmentValue(el.issueDepartment.value, 'ENG');
     const priority = state.ui.newIssuePriority;
     const pendingPhotos = Array.isArray(state.ui.pendingIssuePhotos) ? state.ui.pendingIssuePhotos : [];
     const pendingVideo = state.ui.pendingIssueVideo;
@@ -4381,7 +4429,7 @@ function switchView(viewId) {
             : 'Duplicate checklist fail skipped',
           by_uid: state.currentUser.uid,
           by_name: state.currentUser.full_name,
-          by_department: state.currentUser.department,
+          by_department: normalizeDepartmentValue(state.currentUser.department, 'MOD'),
           created_at: sdk.serverTimestamp(),
         });
       });
@@ -4420,13 +4468,13 @@ function switchView(viewId) {
       issue_type: payload.issue_type || 'other',
       priority: payload.priority || 'medium',
       status: payload.status || 'open',
-      assigned_department: payload.assigned_department || 'ENG',
+      assigned_department: normalizeDepartmentValue(payload.assigned_department, 'ENG'),
       assigned_to_uid: '',
       assigned_to_name: '',
       location_text: payload.location_text || '',
       reported_by_uid: state.currentUser.uid,
       reported_by_name: state.currentUser.full_name,
-      reported_by_department: state.currentUser.department,
+      reported_by_department: normalizeDepartmentValue(state.currentUser.department, 'MOD'),
       cover_photo_url: payload.before_photos?.[0]?.url || payload.before_videos?.[0]?.poster_url || '',
       cover_thumb_url: payload.before_photos?.[0]?.thumb_url || payload.before_videos?.[0]?.thumb_url || payload.before_videos?.[0]?.poster_url || '',
       before_photos: payload.before_photos || [],
@@ -4505,7 +4553,7 @@ function switchView(viewId) {
                 : 'Duplicate checklist fail skipped',
               by_uid: state.currentUser.uid,
               by_name: state.currentUser.full_name,
-              by_department: state.currentUser.department,
+              by_department: normalizeDepartmentValue(state.currentUser.department, 'MOD'),
               created_at: sdk.serverTimestamp(),
             });
             duplicateIssueId = guardedIssueId;
@@ -4543,7 +4591,7 @@ function switchView(viewId) {
         issue_type: payload.issue_type || 'other',
         priority: payload.priority || 'medium',
         status: 'open',
-        assigned_department: payload.assigned_department || 'ENG',
+        assigned_department: normalizeDepartmentValue(payload.assigned_department, 'ENG'),
         assigned_to_uid: '',
         assigned_to_name: '',
         location_text: payload.location_text || '',
@@ -4552,7 +4600,7 @@ function switchView(viewId) {
         room_no: '',
         reported_by_uid: state.currentUser.uid,
         reported_by_name: state.currentUser.full_name,
-        reported_by_department: state.currentUser.department,
+        reported_by_department: normalizeDepartmentValue(state.currentUser.department, 'MOD'),
         cover_photo_url: beforePhotos[0]?.url || beforeVideos[0]?.poster_url || '',
         cover_thumb_url: beforePhotos[0]?.thumb_url || beforeVideos[0]?.thumb_url || beforeVideos[0]?.poster_url || '',
         before_photos: beforePhotos,
@@ -4575,7 +4623,7 @@ function switchView(viewId) {
         note: '',
         by_uid: state.currentUser.uid,
         by_name: state.currentUser.full_name,
-        by_department: state.currentUser.department,
+        by_department: normalizeDepartmentValue(state.currentUser.department, 'MOD'),
         created_at: sdk.serverTimestamp(),
       });
 
@@ -5570,7 +5618,7 @@ function switchView(viewId) {
             <div class="inline-options">
               <span class="priority-pill priority-${issue.priority}">${translatePriority(issue.priority)}</span>
               <span class="status-pill status-${issue.status}">${translateStatus(issue.status)}</span>
-              <span class="status-pill status-open">${escapeHtml(getDepartmentName(issue.assigned_department))}</span>
+              <span class="status-pill status-open">${escapeHtml(getDepartmentName(normalizeDepartmentValue(issue.assigned_department, 'ENG')))}</span>
             </div>
           </div>
           <div class="detail-meta">
@@ -5815,7 +5863,7 @@ function switchView(viewId) {
               <span class="mention-alert-time">${escapeHtml(formatDateTime(item.created_at) || '-')}</span>
             </div>
             <div class="mention-alert-title">${escapeHtml(item.issue_title || item.issue_id || txt('Issue ที่ถูกแท็ก', 'Mentioned issue'))}</div>
-            <div class="mention-alert-meta">${escapeHtml(item.by_name || '-')} • ${escapeHtml(getDepartmentName(item.by_department || 'MOD'))}</div>
+            <div class="mention-alert-meta">${escapeHtml(item.by_name || '-')} • ${escapeHtml(getDepartmentName(normalizeDepartmentValue(item.by_department, 'MOD')))}</div>
             <div class="mention-alert-message">${escapeHtml(item.message || '')}</div>
           </button>
         `).join('')}
@@ -6009,7 +6057,7 @@ function switchView(viewId) {
         note: 'Added completion evidence photo',
         by_uid: state.currentUser.uid,
         by_name: state.currentUser.full_name,
-        by_department: state.currentUser.department,
+        by_department: normalizeDepartmentValue(state.currentUser.department, 'MOD'),
         created_at: sdk.serverTimestamp(),
       });
     });
@@ -6110,7 +6158,7 @@ function switchView(viewId) {
         note: 'Added completion evidence video',
         by_uid: state.currentUser.uid,
         by_name: state.currentUser.full_name,
-        by_department: state.currentUser.department,
+        by_department: normalizeDepartmentValue(state.currentUser.department, 'MOD'),
         created_at: sdk.serverTimestamp(),
       });
     });
@@ -6196,7 +6244,7 @@ function switchView(viewId) {
         note: 'Deleted completion evidence photo',
         by_uid: state.currentUser.uid,
         by_name: state.currentUser.full_name,
-        by_department: state.currentUser.department,
+        by_department: normalizeDepartmentValue(state.currentUser.department, 'MOD'),
         created_at: sdk.serverTimestamp(),
       });
     });
@@ -6262,7 +6310,7 @@ function switchView(viewId) {
         note: 'Deleted completion evidence video',
         by_uid: state.currentUser.uid,
         by_name: state.currentUser.full_name,
-        by_department: state.currentUser.department,
+        by_department: normalizeDepartmentValue(state.currentUser.department, 'MOD'),
         created_at: sdk.serverTimestamp(),
       });
     });
@@ -6357,7 +6405,7 @@ function switchView(viewId) {
           note: '',
           by_uid: state.currentUser.uid,
           by_name: state.currentUser.full_name,
-          by_department: state.currentUser.department,
+          by_department: normalizeDepartmentValue(state.currentUser.department, 'MOD'),
           created_at: sdk.serverTimestamp(),
         });
       });
@@ -6421,7 +6469,7 @@ function switchView(viewId) {
           note: 'Updated issue cover photo',
           by_uid: state.currentUser.uid,
           by_name: state.currentUser.full_name,
-          by_department: state.currentUser.department,
+          by_department: normalizeDepartmentValue(state.currentUser.department, 'MOD'),
           created_at: sdk.serverTimestamp(),
         });
       });
@@ -6500,7 +6548,7 @@ function switchView(viewId) {
           by_uid: state.currentUser.uid,
           by_name: state.currentUser.full_name,
           by_role: state.currentUser.role,
-          by_department: state.currentUser.department,
+          by_department: normalizeDepartmentValue(state.currentUser.department, 'MOD'),
           mentions,
           photos: [],
           created_at: sdk.serverTimestamp(),
@@ -6510,7 +6558,7 @@ function switchView(viewId) {
           note: message,
           by_uid: state.currentUser.uid,
           by_name: state.currentUser.full_name,
-          by_department: state.currentUser.department,
+          by_department: normalizeDepartmentValue(state.currentUser.department, 'MOD'),
           created_at: sdk.serverTimestamp(),
         });
         tx.update(issueRef, {
@@ -6799,7 +6847,7 @@ function switchView(viewId) {
         employee_id: user.employee_id,
         full_name: user.full_name,
         role: normalizeRole(user.role),
-        department: user.department || 'MOD',
+        department: normalizeDepartmentValue(user.department, 'MOD'),
         position: user.position || getRoleName(user.role),
         is_active: true,
       }));
@@ -6811,7 +6859,7 @@ function switchView(viewId) {
     const sdk = fb.sdk;
     const constraints = [sdk.collection(fb.db, 'users')];
     if (!canManageUsers() && sdk.where) {
-      constraints.push(sdk.where('department', '==', state.currentUser.department || ''));
+      constraints.push(sdk.where('department', '==', normalizeDepartmentValue(state.currentUser.department, '')));
     }
     const q = sdk.query(...constraints);
     state.firebaseUsersUnsub = sdk.onSnapshot(q, (snap) => {
@@ -6838,7 +6886,7 @@ function switchView(viewId) {
       employee_id: user.employee_id,
       full_name: user.full_name,
       role: normalizeRole(user.role),
-      department: user.department || 'MOD',
+      department: normalizeDepartmentValue(user.department, 'MOD'),
       position: user.position || getRoleName(user.role),
       is_active: true,
     }));
@@ -7095,7 +7143,7 @@ function humanizeLogAction(action) {
   function buildHodProfileUpdate(employeeId, preset) {
     const fullName = String(preset.full_name || '').trim();
     const position = String(preset.position || '').trim();
-    const department = String(preset.department || '').trim();
+    const department = normalizeDepartmentValue(preset.department, 'ENG');
     const role = normalizeRole(preset.role || 'staff');
     return {
       employee_id: employeeId,
@@ -7105,10 +7153,158 @@ function humanizeLogAction(action) {
       display_name: fullName,
       displayName: fullName,
       role,
-      department,
+      department: normalizeDepartmentValue(department, 'ENG'),
       position,
       is_active: preset.is_active !== false,
     };
+  }
+
+  function getDepartmentEnglishName(code) {
+    const dept = getDepartmentMeta(code);
+    return dept ? (dept.name || dept.code || code || '') : (code || '');
+  }
+
+  function shouldUsePresetDepartment(currentCode, employeeId) {
+    // v99: ถ้าบัญชี HOD เดิมยังเป็น MOD/ว่าง ให้ใช้ preset ที่เราสรุปไว้แทน
+    // เพื่อให้ปุ่มจัดมาตรฐานทำงานจริงแม้ข้อมูลใน Firestore เคยเก็บเป็น MOD ทั้งหมด
+    if (!employeeId || !HOD_PROFILE_PRESET[employeeId]) return false;
+    return !currentCode || currentCode === 'MOD';
+  }
+
+  async function getRawUserRecordsForDepartmentStandardization() {
+    if (isFirebaseLive()) {
+      const fb = window.LAYA_FIREBASE;
+      const snap = await fb.sdk.getDocs(fb.sdk.collection(fb.db, 'users'));
+      return snap.docs.map(docSnap => ({ uid: docSnap.id, data: docSnap.data() || {} }));
+    }
+    return getTeamMembers().map(member => ({ uid: member.uid, data: { ...member } }));
+  }
+
+  async function applyDepartmentCodeStandardization() {
+    if (!canManageUsers()) {
+      setUserProfilePresetStatus(txt('เฉพาะ Admin เท่านั้นที่จัดมาตรฐาน Department ได้', 'Only Admin can standardize departments.'), 'error');
+      setAuthStatus(txt('เฉพาะ Admin เท่านั้นที่จัดมาตรฐาน Department ได้', 'Only Admin can standardize departments.'), 'error');
+      return;
+    }
+
+    const btn = el.standardizeDepartmentCodesBtn;
+    const originalText = btn ? btn.textContent : '';
+
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = txt('กำลังตรวจ Department...', 'Checking departments...');
+      }
+
+      setUserProfilePresetStatus(txt('กำลังอ่านข้อมูลผู้ใช้จาก Firebase...', 'Reading users from Firebase...'), 'info');
+      setAuthStatus(txt('กำลังอ่านข้อมูลผู้ใช้จาก Firebase...', 'Reading users from Firebase...'), 'info');
+
+      const rawRecords = await getRawUserRecordsForDepartmentStandardization();
+      const updates = rawRecords
+        .map(record => {
+          const data = record.data || {};
+          const employeeId = normalizeEmployeeId(data.employee_id || data.employeeId || data.staff_id || data.staffId);
+          const currentRaw = String(data.department || '').trim();
+          const currentCode = normalizeDepartmentValue(currentRaw, '');
+          const preset = employeeId ? HOD_PROFILE_PRESET[employeeId] : null;
+          const presetCode = preset?.department ? normalizeDepartmentValue(preset.department, '') : '';
+          const targetCode = shouldUsePresetDepartment(currentCode, employeeId) ? presetCode : currentCode;
+          const targetName = getDepartmentEnglishName(targetCode);
+          const hasCodeField = String(data.department_code || '').trim() === targetCode;
+          const hasNameField = String(data.department_name || '').trim() === targetName;
+          const isSkipped = HOD_PROFILE_SKIPPED_EMPLOYEE_IDS.includes(employeeId);
+          const needsUpdate = !!targetCode
+            && USER_DEPARTMENT_CODES.includes(targetCode)
+            && !isSkipped
+            && (currentRaw !== targetCode || !hasCodeField || !hasNameField);
+          return { record, data, employeeId, currentRaw, currentCode, targetCode, targetName, needsUpdate };
+        })
+        .filter(item => item.needsUpdate);
+
+      if (!updates.length) {
+        const message = txt(
+          'ตรวจแล้ว: ไม่มีรายการที่ต้องแก้ Department Code ตอนนี้ ถ้ารายชื่อยังไม่เปลี่ยน ให้กดปุ่ม “อัปเดตชื่อ/ตำแหน่ง/แผนก HOD” ก่อน',
+          'Checked: no department-code updates are needed now. If profiles still look unchanged, run “Update HOD profiles” first.'
+        );
+        setUserProfilePresetStatus(message, 'success');
+        setAuthStatus(message, 'success');
+        return;
+      }
+
+      const preview = updates.slice(0, 10).map(item => {
+        const name = item.data.full_name || item.data.fullName || item.data.displayName || item.employeeId || item.record.uid || '-';
+        return `${item.employeeId || item.record.uid}: ${name} • ${item.currentRaw || '-'} → ${item.targetCode} (${item.targetName})`;
+      }).join('\n');
+      const more = updates.length > 10 ? '\n...' : '';
+      const confirmText = txt(
+        'ระบบจะอัปเดต Department Code ใน Firebase ' + updates.length + ' บัญชี\n' + preview + more + '\n\nระบบจะไม่แตะ ID 24174, 32052, 25000, 25285, 26432\nดำเนินการต่อหรือไม่?',
+        'This will update Firebase department codes for ' + updates.length + ' users.\n' + preview + more + '\n\nIDs 24174, 32052, 25000, 25285, and 26432 will not be touched.\nContinue?'
+      );
+      if (!confirm(confirmText)) {
+        setUserProfilePresetStatus(txt('ยกเลิกการจัดมาตรฐาน Department', 'Department standardization cancelled'), 'info');
+        setAuthStatus(txt('ยกเลิกการจัดมาตรฐาน Department', 'Department standardization cancelled'), 'info');
+        return;
+      }
+
+      setUserProfilePresetStatus(txt('กำลังจัดมาตรฐาน Department ใน Firebase...', 'Standardizing departments in Firebase...'), 'info');
+      setAuthStatus(txt('กำลังจัดมาตรฐาน Department ใน Firebase...', 'Standardizing departments in Firebase...'), 'info');
+
+      if (isFirebaseLive()) {
+        const fb = window.LAYA_FIREBASE;
+        await Promise.all(updates.map(({ record, currentRaw, targetCode, targetName }) => fb.sdk.updateDoc(
+          fb.sdk.doc(fb.db, 'users', record.uid),
+          {
+            department: targetCode,
+            department_code: targetCode,
+            department_name: targetName,
+            department_previous_value: currentRaw || '',
+            department_standardized_at: fb.sdk.serverTimestamp(),
+            department_standardized_by_uid: state.currentUser?.uid || '',
+            department_standardized_version: APP_VERSION,
+            updated_at: fb.sdk.serverTimestamp(),
+          }
+        )));
+      }
+
+      const updateByUid = new Map(updates.map(({ record, targetCode, targetName }) => [String(record.uid || ''), { department: targetCode, department_code: targetCode, department_name: targetName }]));
+      state.data.teamMembers = (state.data.teamMembers || []).map(member => {
+        const patch = updateByUid.get(String(member.uid || ''));
+        return patch ? { ...member, ...patch } : member;
+      });
+      const currentUid = String(state.currentUser?.uid || '');
+      if (updateByUid.has(currentUid)) {
+        state.currentUser = { ...state.currentUser, ...updateByUid.get(currentUid) };
+        persist();
+      }
+      renderAll();
+
+      const message = txt('จัดมาตรฐาน Department สำเร็จ ' + updates.length + ' บัญชี', 'Standardized departments for ' + updates.length + ' users');
+      setUserProfilePresetStatus(message, 'success');
+      setAuthStatus(message, 'success');
+
+      recordUsageLog({
+        category: 'admin',
+        action: 'standardize_department_codes',
+        title: 'Standardized user department codes',
+        text: 'Standardized ' + updates.length + ' user departments to canonical codes',
+        user_uid: state.currentUser?.uid || '',
+        user_name: state.currentUser?.full_name || '',
+        ref_no: 'v99',
+      });
+    } catch (err) {
+      console.error('department standardization failed', err);
+      const message = txt(
+        'จัดมาตรฐาน Department ไม่สำเร็จ: ตรวจสอบว่า login เป็น Admin และ Firestore rules อนุญาตให้ Admin update users',
+        'Department standardization failed: make sure you are logged in as Admin and Firestore rules allow Admin to update users.'
+      );
+      setUserProfilePresetStatus(message, 'error');
+      setAuthStatus(message, 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText || txt('จัดมาตรฐาน Department Code + เพิ่ม IT', 'Standardize Department Codes + IT');
+      }
+    }
   }
 
   async function applyHodProfilePreset() {
@@ -7197,7 +7393,7 @@ function humanizeLogAction(action) {
       const displayName = member.full_name || member.fullName || member.displayName || member.display_name || '-';
       const roleCode = normalizeRole(member.role);
       const roleName = getRoleName(roleCode);
-      const deptName = getDepartmentName(member.department || 'MOD');
+      const deptName = getDepartmentName(normalizeDepartmentValue(member.department, 'MOD'));
       const position = member.position || roleName;
       const mustChange = Boolean(member.password_change_required || member.require_password_change);
       const hasTemp = Boolean(member.temporary_password_issued_at || member.temp_password_active);
@@ -7237,7 +7433,7 @@ function humanizeLogAction(action) {
     }
     if (el.userDepartmentEdit) {
       el.userDepartmentEdit.innerHTML = renderDepartmentOptions(USER_DEPARTMENT_CODES);
-      const dept = USER_DEPARTMENT_CODES.includes(member.department) ? member.department : (member.department || 'ENG');
+      const dept = normalizeDepartmentValue(member.department, 'ENG');
       el.userDepartmentEdit.value = USER_DEPARTMENT_CODES.includes(dept) ? dept : 'ENG';
     }
     if (el.userPositionEdit) el.userPositionEdit.value = member.position || getRoleName(member.role || 'staff');
@@ -7261,7 +7457,7 @@ function humanizeLogAction(action) {
     if (!member) return;
     state.ui.editingUserUid = String(member.uid || '');
     if (el.userManagementName) el.userManagementName.textContent = member.full_name || '-';
-    if (el.userManagementEmployeeId) el.userManagementEmployeeId.textContent = `${member.employee_id || '-'} • ${getRoleName(member.role)} • ${getDepartmentName(member.department || 'MOD')}`;
+    if (el.userManagementEmployeeId) el.userManagementEmployeeId.textContent = `${member.employee_id || '-'} • ${getRoleName(member.role)} • ${getDepartmentName(normalizeDepartmentValue(member.department, 'MOD'))}`;
     populateUserManagementSelects(member);
     setUserManagementStatus('', 'info');
     el.userManagementModal.classList.remove('hidden');
@@ -7279,7 +7475,7 @@ function humanizeLogAction(action) {
     const member = getTeamMembers().find(item => String(item.uid || '') === uid);
     if (!uid || !member) return;
     const nextRole = normalizeRole(el.userRoleEdit?.value || 'staff');
-    const nextDepartment = el.userDepartmentEdit?.value || 'ENG';
+    const nextDepartment = normalizeDepartmentValue(el.userDepartmentEdit?.value, 'ENG');
     const nextPosition = String(el.userPositionEdit?.value || '').trim() || getRoleName(nextRole);
     const nextActive = String(el.userActiveEdit?.value || 'true') === 'true';
     if (!USER_DEPARTMENT_CODES.includes(nextDepartment)) {
@@ -7439,8 +7635,8 @@ function humanizeLogAction(action) {
   function getVisibleIssuesForCurrentUser() {
     if (!state.currentUser) return [];
     if (canManageAllWork()) return [...state.data.issues];
-    const myDept = String(state.currentUser.department || '');
-    return [...state.data.issues].filter(issue => String(issue.assigned_department || '') === myDept || String(issue.reported_by_uid || '') === String(state.currentUser.uid || ''));
+    const myDept = normalizeDepartmentValue(state.currentUser.department, '');
+    return [...state.data.issues].filter(issue => normalizeDepartmentValue(issue.assigned_department, '') === myDept || String(issue.reported_by_uid || '') === String(state.currentUser.uid || ''));
   }
 
   function toDateKey(value) {

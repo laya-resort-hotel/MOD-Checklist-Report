@@ -1,0 +1,24 @@
+# PATCH v99 – Department Standardize Button Fix
+
+แก้ปัญหาปุ่ม “จัดมาตรฐาน Department Code + เพิ่ม IT” กดแล้วเหมือนไม่เกิดอะไรขึ้น
+
+สาเหตุหลัก:
+- v98 อ่านข้อมูลผู้ใช้จาก state ที่ถูก normalize ในหน้าเว็บแล้ว ทำให้ปุ่มคิดว่าไม่มีรายการต้องแก้
+- จึงไม่ได้เขียนค่า department code กลับไปที่ Firebase จริงในบางกรณี
+
+สิ่งที่แก้:
+1. ปุ่มอ่านข้อมูล users สดจาก Firestore โดยตรง
+2. อัปเดต department เป็น code มาตรฐาน เช่น ENG, HK, FO, FB, IT
+3. เพิ่ม department_code และ department_name เพื่อให้เช็กง่ายขึ้น
+4. ถ้า HOD ที่อยู่ใน preset ยังเป็น MOD/ว่าง จะดึง department จาก preset มาใส่ให้
+5. ยังคงไม่แตะ ID 24174, 32052, 25000, 25285, 26432
+6. แสดงสถานะชัดเจนหลังคลิกปุ่ม ทั้งตอนกำลังทำ / สำเร็จ / ไม่มีรายการต้องแก้ / error
+7. เพิ่ม cache version ใหม่ v99-department-standardize-fix
+
+ไฟล์ที่เปลี่ยน:
+- index.html
+- app.js
+- js/app.js
+- sw.js
+
+ไม่ต้องแก้ Firestore rules ถ้าใช้ rules จาก v97/v98 อยู่แล้ว

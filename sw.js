@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v97-reporter-visibility-staff-permission';
-const APP_VERSION = 'v97-reporter-visibility-staff-permission';
+const CACHE_NAME = 'laya-mod-v99-department-standardize-fix';
+const APP_VERSION = 'v99-department-standardize-fix';
 const APP_SHELL = [
   './',
   './index.html',
