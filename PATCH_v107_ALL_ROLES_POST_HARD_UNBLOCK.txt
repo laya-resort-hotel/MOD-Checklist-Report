@@ -1,0 +1,26 @@
+PATCH v107 – All Roles Post Hard Unblock
+
+เป้าหมาย:
+- ให้ Staff / Supervisor / Manager / MOD / Admin และทุกตำแหน่งที่ล็อกอินแล้วสามารถกด New Issue / โพสต์งานได้จริง
+- แก้เคสที่เปลี่ยน Rules แล้วแต่ยังขึ้น permission-denied เพราะ transaction สร้าง issue ต้องแตะ counters/issue_counter และ issues/{id}/activity พร้อมกัน
+
+ไฟล์ที่เปลี่ยน:
+- firestore.rules
+- js/app.js
+- app.js
+- index.html
+- sw.js
+
+สิ่งที่แก้:
+1. Firestore Rules: canCreateIssueWork() เปลี่ยนเป็น signedIn() เพื่อไม่ให้ role/position/profile field เก่าบล็อกการโพสต์
+2. Firestore Rules: ผ่อน issue create ไม่บังคับ reported_by_department ต้อง match validDept
+3. Firestore Rules: อนุญาต activity subcollection create สำหรับ signed-in user ระหว่างสร้าง issue transaction
+4. Firestore Rules: อนุญาต signed-in user อ่าน/สร้าง/อัปเดต counters/issue_counter เพื่อแก้ counter เก่า field ไม่ตรง
+5. JS: เปลี่ยนข้อความ permission-denied ให้ชี้ไป v107
+6. Cache bust: เปลี่ยน app version เป็น v107-all-roles-post-hard-unblock
+
+หลังอัปโหลด:
+1. อัปเดต firestore.rules ใน Firebase Console แล้วกด Publish
+2. อัปโหลดไฟล์ index.html, sw.js, js/app.js, app.js ขึ้น GitHub
+3. เปิดเว็บด้วย ?app_refresh=v107-all-roles-post-hard-unblock
+4. กด Clear Cache แล้ว Login ใหม่

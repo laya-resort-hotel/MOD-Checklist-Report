@@ -1,6 +1,6 @@
 (() => {
   const APP_KEY = 'laya_mod_checklist_v1';
-  const APP_VERSION = window.LAYA_APP_VERSION || 'v106-all-roles-can-post';
+  const APP_VERSION = window.LAYA_APP_VERSION || 'v107-all-roles-post-hard-unblock';
   const APP_VERSION_KEY = 'laya_mod_active_version_v1';
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 
@@ -6867,7 +6867,7 @@ function switchView(viewId) {
     const code = String(err?.code || '');
     const msg = String(err?.message || err || '');
     if (code.includes('permission-denied') || msg.includes('permission_denied')) {
-      return 'ยังบันทึกงานไม่ได้: กรุณาอัปเดต Firestore Rules เป็น v106 แล้วกด Publish อีกครั้ง';
+      return 'ยังบันทึกงานไม่ได้: Firestore ยังปฏิเสธสิทธิ์ กรุณาอัปเดต Firestore Rules เป็น v107 แล้วกด Publish จากนั้นกด Clear Cache และ Login ใหม่';
     }
     if (msg.includes('issue_counter_not_found')) {
       return 'ไม่พบตัวนับ issue แต่ระบบควรสร้างให้อัตโนมัติแล้ว ลองใหม่อีกครั้ง';

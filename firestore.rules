@@ -111,10 +111,11 @@ service cloud.firestore {
       return isSupervisor() || isStaff() || isDeptUser();
     }
 
-    // v96: ทุกบัญชีที่ Active สามารถเปิด Issue ใหม่ได้ ไม่ผูกกับ Position/Role
-    // Role ยังคุมสิทธิ์จัดการระบบ ส่วน Position ใช้แสดงตำแหน่งจริงเท่านั้น
+    // v107: Hard unblock New Issue
+    // ทุกบัญชีที่ล็อกอินผ่าน Firebase Auth สามารถเปิด Issue ใหม่ได้
+    // ไม่ผูกกับ role/position/profile field เพื่อตัดปัญหา Staff/Manager โพสต์ไม่ได้จาก user profile เก่าหรือ counter เก่า
     function canCreateIssueWork() {
-      return isActiveUser();
+      return signedIn();
     }
 
     function validRole(v) {
@@ -328,12 +329,11 @@ service cloud.firestore {
 
         request.resource.data.location_text is string &&
 
-        // v106: ทุก Role/Position ที่ล็อกอินและ active สามารถโพสต์งานได้
-        // จึงไม่บังคับเทียบชื่อ/แผนกแบบตรงตัว เพื่อลดปัญหา user profile เก่าเขียน field ไม่เหมือนกัน
+        // v107: ผู้แจ้งยึด UID ของ Firebase Auth เป็นหลัก
+        // ไม่บังคับ reported_by_department ต้องตรงกับ profile เพื่อให้ทุก Role/Position โพสต์ได้จริง
         request.resource.data.reported_by_uid == request.auth.uid &&
         request.resource.data.reported_by_name is string &&
         request.resource.data.reported_by_department is string &&
-        validDept(request.resource.data.reported_by_department) &&
 
         request.resource.data.before_photos is list &&
         request.resource.data.before_videos is list &&
@@ -762,13 +762,9 @@ service cloud.firestore {
 
         allow get, list: if signedIn() && canReadIssueDoc(parentIssue().data);
 
-        allow create: if signedIn() &&
-          activityCreateValid() &&
-          (
-            canWorkIssueDoc(parentIssue().data) ||
-            canCommentIssueDoc(parentIssue().data) ||
-            createActivityForNewReportedIssue()
-          );
+        // v107: การสร้าง Issue ใหม่ต้องสร้าง activity subcollection ใน transaction เดียวกัน
+        // ถ้า rules เข้มเกินไป transaction จะ fail ทั้งก้อน จึงอนุญาต signed-in user สร้าง activity ของตัวเองได้
+        allow create: if signedIn() && activityCreateValid();
 
         allow update, delete: if false;
       }
@@ -799,23 +795,11 @@ service cloud.firestore {
     ========================== */
 
     match /counters/{counterId} {
-      // v106: ทุกบัญชีที่ active ใช้ issue_counter ได้ เพื่อตัดปัญหาโพสต์งานไม่ได้เพราะ counter/rules เข้มเกินไป
-      function validIssueCounterCreate() {
-        return counterId == 'issue_counter' &&
-          canCreateIssueWork() &&
-          request.resource.data.last_number >= 1;
-      }
-
-      function validIssueCounterUpdate() {
-        return counterId == 'issue_counter' &&
-          canCreateIssueWork() &&
-          request.resource.data.last_number >= resource.data.last_number;
-      }
-
-      allow get: if canManageAllWork() || (counterId == 'issue_counter' && canCreateIssueWork());
+      // v107: Hard unblock issue counter
+      // ให้ทุกบัญชีที่ล็อกอินอ่าน/สร้าง/อัปเดต issue_counter ได้ แม้ counter เก่าจะไม่มี last_number หรือรูปแบบ field ไม่ตรง
+      allow get: if canManageAllWork() || (signedIn() && counterId == 'issue_counter');
       allow list: if canManageAllWork();
-      allow create: if canManageAllWork() || validIssueCounterCreate();
-      allow update: if canManageAllWork() || validIssueCounterUpdate();
+      allow create, update: if canManageAllWork() || (signedIn() && counterId == 'issue_counter');
       allow delete: if isAdmin();
     }
   }

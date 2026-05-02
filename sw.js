@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v106-all-roles-can-post';
-const APP_VERSION = 'v106-all-roles-can-post';
+const CACHE_NAME = 'laya-mod-v107-all-roles-post-hard-unblock';
+const APP_VERSION = 'v107-all-roles-post-hard-unblock';
 const APP_SHELL = [
   './',
   './index.html',
