@@ -1,0 +1,27 @@
+PATCH v106 – All Roles Can Post / No Permission Block
+
+เป้าหมาย:
+- ให้ทุก Role / ทุก Position ที่ล็อกอินและยัง Active สามารถสร้าง New Issue ได้เหมือนกัน
+- ตัดปัญหา Manager / Staff / Supervisor โพสต์ไม่ได้เพราะ field เก่าใน user profile ไม่ตรงกับ Firestore Rules
+
+ไฟล์ที่เปลี่ยน:
+- index.html
+- sw.js
+- app.js
+- js/app.js
+- firestore.rules
+
+สิ่งที่แก้:
+1. Firestore Rules: issue create อนุญาตทุก active user โดยยึด reported_by_uid = request.auth.uid เป็นหลัก
+2. ไม่บังคับ reported_by_name / reported_by_department ต้องตรงกับ field เดิม 100% แล้ว
+3. รองรับชื่อ user หลาย field: full_name, fullName, display_name, displayName, name
+4. รองรับ department หลาย field: department_code, department, department_name, departmentName
+5. รองรับ role ตัวใหญ่/ตัวเล็ก เช่น Manager, manager, MOD, mod, Staff, staff
+6. แก้ commentCreateValid ที่มี bracket ซ้ำ ทำให้ rules เสี่ยง publish ไม่ผ่าน
+7. ผ่อน issue_counter ไม่ให้ counter field เก่าทำให้ New Issue บันทึกไม่ผ่าน
+8. JS normalize user profile ตอน login ให้เข้ารูปแบบเดียวกัน
+9. เปลี่ยน cache version เป็น v106-all-roles-can-post
+
+หลังอัปโหลด:
+- ต้อง Publish firestore.rules ใหม่ใน Firebase Console
+- เปิดเว็บด้วย ?app_refresh=v106-all-roles-can-post

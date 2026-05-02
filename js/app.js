@@ -1,6 +1,6 @@
 (() => {
   const APP_KEY = 'laya_mod_checklist_v1';
-  const APP_VERSION = window.LAYA_APP_VERSION || 'v104-permission-rules-hardening';
+  const APP_VERSION = window.LAYA_APP_VERSION || 'v106-all-roles-can-post';
   const APP_VERSION_KEY = 'laya_mod_active_version_v1';
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 
@@ -1773,13 +1773,22 @@
       }
 
       const profile = snap.data();
-      if (profile.is_active === false) {
+      const normalizedProfile = {
+        ...profile,
+        full_name: String(profile.full_name || profile.fullName || profile.display_name || profile.displayName || profile.name || user.displayName || '').trim() || String(profile.employee_id || profile.employeeId || user.email || 'User'),
+        employee_id: String(profile.employee_id || profile.employeeId || profile.staff_id || profile.staffId || '').trim(),
+        role: normalizeRole(profile.role || profile.Role || profile.user_role || profile.userRole || 'staff'),
+        department: normalizeDepartmentValue(profile.department_code || profile.department || profile.department_name || profile.departmentName || 'MOD', 'MOD'),
+        position: String(profile.position || profile.Position || profile.job_title || profile.jobTitle || '').trim(),
+        is_active: profile.is_active === false || profile.isActive === false ? false : true,
+      };
+      if (normalizedProfile.is_active === false) {
         setAuthStatus(txt('บัญชีนี้ถูกปิดใช้งาน กรุณาติดต่อ Admin', 'This account is inactive. Please contact an admin.'), 'error');
         try { await fb.sdk.signOut(fb.auth); } catch (_) {}
         resetSignedOutState();
         return false;
       }
-      state.currentUser = { uid: user.uid, password_change_required: false, temporary_password_issued_at: null, temporary_password_issued_by_uid: '', ...profile, role: normalizeRole(profile.role), department: normalizeDepartmentValue(profile.department, 'MOD') };
+      state.currentUser = { uid: user.uid, password_change_required: false, temporary_password_issued_at: null, temporary_password_issued_by_uid: '', ...profile, ...normalizedProfile };
       hydrateFastDashboardCache();
       renderAll();
 
@@ -6858,7 +6867,7 @@ function switchView(viewId) {
     const code = String(err?.code || '');
     const msg = String(err?.message || err || '');
     if (code.includes('permission-denied') || msg.includes('permission_denied')) {
-      return 'ไม่มีสิทธิ์ทำรายการนี้ หรือ Firestore Rules ยังไม่ถูกต้อง';
+      return 'ยังบันทึกงานไม่ได้: กรุณาอัปเดต Firestore Rules เป็น v106 แล้วกด Publish อีกครั้ง';
     }
     if (msg.includes('issue_counter_not_found')) {
       return 'ไม่พบตัวนับ issue แต่ระบบควรสร้างให้อัตโนมัติแล้ว ลองใหม่อีกครั้ง';

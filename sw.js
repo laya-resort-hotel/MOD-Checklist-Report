@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v104-permission-rules-hardening';
-const APP_VERSION = 'v104-permission-rules-hardening';
+const CACHE_NAME = 'laya-mod-v106-all-roles-can-post';
+const APP_VERSION = 'v106-all-roles-can-post';
 const APP_SHELL = [
   './',
   './index.html',
