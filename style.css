@@ -4253,3 +4253,98 @@ body.laya-ui-v103 .issue-video {
     max-height: 48vh !important;
   }
 }
+
+
+/* v108 Department Pending Popup */
+.dept-pending-header h3 {
+  margin-bottom: 4px;
+}
+.dept-pending-total {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 14px;
+  margin: 10px 0 14px;
+  padding: 16px;
+  border: 1px solid rgba(134,110,75,0.18);
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(105,82,26,0.12), rgba(255,255,255,0.9));
+}
+.dept-pending-total-number {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  background: rgba(71,55,13,0.94);
+  color: #fff8df;
+  font-size: 30px;
+  font-weight: 900;
+  box-shadow: 0 10px 24px rgba(71,55,13,0.18);
+}
+.dept-pending-total-label {
+  font-weight: 900;
+  color: var(--text);
+  font-size: 16px;
+}
+.dept-pending-count-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.dept-pending-count-card {
+  min-height: 74px;
+  border: 1px solid rgba(134,110,75,0.14);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.72);
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  text-align: center;
+}
+.dept-pending-count-card strong {
+  display: block;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--brand-dark);
+}
+.dept-pending-count-card span {
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+}
+.dept-pending-count-card.urgent strong {
+  color: #b42318;
+}
+.dept-pending-list {
+  max-height: min(42vh, 360px);
+  overflow: auto;
+  padding-right: 2px;
+}
+.dept-pending-item {
+  cursor: pointer;
+}
+.dept-pending-more {
+  margin: 10px 2px 0;
+  font-size: 12px;
+}
+.dept-pending-actions {
+  grid-template-columns: 0.85fr 1.15fr;
+}
+@media (max-width: 640px) {
+  .dept-pending-count-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dept-pending-actions {
+    grid-template-columns: 1fr;
+  }
+  .dept-pending-total {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  .dept-pending-total-number {
+    margin: 0 auto;
+  }
+}

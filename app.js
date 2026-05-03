@@ -1,6 +1,6 @@
 (() => {
   const APP_KEY = 'laya_mod_checklist_v1';
-  const APP_VERSION = window.LAYA_APP_VERSION || 'v107-all-roles-post-hard-unblock';
+  const APP_VERSION = window.LAYA_APP_VERSION || 'v108-department-pending-popup';
   const APP_VERSION_KEY = 'laya_mod_active_version_v1';
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 
@@ -307,7 +307,9 @@
       hiddenTemplateCodes: getHiddenTemplateCodes(),
       checklistFailMedia: {},
       didInitialMentionCheck: false,
+      didDepartmentPendingAlert: false,
       mentionModalOpen: false,
+      alertModalMode: '',
       pendingMentionItems: [],
       pendingProfileAvatar: null,
       passwordChangeDraft: null,
@@ -1725,6 +1727,8 @@
     state.data.usageLogs = [];
     state.ui.liveIssueComments = [];
     state.ui.didInitialMentionCheck = false;
+    state.ui.didDepartmentPendingAlert = false;
+    state.ui.alertModalMode = '';
     state.ui.pendingMentionItems = [];
     closeMentionAlertModal(true);
     closePasswordConfirmModal(true);
@@ -1818,6 +1822,8 @@
         needsTempPasswordChange ? 'info' : 'success'
       );
       state.ui.didInitialMentionCheck = false;
+      state.ui.didDepartmentPendingAlert = false;
+      state.ui.alertModalMode = '';
       renderAll();
       if (needsTempPasswordChange) {
         setTimeout(() => openPasswordEditorModal('force'), 120);
@@ -2641,6 +2647,7 @@
     persist();
     renderAuthState();
     renderAll();
+    queueDepartmentPendingAlertCheck();
     queueMentionAlertCheck();
   }
 
@@ -2806,6 +2813,8 @@
     state.data.teamMembers = [];
     state.data.usageLogs = [];
     state.ui.didInitialMentionCheck = false;
+    state.ui.didDepartmentPendingAlert = false;
+    state.ui.alertModalMode = '';
     state.ui.pendingMentionItems = [];
     closeMentionAlertModal(true);
     closePasswordConfirmModal(true);
@@ -5852,6 +5861,121 @@ function switchView(viewId) {
   }
 
 
+  function getDepartmentPendingIssuesForAlert() {
+    if (!state.currentUser) return [];
+    const myDept = getCurrentUserDeptCode();
+    if (!myDept) return [];
+    return (state.data.issues || [])
+      .filter(issue => issue && issue.issue_type !== 'checklist_submission')
+      .filter(issue => normalizeDepartmentValue(issue.assigned_department, '') === myDept)
+      .filter(issue => String(issue.status || 'open') !== 'closed')
+      .sort((a, b) => new Date(b.last_activity_at || b.updated_at || b.created_at || 0) - new Date(a.last_activity_at || a.updated_at || a.created_at || 0));
+  }
+
+  function getDepartmentPendingCounts(issues = []) {
+    const open = issues.filter(issue => (issue.status || 'open') === 'open').length;
+    const inProgress = issues.filter(issue => issue.status === 'in_progress').length;
+    const waiting = issues.filter(issue => issue.status === 'waiting').length;
+    const urgent = issues.filter(issue => issue.status !== 'closed' && ['high', 'critical'].includes(issue.priority)).length;
+    return { total: issues.length, open, inProgress, waiting, urgent };
+  }
+
+  function closeAlertModalAndOpenIssue(issueId) {
+    closeMentionAlertModal(true);
+    if (!issueId) return;
+    switchView('boardView');
+    window.setTimeout(() => openIssueModal(issueId), 80);
+  }
+
+  function showDepartmentPendingAlertModal(issues = []) {
+    if (!el.mentionAlertModal || !el.mentionAlertModalContent || !issues.length || !state.currentUser) return false;
+    const deptCode = getCurrentUserDeptCode();
+    const deptName = getDepartmentName(deptCode);
+    const counts = getDepartmentPendingCounts(issues);
+    const latestIssues = issues.slice(0, 5);
+    state.ui.didDepartmentPendingAlert = true;
+    state.ui.pendingMentionItems = [];
+    state.ui.alertModalMode = 'department_pending';
+    state.ui.mentionModalOpen = true;
+
+    el.mentionAlertModalContent.innerHTML = `
+      <div class="panel-header mention-alert-header dept-pending-header">
+        <div>
+          <h3>${txt('มีงานค้างในแผนกของคุณ', 'Pending work in your department')}</h3>
+          <p class="muted">${escapeHtml(deptName)} • ${txt('ระบบแจ้งเตือนเมื่อเข้าแอพ', 'App entry alert')}</p>
+        </div>
+      </div>
+      <div class="dept-pending-total">
+        <div class="dept-pending-total-number">${counts.total}</div>
+        <div>
+          <div class="dept-pending-total-label">${txt('งานค้างทั้งหมด', 'Total pending jobs')}</div>
+          <div class="muted">${txt('นับเฉพาะงานที่ Assign เข้าแผนกของคุณ และยังไม่ Closed', 'Only jobs assigned to your department that are not closed')}</div>
+        </div>
+      </div>
+      <div class="dept-pending-count-grid">
+        <div class="dept-pending-count-card"><strong>${counts.open}</strong><span>${txt('เปิดใหม่', 'Open')}</span></div>
+        <div class="dept-pending-count-card"><strong>${counts.inProgress}</strong><span>${txt('กำลังทำ', 'In Progress')}</span></div>
+        <div class="dept-pending-count-card"><strong>${counts.waiting}</strong><span>${txt('รอ', 'Waiting')}</span></div>
+        <div class="dept-pending-count-card urgent"><strong>${counts.urgent}</strong><span>${txt('High/Critical', 'High/Critical')}</span></div>
+      </div>
+      <div class="mention-alert-list dept-pending-list">
+        ${latestIssues.map(issue => `
+          <button type="button" class="mention-alert-item dept-pending-item" data-open-dept-pending-issue="${escapeHtml(issue.id || '')}">
+            <div class="mention-alert-item-top">
+              <span class="mention-alert-issue-no">${escapeHtml(issue.issue_no || issue.id || 'Issue')}</span>
+              <span class="mention-alert-time">${escapeHtml(formatDateTime(issue.last_activity_at || issue.updated_at || issue.created_at) || '-')}</span>
+            </div>
+            <div class="mention-alert-title">${escapeHtml(issue.title || txt('ไม่มีหัวข้อ', 'Untitled'))}</div>
+            <div class="mention-alert-meta">${escapeHtml(issue.location_text || '-')} • ${escapeHtml(translateStatus(issue.status || 'open'))} • ${escapeHtml(translatePriority(issue.priority || 'medium'))}</div>
+            <div class="mention-alert-message">${escapeHtml(issue.description || '')}</div>
+          </button>
+        `).join('')}
+      </div>
+      ${issues.length > latestIssues.length ? `<p class="dept-pending-more muted">${txt(`แสดงล่าสุด ${latestIssues.length} งาน จากทั้งหมด ${issues.length} งาน`, `Showing latest ${latestIssues.length} of ${issues.length} jobs`)}</p>` : ''}
+      <div class="sticky-actions mention-alert-actions dept-pending-actions">
+        <button type="button" class="btn btn-secondary" id="deptPendingDismissBtn">${txt('รับทราบ', 'Got it')}</button>
+        <button type="button" class="btn btn-primary" id="deptPendingOpenBoardBtn">${txt('เปิดบอร์ดงาน', 'Open board')}</button>
+      </div>
+    `;
+
+    qsa('[data-open-dept-pending-issue]', el.mentionAlertModalContent).forEach(btn => btn.addEventListener('click', () => {
+      closeAlertModalAndOpenIssue(btn.dataset.openDeptPendingIssue || btn.getAttribute('data-open-dept-pending-issue') || '');
+    }));
+    const dismissBtn = qs('#deptPendingDismissBtn', el.mentionAlertModalContent);
+    if (dismissBtn) dismissBtn.addEventListener('click', () => closeMentionAlertModal());
+    const openBoardBtn = qs('#deptPendingOpenBoardBtn', el.mentionAlertModalContent);
+    if (openBoardBtn) openBoardBtn.addEventListener('click', () => {
+      closeMentionAlertModal(true);
+      state.ui.boardFilter = 'all';
+      switchView('boardView');
+      renderBoard();
+    });
+    el.mentionAlertModal.classList.remove('hidden');
+    return true;
+  }
+
+  function checkDepartmentPendingAlertOnLogin() {
+    if (!state.currentUser || state.ui.didDepartmentPendingAlert || state.ui.mentionModalOpen) return false;
+    const pendingIssues = getDepartmentPendingIssuesForAlert();
+    if (!pendingIssues.length) {
+      state.ui.didDepartmentPendingAlert = true;
+      queueMentionAlertCheck();
+      return false;
+    }
+    const shown = showDepartmentPendingAlertModal(pendingIssues);
+    if (!shown) {
+      state.ui.didDepartmentPendingAlert = true;
+      queueMentionAlertCheck();
+    }
+    return shown;
+  }
+
+  function queueDepartmentPendingAlertCheck() {
+    if (!state.currentUser || state.ui.didDepartmentPendingAlert) return;
+    window.setTimeout(() => { checkDepartmentPendingAlertOnLogin(); }, 450);
+  }
+
+
   function getMentionSeenKey() {
     return state.currentUser?.uid ? `${APP_KEY}_mention_seen_${state.currentUser.uid}` : `${APP_KEY}_mention_seen_demo`;
   }
@@ -5879,19 +6003,25 @@ function switchView(viewId) {
 
   function closeMentionAlertModal(silent = false) {
     if (!el.mentionAlertModal) return;
+    const previousMode = state.ui.alertModalMode || '';
     if (!silent && Array.isArray(state.ui.pendingMentionItems) && state.ui.pendingMentionItems.length) {
       const seen = getSeenMentionIds();
       saveSeenMentionIds([...seen, ...state.ui.pendingMentionItems.map(mentionEntryId)]);
     }
     state.ui.pendingMentionItems = [];
     state.ui.mentionModalOpen = false;
+    state.ui.alertModalMode = '';
     el.mentionAlertModal.classList.add('hidden');
     if (el.mentionAlertModalContent) el.mentionAlertModalContent.innerHTML = '';
+    if (previousMode === 'department_pending') {
+      window.setTimeout(() => queueMentionAlertCheck(), 250);
+    }
   }
 
   function showMentionAlertModal(items = []) {
     if (!el.mentionAlertModal || !el.mentionAlertModalContent || !items.length) return;
     state.ui.pendingMentionItems = items;
+    state.ui.alertModalMode = 'mentions';
     state.ui.mentionModalOpen = true;
     el.mentionAlertModalContent.innerHTML = `
       <div class="panel-header mention-alert-header">
@@ -5993,6 +6123,8 @@ function switchView(viewId) {
 
   function queueMentionAlertCheck() {
     if (!state.currentUser || state.ui.didInitialMentionCheck) return;
+    if (!state.ui.didDepartmentPendingAlert) return;
+    if (state.ui.mentionModalOpen && state.ui.alertModalMode === 'department_pending') return;
     state.ui.didInitialMentionCheck = true;
     window.setTimeout(() => { checkMentionAlertsOnLogin(); }, 700);
   }
@@ -6728,6 +6860,7 @@ function switchView(viewId) {
         .sort((a, b) => new Date(b.created_at || b.updated_at || 0) - new Date(a.created_at || a.updated_at || 0));
       persistFastDashboardCache();
       renderAll();
+      queueDepartmentPendingAlertCheck();
       queueMentionAlertCheck();
       if (state.ui.openIssueId) {
         const liveIssue = state.data.issues.find(i => i.id === state.ui.openIssueId);
@@ -6867,7 +7000,7 @@ function switchView(viewId) {
     const code = String(err?.code || '');
     const msg = String(err?.message || err || '');
     if (code.includes('permission-denied') || msg.includes('permission_denied')) {
-      return 'ยังบันทึกงานไม่ได้: Firestore ยังปฏิเสธสิทธิ์ กรุณาอัปเดต Firestore Rules เป็น v107 แล้วกด Publish จากนั้นกด Clear Cache และ Login ใหม่';
+      return 'ยังบันทึกงานไม่ได้: Firestore ยังปฏิเสธสิทธิ์ กรุณาอัปเดต Firestore Rules เป็น v107/v108 แล้วกด Publish จากนั้นกด Clear Cache และ Login ใหม่';
     }
     if (msg.includes('issue_counter_not_found')) {
       return 'ไม่พบตัวนับ issue แต่ระบบควรสร้างให้อัตโนมัติแล้ว ลองใหม่อีกครั้ง';

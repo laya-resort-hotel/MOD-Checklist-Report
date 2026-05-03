@@ -1,0 +1,24 @@
+PATCH v108 - Department Pending Popup
+
+Goal:
+- When a user enters the app, show a popup if there are pending jobs assigned to the user's own department.
+
+Changed:
+- app.js / js/app.js
+  - Added department pending popup after issue sync or demo login.
+  - Counts total, open, in progress, waiting, and high/critical jobs.
+  - Lists latest 5 pending jobs with open-detail shortcut.
+  - Does not block the existing @mention alert; mention alert runs after this popup is dismissed.
+- style.css
+  - Added compact luxury popup count cards and mobile layout.
+- index.html / sw.js
+  - Bumped cache/version to v108-department-pending-popup.
+
+Upload order:
+1. firestore.rules if v107 rules were not already published.
+2. index.html
+3. style.css
+4. app.js
+5. js/app.js
+6. sw.js
+7. Clear Cache and open with ?app_refresh=v108-department-pending-popup

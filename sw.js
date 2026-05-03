@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v107-all-roles-post-hard-unblock';
-const APP_VERSION = 'v107-all-roles-post-hard-unblock';
+const CACHE_NAME = 'laya-mod-v108-department-pending-popup';
+const APP_VERSION = 'v108-department-pending-popup';
 const APP_SHELL = [
   './',
   './index.html',
