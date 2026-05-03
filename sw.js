@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v108-department-pending-popup';
-const APP_VERSION = 'v108-department-pending-popup';
+const CACHE_NAME = 'laya-mod-v109-staff-board-loading-fix';
+const APP_VERSION = 'v109-staff-board-loading-fix';
 const APP_SHELL = [
   './',
   './index.html',

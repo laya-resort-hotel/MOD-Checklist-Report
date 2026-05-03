@@ -1,6 +1,6 @@
 (() => {
   const APP_KEY = 'laya_mod_checklist_v1';
-  const APP_VERSION = window.LAYA_APP_VERSION || 'v108-department-pending-popup';
+  const APP_VERSION = window.LAYA_APP_VERSION || 'v109-staff-board-loading-fix';
   const APP_VERSION_KEY = 'laya_mod_active_version_v1';
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 
@@ -2490,7 +2490,9 @@
   }
 
   function isBoardDataLoading() {
-    return isIssueSyncLoading() || (!!state.currentUser && window.LAYA_FIREBASE_CONFIG_PRESENT && (state.ui.checklistSyncStatus === 'idle' || state.ui.checklistSyncStatus === 'loading'));
+    const checklistMayLoad = typeof canUseChecklistForRole === 'function' ? canUseChecklistForRole() : true;
+    const checklistLoading = checklistMayLoad && !!state.currentUser && window.LAYA_FIREBASE_CONFIG_PRESENT && (state.ui.checklistSyncStatus === 'idle' || state.ui.checklistSyncStatus === 'loading');
+    return isIssueSyncLoading() || checklistLoading;
   }
   function persist() {
     // Firebase is the source of truth in production. Do not keep the full board/checklist
@@ -6818,7 +6820,11 @@ function switchView(viewId) {
   function startChecklistRunsSync() {
     if (!isFirebaseLive() || !state.currentUser) return;
     if (!canUseChecklistForRole()) {
+      // v109: Staff/Department users do not load checklist_runs.
+      // Mark checklist sync as ready so the Board does not stay stuck on "Loading work data...".
+      state.ui.checklistSyncStatus = 'ready';
       state.data.checklistRuns = [];
+      renderBoard();
       return;
     }
     stopChecklistRunsSync();

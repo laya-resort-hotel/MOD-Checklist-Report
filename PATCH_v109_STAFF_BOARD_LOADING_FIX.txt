@@ -1,0 +1,17 @@
+PATCH v109 – Staff Board Loading Fix
+
+สิ่งที่แก้:
+1. แก้บั๊ก Role Staff/Department User ค้างที่ Loading work data... บนหน้า Board
+2. สาเหตุ: Staff ไม่ได้โหลด checklist_runs แต่สถานะ checklistSyncStatus ยังเป็น idle ทำให้ Board คิดว่ายังโหลดข้อมูลอยู่ตลอด
+3. เมื่อ Role ไม่มีสิทธิใช้ Checklist ระบบจะตั้ง checklistSyncStatus = ready ทันที
+4. ปรับ isBoardDataLoading() ให้เช็ก checklist loading เฉพาะ Role ที่ใช้ Checklist ได้เท่านั้น
+5. เปลี่ยน cache/version เป็น v109-staff-board-loading-fix
+
+ไฟล์ที่ต้องอัปโหลดขึ้น GitHub:
+- index.html
+- sw.js
+- app.js
+- js/app.js
+
+หลังอัปโหลด:
+เปิดเว็บด้วย ?app_refresh=v109-staff-board-loading-fix แล้วกด Clear Cache / Logout / Login ใหม่
