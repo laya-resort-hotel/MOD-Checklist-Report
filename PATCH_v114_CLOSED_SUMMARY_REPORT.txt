@@ -1,0 +1,23 @@
+PATCH v114 CLOSED SUMMARY REPORT
+
+Added a new Closed Summary page for closed issue reporting.
+
+Changed files:
+- index.html
+- app.js
+- js/app.js
+- style.css
+- sw.js
+
+Features:
+- New navigation: Closed Summary / สรุปงานปิด
+- Date range filters: From date / To date
+- Search by issue no, title, location, department, reporter/closer
+- Summary cards: total closed, same-day closed, average closing time, jobs with after evidence
+- Breakdown by department and priority
+- Closed job cards with created date, closed date, duration, closed by
+- Before/After media strips with click-to-preview popup
+- Uses existing issue media modal; no new Firestore collection required
+
+Deploy:
+Upload changed files to GitHub Pages, then open with ?app_refresh=v114-closed-summary-report

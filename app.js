@@ -1,6 +1,6 @@
 (() => {
   const APP_KEY = 'laya_mod_checklist_v1';
-  const APP_VERSION = window.LAYA_APP_VERSION || 'v109-staff-board-loading-fix';
+  const APP_VERSION = window.LAYA_APP_VERSION || 'v114-closed-summary-report';
   const APP_VERSION_KEY = 'laya_mod_active_version_v1';
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 
@@ -292,6 +292,9 @@
       boardDateFilter: '',
       closedSearch: '',
       closedDateFilter: '',
+      closedSummarySearch: '',
+      closedSummaryFromDate: '',
+      closedSummaryToDate: '',
       logSearch: '',
       newIssuePriority: 'medium',
       selectedTemplateCode: null,
@@ -1377,6 +1380,7 @@
       checklistView: txt('เช็กลิสต์', 'Checklist'),
       logView: txt('บันทึกการใช้งาน', 'Log'),
       closedView: txt('งานที่ปิดแล้ว', 'Closed Jobs'),
+      closedSummaryView: txt('สรุปงานปิด', 'Closed Summary'),
       settingsView: txt('ตั้งค่า', 'Settings'),
     };
     qsa('.sidebar-nav .nav-link, .bottom-nav .nav-link').forEach(btn => {
@@ -1493,10 +1497,21 @@
 
     setNodeText('#closedView .panel-header h3', 'งานที่ปิดแล้วและประวัติเช็กลิสต์', 'Closed Jobs & Checklist History');
     setNodeText('#closedView .panel-header p', 'งานที่ปิดแล้วและ checklist ที่ซ่อนจาก Board จะถูกเก็บไว้ที่นี่ เพื่อไม่ให้ปนกับงานที่ยังต้องติดตาม', 'Closed jobs and checklist cards hidden from the board are kept here so they do not mix with active follow-up items.');
+    setNodeText('#openClosedSummaryBtn', 'สรุปงานปิด', 'Closed Summary');
     setNodeText('#backToBoardBtn', 'กลับไปบอร์ด', 'Back to Board');
     setNodePlaceholder('#closedSearch', 'ค้นหางานที่ปิดแล้ว, checklist, location, issue no', 'Search closed jobs, checklist, location, issue no');
     setNodeText('#closedDateClearBtn', 'ล้างวัน', 'Clear Date');
     if (el.closedDateFilter) el.closedDateFilter.title = txt('เลือกวันที่ของ Issue ที่ปิดแล้ว', 'Choose closed issue date');
+
+    setNodeText('#closedSummaryView .panel-header h3', 'สรุปงานปิด', 'Closed Summary');
+    setNodeText('#closedSummaryView .panel-header p', 'เลือกช่วงวันที่เพื่อดูงานที่ปิดจบแล้ว พร้อมรูปก่อนแก้ไขและรูปหลังส่งงาน', 'Choose a date range to review completed jobs with before and after evidence.');
+    setNodeText('#closedSummaryTodayBtn', 'วันนี้', 'Today');
+    setNodeText('#closedSummaryBackBtn', 'กลับไปงานปิด', 'Back to Closed Jobs');
+    setNodeText('#closedSummaryClearBtn', 'ล้างตัวกรอง', 'Clear Filters');
+    setNodeText('label[for="closedSummaryFromDate"]', 'จากวันที่', 'From');
+    setNodeText('label[for="closedSummaryToDate"]', 'ถึงวันที่', 'To');
+    setNodeText('label[for="closedSummarySearch"]', 'ค้นหา', 'Search');
+    setNodePlaceholder('#closedSummarySearch', 'ค้นหาเลขงาน, หัวข้อ, สถานที่, แผนก, ผู้ปิดงาน', 'Search issue no, title, location, department, closed by');
 
     setNodeText('#moreView .panel-header h3', 'ทีมและเครื่องมือ', 'Team & Tools');
     setNodeText('#openClosedJobsFromMore', 'เปิดงานที่ปิดแล้ว', 'Open Closed Jobs');
@@ -1904,8 +1919,17 @@
       closedSearch: qs('#closedSearch'),
       closedDateFilter: qs('#closedDateFilter'),
       closedDateClearBtn: qs('#closedDateClearBtn'),
+      closedSummaryFromDate: qs('#closedSummaryFromDate'),
+      closedSummaryToDate: qs('#closedSummaryToDate'),
+      closedSummarySearch: qs('#closedSummarySearch'),
+      closedSummaryClearBtn: qs('#closedSummaryClearBtn'),
+      closedSummaryTodayBtn: qs('#closedSummaryTodayBtn'),
+      closedSummaryBackBtn: qs('#closedSummaryBackBtn'),
+      closedSummaryStats: qs('#closedSummaryStats'),
+      closedSummaryList: qs('#closedSummaryList'),
       boardFilterChips: qs('#boardFilterChips'),
       closedList: qs('#closedList'),
+      openClosedSummaryBtn: qs('#openClosedSummaryBtn'),
       openClosedJobsBtn: qs('#openClosedJobsBtn'),
       openClosedJobsFromMore: qs('#openClosedJobsFromMore'),
       openUsageLogFromMore: qs('#openUsageLogFromMore'),
@@ -2151,6 +2175,36 @@
       if (el.closedDateFilter) el.closedDateFilter.value = '';
       renderClosedJobs();
     });
+    if (el.closedSummaryFromDate) el.closedSummaryFromDate.addEventListener('change', (e) => {
+      state.ui.closedSummaryFromDate = e.target.value || '';
+      renderClosedSummary();
+    });
+    if (el.closedSummaryToDate) el.closedSummaryToDate.addEventListener('change', (e) => {
+      state.ui.closedSummaryToDate = e.target.value || '';
+      renderClosedSummary();
+    });
+    if (el.closedSummarySearch) el.closedSummarySearch.addEventListener('input', (e) => {
+      state.ui.closedSummarySearch = e.target.value.trim().toLowerCase();
+      renderClosedSummary();
+    });
+    if (el.closedSummaryClearBtn) el.closedSummaryClearBtn.addEventListener('click', () => {
+      state.ui.closedSummaryFromDate = '';
+      state.ui.closedSummaryToDate = '';
+      state.ui.closedSummarySearch = '';
+      if (el.closedSummaryFromDate) el.closedSummaryFromDate.value = '';
+      if (el.closedSummaryToDate) el.closedSummaryToDate.value = '';
+      if (el.closedSummarySearch) el.closedSummarySearch.value = '';
+      renderClosedSummary();
+    });
+    if (el.closedSummaryTodayBtn) el.closedSummaryTodayBtn.addEventListener('click', () => {
+      const today = todayInputValue();
+      state.ui.closedSummaryFromDate = today;
+      state.ui.closedSummaryToDate = today;
+      if (el.closedSummaryFromDate) el.closedSummaryFromDate.value = today;
+      if (el.closedSummaryToDate) el.closedSummaryToDate.value = today;
+      renderClosedSummary();
+    });
+    if (el.closedSummaryBackBtn) el.closedSummaryBackBtn.addEventListener('click', () => switchView('closedView'));
     if (el.logSearch) el.logSearch.addEventListener('input', (e) => {
       state.ui.logSearch = e.target.value.trim().toLowerCase();
       renderUsageLogs();
@@ -2158,6 +2212,7 @@
     if (el.reloadUsageLogBtn) el.reloadUsageLogBtn.addEventListener('click', () => reloadUsageLogs());
     if (el.exportUsageLogExcelBtn) el.exportUsageLogExcelBtn.addEventListener('click', () => exportUsageLogsToExcel());
     if (el.openClosedJobsBtn) el.openClosedJobsBtn.addEventListener('click', () => switchView('closedView'));
+    if (el.openClosedSummaryBtn) el.openClosedSummaryBtn.addEventListener('click', () => switchView('closedSummaryView'));
     if (el.openClosedJobsFromMore) el.openClosedJobsFromMore.addEventListener('click', () => switchView('closedView'));
     if (el.openUsageLogFromMore) el.openUsageLogFromMore.addEventListener('click', () => switchView('logView'));
     if (el.openSettingsFromMore) el.openSettingsFromMore.addEventListener('click', () => switchView('settingsView'));
@@ -3504,6 +3559,7 @@ function switchView(viewId) {
     if (viewId === 'logView') renderUsageLogs();
     if (viewId === 'checklistView') renderTemplateCards();
     if (viewId === 'closedView') renderClosedJobs();
+    if (viewId === 'closedSummaryView') renderClosedSummary();
     if (viewId === 'settingsView') renderSettingsView();
     if (viewId === 'moreView') renderTeamMembers();
   }
@@ -3517,6 +3573,7 @@ function switchView(viewId) {
     renderActivity();
     renderUsageLogs();
     renderClosedJobs();
+    renderClosedSummary();
     renderTeamMembers();
     renderSettingsView();
     switchView(state.ui.activeView);
@@ -3647,6 +3704,265 @@ function switchView(viewId) {
     }));
     qsa('[data-open-checklist-run]', el.closedList).forEach(btn => btn.addEventListener('click', () => openChecklistRunSummary(btn.dataset.openChecklistRun)));
     qsa('[data-unarchive-checklist-run]', el.closedList).forEach(btn => btn.addEventListener('click', () => unarchiveChecklistRun(btn.dataset.unarchiveChecklistRun)));
+  }
+
+
+  function renderClosedSummary() {
+    if (!el.closedSummaryStats || !el.closedSummaryList) return;
+    const issues = getClosedSummaryIssuesForCurrentUser();
+    const stats = buildClosedSummaryStats(issues);
+
+    el.closedSummaryStats.innerHTML = `
+      <article class="closed-summary-stat-card">
+        <div class="summary-label">${txt('งานปิดทั้งหมด', 'Total Closed')}</div>
+        <div class="summary-value">${stats.total}</div>
+        <div class="summary-hint">${escapeHtml(getClosedSummaryRangeLabel())}</div>
+      </article>
+      <article class="closed-summary-stat-card">
+        <div class="summary-label">${txt('ปิดภายในวันเดียว', 'Same-day Closed')}</div>
+        <div class="summary-value">${stats.sameDay}</div>
+        <div class="summary-hint">${txt('จากวันที่สร้างถึงวันที่ปิด', 'Created date to closed date')}</div>
+      </article>
+      <article class="closed-summary-stat-card">
+        <div class="summary-label">${txt('เวลาปิดเฉลี่ย', 'Average Closing Time')}</div>
+        <div class="summary-value">${escapeHtml(stats.averageCloseTime)}</div>
+        <div class="summary-hint">${txt('คำนวณจาก created_at ถึง closed_at', 'Calculated from created_at to closed_at')}</div>
+      </article>
+      <article class="closed-summary-stat-card">
+        <div class="summary-label">${txt('มีรูปหลังส่งงาน', 'With After Evidence')}</div>
+        <div class="summary-value">${stats.withAfter}</div>
+        <div class="summary-hint">${txt('งานที่มีรูป/วิดีโอหลังแก้ไข', 'Jobs with after photos/videos')}</div>
+      </article>
+    `;
+
+    if (!issues.length) {
+      el.closedSummaryList.innerHTML = `<div class="empty-state">${txt('ไม่พบงานปิดในช่วงวันที่ที่เลือก', 'No closed jobs found in the selected date range')}</div>`;
+      return;
+    }
+
+    el.closedSummaryList.innerHTML = `
+      <div class="closed-summary-breakdown">
+        <div class="closed-summary-breakdown-box">
+          <h4>${txt('แยกตามแผนก', 'By Department')}</h4>
+          <div>${renderClosedSummaryBreakdown(stats.byDept)}</div>
+        </div>
+        <div class="closed-summary-breakdown-box">
+          <h4>${txt('แยกตาม Priority', 'By Priority')}</h4>
+          <div>${renderClosedSummaryBreakdown(stats.byPriority, true)}</div>
+        </div>
+      </div>
+      <div class="closed-summary-result-head">
+        <strong>${txt('รายการงานที่ปิดจบ', 'Closed job list')}</strong>
+        <span>${issues.length} ${txt('รายการ', 'items')}</span>
+      </div>
+      ${issues.map(issue => renderClosedSummaryIssueCard(issue)).join('')}
+    `;
+
+    qsa('[data-summary-open-issue]', el.closedSummaryList).forEach(btn => btn.addEventListener('click', () => openIssueModal(btn.dataset.summaryOpenIssue)));
+    qsa('[data-open-closed-summary-media]', el.closedSummaryList).forEach(btn => btn.addEventListener('click', () => {
+      openClosedSummaryMediaPreview(btn.dataset.openClosedSummaryMedia, btn.dataset.summaryMediaPhase || 'all', Number(btn.dataset.summaryMediaIndex || 0));
+    }));
+  }
+
+  function getClosedSummaryIssuesForCurrentUser() {
+    if (!state.currentUser) return [];
+    const search = state.ui.closedSummarySearch;
+    const fromDate = state.ui.closedSummaryFromDate;
+    const toDate = state.ui.closedSummaryToDate;
+    return getVisibleIssuesForCurrentUser()
+      .filter(issue => issue.status === 'closed' && issue.issue_type !== 'checklist_submission')
+      .filter(issue => {
+        const closedKey = toDateKey(getIssueFilterDate(issue, 'closed'));
+        const dateMatch = isDateKeyInRange(closedKey, fromDate, toDate);
+        const deptName = getDepartmentName(normalizeDepartmentValue(issue.assigned_department, ''));
+        const hay = [issue.issue_no, issue.title, issue.description, issue.location_text, issue.assigned_department, deptName, issue.closed_by_name, issue.reported_by_name].join(' ').toLowerCase();
+        const searchMatch = !search || hay.includes(search);
+        return dateMatch && searchMatch;
+      })
+      .sort((a, b) => new Date(b.closed_at || b.updated_at || b.created_at || 0) - new Date(a.closed_at || a.updated_at || a.created_at || 0));
+  }
+
+  function isDateKeyInRange(dateKey, fromDate = '', toDate = '') {
+    if (!dateKey) return false;
+    const start = fromDate || '';
+    const end = toDate || '';
+    if (start && dateKey < start) return false;
+    if (end && dateKey > end) return false;
+    return true;
+  }
+
+  function getClosedSummaryRangeLabel() {
+    const fromDate = state.ui.closedSummaryFromDate;
+    const toDate = state.ui.closedSummaryToDate;
+    if (fromDate && toDate) return `${txt('ช่วง', 'Range')} ${fromDate} → ${toDate}`;
+    if (fromDate) return `${txt('ตั้งแต่', 'From')} ${fromDate}`;
+    if (toDate) return `${txt('ถึง', 'Until')} ${toDate}`;
+    return txt('ทุกวันที่มีข้อมูล', 'All available dates');
+  }
+
+  function buildClosedSummaryStats(issues = []) {
+    const byDept = {};
+    const byPriority = {};
+    let sameDay = 0;
+    let withAfter = 0;
+    let totalCloseMs = 0;
+    let closeMsCount = 0;
+
+    issues.forEach(issue => {
+      const dept = getDepartmentName(normalizeDepartmentValue(issue.assigned_department, '')) || '-';
+      byDept[dept] = (byDept[dept] || 0) + 1;
+      const priority = translatePriority(issue.priority || 'medium');
+      byPriority[priority] = (byPriority[priority] || 0) + 1;
+      const createdKey = toDateKey(issue.created_at);
+      const closedKey = toDateKey(issue.closed_at || issue.updated_at);
+      if (createdKey && closedKey && createdKey === closedKey) sameDay += 1;
+      const afterCount = countIssueMedia(issue, 'after');
+      if (afterCount > 0) withAfter += 1;
+      const created = issue.created_at ? new Date(issue.created_at) : null;
+      const closed = issue.closed_at ? new Date(issue.closed_at) : (issue.updated_at ? new Date(issue.updated_at) : null);
+      if (created && closed && !Number.isNaN(created.getTime()) && !Number.isNaN(closed.getTime()) && closed >= created) {
+        totalCloseMs += closed - created;
+        closeMsCount += 1;
+      }
+    });
+
+    return {
+      total: issues.length,
+      byDept,
+      byPriority,
+      sameDay,
+      withAfter,
+      averageCloseTime: closeMsCount ? formatDurationShort(totalCloseMs / closeMsCount) : '-',
+    };
+  }
+
+  function renderClosedSummaryBreakdown(map = {}, priorityMode = false) {
+    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+    if (!entries.length) return `<div class="muted">-</div>`;
+    return entries.map(([label, count]) => `
+      <div class="closed-summary-breakdown-row">
+        <span>${escapeHtml(label)}</span>
+        <strong>${count}</strong>
+      </div>
+    `).join('');
+  }
+
+  function countIssueMedia(issue = {}, phase = 'all') {
+    const items = getIssueMediaItems(issue);
+    if (phase === 'all') return items.length;
+    return items.filter(item => item.phase === phase).length;
+  }
+
+  function getIssueMediaThumbs(issue = {}, phase = 'before', max = 3) {
+    return getIssueMediaItems(issue).filter(item => item.phase === phase).slice(0, max);
+  }
+
+  function renderClosedSummaryMediaStrip(issue, phase = 'before') {
+    const items = getIssueMediaThumbs(issue, phase, 4);
+    const total = countIssueMedia(issue, phase);
+    const title = phase === 'after' ? txt('หลังแก้ไข', 'After') : txt('ก่อนแก้ไข', 'Before');
+    if (!items.length) {
+      return `
+        <div class="closed-summary-media-group empty">
+          <div class="closed-summary-media-title">${title}</div>
+          <div class="closed-summary-no-media">${txt('ไม่มีรูป', 'No media')}</div>
+        </div>
+      `;
+    }
+    return `
+      <div class="closed-summary-media-group">
+        <div class="closed-summary-media-title">${title} <span>${total}</span></div>
+        <div class="closed-summary-thumbs">
+          ${items.map((item, index) => `
+            <button type="button" class="closed-summary-thumb" data-open-closed-summary-media="${escapeHtml(issue.id)}" data-summary-media-phase="${phase}" data-summary-media-index="${index}" aria-label="${escapeHtml(title)} ${index + 1}">
+              ${item.type === 'video'
+                ? `<span class="closed-summary-video-badge">VIDEO</span><video src="${escapeHtml(item.src)}" ${item.poster ? `poster="${escapeHtml(item.poster)}"` : ''} muted playsinline preload="metadata"></video>`
+                : `<img src="${escapeHtml(item.thumb || item.src)}" alt="${escapeHtml(title)} ${index + 1}" />`}
+            </button>
+          `).join('')}
+        </div>
+        <button type="button" class="mini-btn closed-summary-view-media" data-open-closed-summary-media="${escapeHtml(issue.id)}" data-summary-media-phase="${phase}" data-summary-media-index="0">${txt('ดูทั้งหมด', 'View All')}</button>
+      </div>
+    `;
+  }
+
+  function renderClosedSummaryIssueCard(issue) {
+    const deptName = getDepartmentName(normalizeDepartmentValue(issue.assigned_department, '')) || '-';
+    const closedAt = issue.closed_at || issue.updated_at || issue.created_at;
+    const createdAt = issue.created_at || '';
+    const closeTime = getIssueCloseDuration(issue);
+    return `
+      <article class="closed-summary-card issue-tone-closed">
+        <div class="closed-summary-card-top">
+          <div>
+            <div class="closed-summary-issue-no">${escapeHtml(issue.issue_no || issue.id || '-')}</div>
+            <h4>${escapeHtml(issue.title || '-')}</h4>
+            <div class="closed-summary-meta">
+              <span>${escapeHtml(deptName)}</span>
+              <span>•</span>
+              <span>${escapeHtml(issue.location_text || '-')}</span>
+              <span>•</span>
+              <span>${escapeHtml(translatePriority(issue.priority || 'medium'))}</span>
+            </div>
+          </div>
+          <div class="closed-summary-closed-chip">${txt('ปิดแล้ว', 'Closed')}</div>
+        </div>
+        ${issue.description ? `<div class="closed-summary-desc">${escapeHtml(issue.description)}</div>` : ''}
+        <div class="closed-summary-info-grid">
+          <div><span>${txt('เปิดงาน', 'Created')}</span><strong>${formatDateTime(createdAt)}</strong></div>
+          <div><span>${txt('ปิดงาน', 'Closed')}</span><strong>${formatDateTime(closedAt)}</strong></div>
+          <div><span>${txt('ใช้เวลา', 'Duration')}</span><strong>${escapeHtml(closeTime)}</strong></div>
+          <div><span>${txt('ปิดโดย', 'Closed by')}</span><strong>${escapeHtml(issue.closed_by_name || '-')}</strong></div>
+        </div>
+        <div class="closed-summary-media-compare">
+          ${renderClosedSummaryMediaStrip(issue, 'before')}
+          ${renderClosedSummaryMediaStrip(issue, 'after')}
+        </div>
+        <div class="issue-actions closed-summary-actions">
+          <button class="mini-btn" data-summary-open-issue="${escapeHtml(issue.id)}">${txt('เปิดรายละเอียด', 'Open Detail')}</button>
+          <button class="mini-btn" data-open-closed-summary-media="${escapeHtml(issue.id)}" data-summary-media-phase="all" data-summary-media-index="0">${txt('ดูรูปก่อน/หลังทั้งหมด', 'View all before/after media')}</button>
+        </div>
+      </article>
+    `;
+  }
+
+  function openClosedSummaryMediaPreview(issueId, phase = 'all', startIndex = 0) {
+    const issue = state.data.issues.find(i => String(i.id) === String(issueId));
+    if (!issue) return;
+    let items = getIssueMediaItems(issue);
+    if (phase && phase !== 'all') items = items.filter(item => item.phase === phase);
+    if (!items.length) {
+      openIssueModal(issueId);
+      return;
+    }
+    const phaseLabel = phase === 'before' ? txt('ก่อนแก้ไข', 'Before') : (phase === 'after' ? txt('หลังแก้ไข', 'After') : txt('รูปก่อน/หลังทั้งหมด', 'All before/after media'));
+    openMediaPreviewModal({
+      items,
+      startIndex: Number.isFinite(startIndex) ? startIndex : 0,
+      issueId: issue.id,
+      title: `${phaseLabel}: ${issue.title || issue.issue_no || ''}`,
+      meta: `${issue.issue_no || issue.id || '-'} • ${getDepartmentName(normalizeDepartmentValue(issue.assigned_department, ''))} • ${formatDateTime(issue.closed_at || issue.updated_at)}`,
+      description: issue.description || ''
+    });
+  }
+
+  function getIssueCloseDuration(issue = {}) {
+    const created = issue.created_at ? new Date(issue.created_at) : null;
+    const closed = issue.closed_at ? new Date(issue.closed_at) : (issue.updated_at ? new Date(issue.updated_at) : null);
+    if (!created || !closed || Number.isNaN(created.getTime()) || Number.isNaN(closed.getTime()) || closed < created) return '-';
+    return formatDurationShort(closed - created);
+  }
+
+  function formatDurationShort(ms) {
+    if (!Number.isFinite(ms) || ms < 0) return '-';
+    const totalMinutes = Math.round(ms / 60000);
+    if (totalMinutes < 60) return `${Math.max(1, totalMinutes)} ${txt('นาที', 'min')}`;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours < 24) return minutes ? `${hours} ${txt('ชม.', 'h')} ${minutes} ${txt('นาที', 'm')}` : `${hours} ${txt('ชม.', 'h')}`;
+    const days = Math.floor(hours / 24);
+    const remainHours = hours % 24;
+    return remainHours ? `${days} ${txt('วัน', 'd')} ${remainHours} ${txt('ชม.', 'h')}` : `${days} ${txt('วัน', 'd')}`;
   }
 
   function renderBoard() {
@@ -7006,7 +7322,7 @@ function switchView(viewId) {
     const code = String(err?.code || '');
     const msg = String(err?.message || err || '');
     if (code.includes('permission-denied') || msg.includes('permission_denied')) {
-      return 'ยังบันทึกงานไม่ได้: Firestore ยังปฏิเสธสิทธิ์ กรุณาอัปเดต Firestore Rules เป็น v107/v108 แล้วกด Publish จากนั้นกด Clear Cache และ Login ใหม่';
+      return 'ยังบันทึกงานไม่ได้: Firestore ยังปฏิเสธสิทธิ์ กรุณาอัปเดต Firestore Rules เป็นชุดล่าสุดแล้วกด Publish จากนั้นกด Clear Cache และ Login ใหม่';
     }
     if (msg.includes('issue_counter_not_found')) {
       return 'ไม่พบตัวนับ issue แต่ระบบควรสร้างให้อัตโนมัติแล้ว ลองใหม่อีกครั้ง';

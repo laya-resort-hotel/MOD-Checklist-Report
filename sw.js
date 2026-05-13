@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v109-staff-board-loading-fix';
-const APP_VERSION = 'v109-staff-board-loading-fix';
+const CACHE_NAME = 'laya-mod-v114-closed-summary-report';
+const APP_VERSION = 'v114-closed-summary-report';
 const APP_SHELL = [
   './',
   './index.html',

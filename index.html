@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
   <script>
-    window.LAYA_APP_VERSION = 'v109-staff-board-loading-fix';
+    window.LAYA_APP_VERSION = 'v114-closed-summary-report';
     (function () {
       var VERSION = window.LAYA_APP_VERSION;
       var VERSION_KEY = 'laya_mod_active_version_v1';
@@ -56,12 +56,12 @@
       } catch (err) {}
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=v109-staff-board-loading-fix" />
+  <link rel="stylesheet" href="style.css?v=v114-closed-summary-report" />
 </head>
 <body class="laya-ui-v102 laya-ui-v103 laya-ui-v104 laya-ui-v106 laya-ui-v107 laya-ui-v108">
   <div id="loginScreen" class="login-shell">
     <div class="login-card glass">
-      <img src="assets/logo.png?v=v109-staff-board-loading-fix" alt="Laya Resort Phuket" class="login-logo" />
+      <img src="assets/logo.png?v=v114-closed-summary-report" alt="Laya Resort Phuket" class="login-logo" />
       <div class="brand-subtitle">MOD Checklist Report</div>
       <h1>Hotel Inspection & Issue Board</h1>
       <div id="authStatus" class="auth-status hidden"></div>
@@ -140,10 +140,10 @@
     </div>
   </div>
 
-  <div id="appShell" class="app-shell hidden" data-ui-version="v109-staff-board-loading-fix">
+  <div id="appShell" class="app-shell hidden" data-ui-version="v114-closed-summary-report">
     <aside class="sidebar glass desktop-only">
       <div class="sidebar-brand">
-        <img src="assets/logo.png?v=v109-staff-board-loading-fix" alt="Laya Resort Phuket" class="sidebar-logo" />
+        <img src="assets/logo.png?v=v114-closed-summary-report" alt="Laya Resort Phuket" class="sidebar-logo" />
       </div>
       <nav class="sidebar-nav">
         <button class="nav-link active" data-view="boardView">Board</button>
@@ -152,6 +152,7 @@
         <button class="nav-link" data-view="logView">Log</button>
         <button class="nav-link" data-view="settingsView">Setting</button>
         <button class="nav-link" data-view="closedView">Closed Jobs</button>
+        <button class="nav-link" data-view="closedSummaryView">Closed Summary</button>
       </nav>
     </aside>
 
@@ -437,7 +438,10 @@
               <h3>Closed Jobs & Checklist History</h3>
               <p class="muted">งานที่ปิดแล้วและ checklist ที่ซ่อนจาก Board จะถูกเก็บไว้ที่นี่ เพื่อไม่ให้ปนกับงานที่ยังต้องติดตาม</p>
             </div>
-            <button id="backToBoardBtn" class="btn btn-ghost" type="button">Back to Board</button>
+            <div class="header-actions inline-actions">
+              <button id="openClosedSummaryBtn" class="btn btn-secondary" type="button">สรุปงานปิด</button>
+              <button id="backToBoardBtn" class="btn btn-ghost" type="button">Back to Board</button>
+            </div>
           </div>
           <div class="toolbar glass inner-toolbar">
             <div class="toolbar-left toolbar-left-split">
@@ -449,6 +453,43 @@
             </div>
           </div>
           <div id="closedList" class="card-list"></div>
+        </div>
+      </section>
+
+
+      <section id="closedSummaryView" class="view closed-summary-view">
+        <div class="panel glass closed-summary-panel">
+          <div class="panel-header panel-header-split closed-summary-header">
+            <div>
+              <h3>สรุปงานปิด</h3>
+              <p class="muted">เลือกช่วงวันที่เพื่อดูงานที่ปิดจบแล้ว พร้อมรูปก่อนแก้ไขและรูปหลังส่งงาน</p>
+            </div>
+            <div class="header-actions inline-actions">
+              <button id="closedSummaryTodayBtn" class="btn btn-secondary" type="button">วันนี้</button>
+              <button id="closedSummaryBackBtn" class="btn btn-ghost" type="button">กลับไปงานปิด</button>
+            </div>
+          </div>
+
+          <div class="toolbar glass inner-toolbar closed-summary-toolbar">
+            <div class="toolbar-left toolbar-left-split closed-summary-filter-grid">
+              <div class="closed-summary-filter-field">
+                <label for="closedSummaryFromDate">จากวันที่</label>
+                <input id="closedSummaryFromDate" class="search-input date-filter-input" type="date" />
+              </div>
+              <div class="closed-summary-filter-field">
+                <label for="closedSummaryToDate">ถึงวันที่</label>
+                <input id="closedSummaryToDate" class="search-input date-filter-input" type="date" />
+              </div>
+              <div class="closed-summary-filter-field closed-summary-search-field">
+                <label for="closedSummarySearch">ค้นหา</label>
+                <input id="closedSummarySearch" class="search-input" type="search" placeholder="ค้นหาเลขงาน, หัวข้อ, สถานที่, แผนก, ผู้ปิดงาน" />
+              </div>
+              <button id="closedSummaryClearBtn" class="btn btn-ghost toolbar-date-clear" type="button">ล้างตัวกรอง</button>
+            </div>
+          </div>
+
+          <div id="closedSummaryStats" class="closed-summary-stats"></div>
+          <div id="closedSummaryList" class="closed-summary-list"></div>
         </div>
       </section>
 
@@ -599,6 +640,7 @@
       <button class="nav-link" data-view="checklistView">Check</button>
       <button class="nav-link" data-view="logView">Log</button>
       <button class="nav-link" data-view="closedView">Closed</button>
+      <button class="nav-link" data-view="closedSummaryView">Summary</button>
       <button class="nav-link" data-view="settingsView">Setting</button>
     </nav>
   </div>
@@ -748,9 +790,9 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=v109-staff-board-loading-fix"></script>
-  <script type="module" src="js/firebase-init.js?v=v109-staff-board-loading-fix"></script>
-  <script src="js/app.js?v=v109-staff-board-loading-fix"></script>
+  <script src="js/firebase-config.js?v=v114-closed-summary-report"></script>
+  <script type="module" src="js/firebase-init.js?v=v114-closed-summary-report"></script>
+  <script src="js/app.js?v=v114-closed-summary-report"></script>
 
   <div id="tempPasswordResultModal" class="modal hidden">
     <div class="modal-backdrop" data-close-temp-password-modal="true"></div>
