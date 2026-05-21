@@ -1,6 +1,6 @@
 (() => {
   const APP_KEY = 'laya_mod_checklist_v1';
-  const APP_VERSION = window.LAYA_APP_VERSION || 'v115-checklist-submit-visible';
+  const APP_VERSION = window.LAYA_APP_VERSION || 'v116-checklist-submit-dock-ui';
   const APP_VERSION_KEY = 'laya_mod_active_version_v1';
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 
@@ -5399,8 +5399,14 @@ function switchView(viewId) {
       </div>
       <div id="checklistSections"></div>
       <div class="sticky-actions checklist-submit-actions" id="checklistSubmitActions" aria-label="${txt('แถบส่งเช็กลิสต์', 'Checklist submit bar')}">
-        <button class="btn btn-primary" id="submitChecklistBtn">${txt('ส่งเช็กลิสต์', 'Submit Checklist')}</button>
-        <button class="btn btn-ghost" id="hideChecklistBtn">${txt('ซ่อน', 'Hide')}</button>
+        <div class="checklist-submit-summary">
+          <strong>${txt('พร้อมส่งเช็กลิสต์', 'Ready to submit')}</strong>
+          <span>${txt('ตรวจครบแล้ว กดส่งเพื่อบันทึกและขึ้น Board', 'When inspection is complete, submit to save and post to the board.')}</span>
+        </div>
+        <div class="checklist-submit-buttons">
+          <button class="btn btn-primary" id="submitChecklistBtn">${txt('ส่งเช็กลิสต์', 'Submit Checklist')}</button>
+          <button class="btn btn-ghost" id="hideChecklistBtn">${txt('พักไว้', 'Keep Draft')}</button>
+        </div>
       </div>
     `;
     el.checklistRunPanel.innerHTML = html;

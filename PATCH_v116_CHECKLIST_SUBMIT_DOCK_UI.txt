@@ -1,0 +1,15 @@
+PATCH v116 - Checklist Submit Dock UI
+
+What changed:
+- Redesigned the checklist submit area so it no longer looks like a floating popup.
+- Added a clear helper label: พร้อมส่งเช็กลิสต์ / ตรวจครบแล้ว กดส่งเพื่อบันทึกและขึ้น Board.
+- Kept the submit button easy to reach on mobile, but styled it as a clean in-form action dock.
+- Changed the secondary button from ซ่อน to พักไว้ to make the action clearer for staff.
+- Bumped cache/version to v116-checklist-submit-dock-ui so phones load the new CSS/JS.
+
+Files changed:
+- index.html
+- style.css
+- sw.js
+- app.js
+- js/app.js

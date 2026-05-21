@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v115-checklist-submit-visible';
-const APP_VERSION = 'v115-checklist-submit-visible';
+const CACHE_NAME = 'laya-mod-v116-checklist-submit-dock-ui';
+const APP_VERSION = 'v116-checklist-submit-dock-ui';
 const APP_SHELL = [
   './',
   './index.html',

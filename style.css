@@ -4591,61 +4591,93 @@ body.laya-ui-v103 .issue-video {
 }
 
 
-/* PATCH v115: Keep checklist submit button visible on mobile.
-   The checklist form can be very long, so the submit controls were easy to miss
-   and could sit behind the bottom navigation. This keeps them above the nav. */
+/* PATCH v116: Checklist submit area redesigned as a clean in-form action dock.
+   It stays easy to find without covering checklist content like a floating modal. */
+#checklistView #checklistRunPanel:not(.hidden) {
+  padding-bottom: calc(104px + env(safe-area-inset-bottom));
+}
 #checklistView #checklistRunPanel:not(.hidden) .checklist-submit-actions {
-  position: sticky;
-  bottom: 12px;
-  z-index: 70;
+  position: relative;
+  z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  padding: 14px;
+  margin: 24px 0 8px;
+  border: 1.5px solid rgba(134,110,75,.24);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,253,248,.98), rgba(248,243,232,.98));
+  box-shadow: 0 10px 24px rgba(35,30,18,.08), inset 0 1px 0 rgba(255,255,255,.8);
+  backdrop-filter: blur(10px);
+}
+#checklistView .checklist-submit-summary {
+  display: grid;
+  gap: 2px;
+  padding: 0 2px;
+  color: var(--ink);
+}
+#checklistView .checklist-submit-summary strong {
+  font-size: 15px;
+  line-height: 1.25;
+}
+#checklistView .checklist-submit-summary span {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+#checklistView .checklist-submit-buttons {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(86px, .34fr);
   gap: 10px;
-  align-items: center;
-  padding: 10px;
-  margin-top: 18px;
-  border: 1.5px solid rgba(134,110,75,.26);
-  border-radius: 20px;
-  background: rgba(255,253,249,.96);
-  box-shadow: 0 16px 36px rgba(30,34,32,.16);
-  backdrop-filter: blur(16px);
 }
 #checklistView #checklistRunPanel:not(.hidden) .checklist-submit-actions .btn {
   justify-content: center;
+  min-height: 52px;
+  border-radius: 15px;
 }
 #checklistView #submitChecklistBtn {
-  min-height: 54px;
   font-size: 17px;
+  font-weight: 800;
+}
+#checklistView #hideChecklistBtn {
+  background: rgba(255,255,255,.72);
 }
 @media (max-width: 860px) {
   #checklistView #checklistRunPanel:not(.hidden) {
-    padding-bottom: calc(156px + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(128px + env(safe-area-inset-bottom)) !important;
   }
   #checklistView #checklistRunPanel:not(.hidden) .checklist-submit-actions {
-    position: fixed !important;
-    left: 10px;
-    right: 10px;
-    bottom: calc(86px + env(safe-area-inset-bottom));
-    z-index: 95;
-    grid-template-columns: minmax(0, 1fr) minmax(86px, .38fr);
-    margin: 0;
-    padding: 10px;
-    border-radius: 22px;
+    position: sticky !important;
+    bottom: calc(82px + env(safe-area-inset-bottom));
+    margin: 18px 0 4px;
+    padding: 12px;
+    border-radius: 20px;
+    box-shadow: 0 -4px 18px rgba(35,30,18,.10), inset 0 1px 0 rgba(255,255,255,.85);
+  }
+  #checklistView .checklist-submit-summary {
+    text-align: left;
+  }
+  #checklistView .checklist-submit-buttons {
+    grid-template-columns: minmax(0, 1fr) minmax(78px, .32fr);
+    gap: 8px;
   }
   #checklistView #submitChecklistBtn,
   #checklistView #hideChecklistBtn {
     width: 100%;
-    min-height: 56px;
-    border-radius: 16px;
+    min-height: 52px;
   }
   #checklistView #submitChecklistBtn {
-    font-size: 18px;
+    font-size: 17px;
   }
 }
 @media (max-width: 420px) {
   #checklistView #checklistRunPanel:not(.hidden) .checklist-submit-actions {
+    bottom: calc(78px + env(safe-area-inset-bottom));
+    padding: 11px;
+  }
+  #checklistView .checklist-submit-buttons {
     grid-template-columns: 1fr;
-    bottom: calc(82px + env(safe-area-inset-bottom));
   }
   #checklistView #hideChecklistBtn {
     min-height: 44px;
