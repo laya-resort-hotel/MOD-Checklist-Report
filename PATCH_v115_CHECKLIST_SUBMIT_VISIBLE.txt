@@ -1,0 +1,16 @@
+PATCH v115 – Checklist Submit Button Visible
+
+แก้ปัญหาปุ่ม “ส่งเช็กลิสต์” หาย/อยู่ท้ายฟอร์ม/ถูก bottom navigation บังบนมือถือ
+
+สิ่งที่แก้ไข:
+1. เพิ่ม class checklist-submit-actions ให้แถบปุ่มส่งเช็กลิสต์
+2. บนมือถือ แถบปุ่มจะลอยอยู่เหนือ bottom navigation ตลอดเวลาที่เปิดฟอร์มเช็กลิสต์
+3. เพิ่ม padding ด้านล่างของ checklist run panel เพื่อไม่ให้ช่องกรอกหรือท้ายรายการถูกแถบปุ่มบัง
+4. เพิ่ม cache version เป็น v115-checklist-submit-visible เพื่อให้เครื่องลูกค้าโหลดไฟล์ใหม่
+
+ไฟล์ที่แก้:
+- index.html
+- style.css
+- sw.js
+- app.js
+- js/app.js

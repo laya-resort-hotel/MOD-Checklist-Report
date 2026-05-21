@@ -4589,3 +4589,65 @@ body.laya-ui-v103 .issue-video {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+
+/* PATCH v115: Keep checklist submit button visible on mobile.
+   The checklist form can be very long, so the submit controls were easy to miss
+   and could sit behind the bottom navigation. This keeps them above the nav. */
+#checklistView #checklistRunPanel:not(.hidden) .checklist-submit-actions {
+  position: sticky;
+  bottom: 12px;
+  z-index: 70;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  margin-top: 18px;
+  border: 1.5px solid rgba(134,110,75,.26);
+  border-radius: 20px;
+  background: rgba(255,253,249,.96);
+  box-shadow: 0 16px 36px rgba(30,34,32,.16);
+  backdrop-filter: blur(16px);
+}
+#checklistView #checklistRunPanel:not(.hidden) .checklist-submit-actions .btn {
+  justify-content: center;
+}
+#checklistView #submitChecklistBtn {
+  min-height: 54px;
+  font-size: 17px;
+}
+@media (max-width: 860px) {
+  #checklistView #checklistRunPanel:not(.hidden) {
+    padding-bottom: calc(156px + env(safe-area-inset-bottom)) !important;
+  }
+  #checklistView #checklistRunPanel:not(.hidden) .checklist-submit-actions {
+    position: fixed !important;
+    left: 10px;
+    right: 10px;
+    bottom: calc(86px + env(safe-area-inset-bottom));
+    z-index: 95;
+    grid-template-columns: minmax(0, 1fr) minmax(86px, .38fr);
+    margin: 0;
+    padding: 10px;
+    border-radius: 22px;
+  }
+  #checklistView #submitChecklistBtn,
+  #checklistView #hideChecklistBtn {
+    width: 100%;
+    min-height: 56px;
+    border-radius: 16px;
+  }
+  #checklistView #submitChecklistBtn {
+    font-size: 18px;
+  }
+}
+@media (max-width: 420px) {
+  #checklistView #checklistRunPanel:not(.hidden) .checklist-submit-actions {
+    grid-template-columns: 1fr;
+    bottom: calc(82px + env(safe-area-inset-bottom));
+  }
+  #checklistView #hideChecklistBtn {
+    min-height: 44px;
+  }
+}

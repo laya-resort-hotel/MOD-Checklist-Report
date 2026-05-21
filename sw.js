@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v114-closed-summary-report';
-const APP_VERSION = 'v114-closed-summary-report';
+const CACHE_NAME = 'laya-mod-v115-checklist-submit-visible';
+const APP_VERSION = 'v115-checklist-submit-visible';
 const APP_SHELL = [
   './',
   './index.html',
