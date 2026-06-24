@@ -1,0 +1,12 @@
+PATCH v118 – Mobile Bottom Navigation One Row Fix
+
+What changed:
+- Mobile bottom navigation now uses 7 equal columns so all menu buttons stay on one row.
+- Bottom navigation labels are shortened only on mobile to prevent wrapping/overlap.
+- Added title/aria-label with the full menu name for accessibility.
+- Updated app/cache version to v118-mobile-bottom-nav-fixed to force mobile browsers to refresh assets.
+
+System impact:
+- No Firebase logic changed.
+- No checklist submit/save logic changed.
+- No permissions, data structure, storage rules, reports, or board logic changed.

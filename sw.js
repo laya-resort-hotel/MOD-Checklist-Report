@@ -1,5 +1,5 @@
-const CACHE_NAME = 'laya-mod-v117-mobile-checklist-layout';
-const APP_VERSION = 'v117-mobile-checklist-layout';
+const CACHE_NAME = 'laya-mod-v118-mobile-bottom-nav-fixed';
+const APP_VERSION = 'v118-mobile-bottom-nav-fixed';
 const APP_SHELL = [
   './',
   './index.html',

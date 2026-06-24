@@ -5023,3 +5023,102 @@ body.laya-ui-v117 #checklistView select {
     letter-spacing: -0.01em;
   }
 }
+
+
+/* =========================================================
+   PATCH v118 – Mobile Bottom Navigation One Row Fix
+   Purpose: keep all 7 mobile menu buttons in one clean row.
+   Scope: UI/CSS + label shortening only. No Firebase or data logic changed.
+   ========================================================= */
+body.laya-ui-v118 .bottom-nav {
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  grid-auto-flow: column !important;
+  grid-auto-columns: minmax(0, 1fr) !important;
+  grid-auto-rows: 1fr !important;
+  align-items: stretch !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+body.laya-ui-v118 .bottom-nav .nav-link {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 54px !important;
+  height: 54px !important;
+  padding: 5px 1px 4px !important;
+  border-radius: 13px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  text-align: center !important;
+  font-size: 10px !important;
+  line-height: 1.05 !important;
+  letter-spacing: -0.03em !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  box-sizing: border-box !important;
+}
+
+body.laya-ui-v118 .bottom-nav .nav-link::before {
+  flex: 0 0 auto !important;
+  display: block !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+}
+
+body.laya-ui-v118 .bottom-nav .nav-link.active {
+  box-shadow: 0 8px 16px rgba(72, 57, 32, 0.13) !important;
+}
+
+@media (max-width: 560px) {
+  body.laya-ui-v118 .bottom-nav {
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    left: 6px !important;
+    right: 6px !important;
+    bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+    padding: 6px !important;
+    gap: 3px !important;
+    border-radius: 20px !important;
+  }
+
+  body.laya-ui-v118 .bottom-nav .nav-link {
+    min-height: 53px !important;
+    height: 53px !important;
+    padding: 5px 1px 4px !important;
+    font-size: 9.7px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  body.laya-ui-v118 .bottom-nav {
+    left: 4px !important;
+    right: 4px !important;
+    padding: 5px !important;
+    gap: 2px !important;
+  }
+
+  body.laya-ui-v118 .bottom-nav .nav-link {
+    min-height: 52px !important;
+    height: 52px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    font-size: 9.2px !important;
+    letter-spacing: -0.04em !important;
+  }
+
+  body.laya-ui-v118 .bottom-nav .nav-link::before {
+    font-size: 13px !important;
+  }
+}
+
+@media (max-width: 340px) {
+  body.laya-ui-v118 .bottom-nav .nav-link {
+    font-size: 8.6px !important;
+    gap: 2px !important;
+  }
+}

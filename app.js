@@ -1,6 +1,6 @@
 (() => {
   const APP_KEY = 'laya_mod_checklist_v1';
-  const APP_VERSION = window.LAYA_APP_VERSION || 'v117-mobile-checklist-layout';
+  const APP_VERSION = window.LAYA_APP_VERSION || 'v118-mobile-bottom-nav-fixed';
   const APP_VERSION_KEY = 'laya_mod_active_version_v1';
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 
@@ -1383,9 +1383,27 @@
       closedSummaryView: txt('สรุปงานปิด', 'Closed Summary'),
       settingsView: txt('ตั้งค่า', 'Settings'),
     };
-    qsa('.sidebar-nav .nav-link, .bottom-nav .nav-link').forEach(btn => {
+    const bottomNavLabels = {
+      boardView: txt('บอร์ด', 'Board'),
+      newIssueView: txt('แจ้ง', 'New'),
+      checklistView: txt('เช็ค', 'Check'),
+      logView: txt('บันทึก', 'Log'),
+      closedView: txt('ปิดแล้ว', 'Closed'),
+      closedSummaryView: txt('สรุป', 'Summary'),
+      settingsView: txt('ตั้งค่า', 'Settings'),
+    };
+    qsa('.sidebar-nav .nav-link').forEach(btn => {
       const label = sidebarLabels[btn.dataset.view];
       if (label) btn.textContent = label;
+    });
+    qsa('.bottom-nav .nav-link').forEach(btn => {
+      const label = bottomNavLabels[btn.dataset.view];
+      const fullLabel = sidebarLabels[btn.dataset.view];
+      if (label) btn.textContent = label;
+      if (fullLabel) {
+        btn.setAttribute('title', fullLabel);
+        btn.setAttribute('aria-label', fullLabel);
+      }
     });
 
     setNodeText('.topbar .eyebrow', 'LAYA RESORT PHUKET', 'LAYA RESORT PHUKET');

@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
   <script>
-    window.LAYA_APP_VERSION = 'v117-mobile-checklist-layout';
+    window.LAYA_APP_VERSION = 'v118-mobile-bottom-nav-fixed';
     (function () {
       var VERSION = window.LAYA_APP_VERSION;
       var VERSION_KEY = 'laya_mod_active_version_v1';
@@ -56,12 +56,12 @@
       } catch (err) {}
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=v117-mobile-checklist-layout" />
+  <link rel="stylesheet" href="style.css?v=v118-mobile-bottom-nav-fixed" />
 </head>
-<body class="laya-ui-v102 laya-ui-v103 laya-ui-v104 laya-ui-v106 laya-ui-v107 laya-ui-v108 laya-ui-v117">
+<body class="laya-ui-v102 laya-ui-v103 laya-ui-v104 laya-ui-v106 laya-ui-v107 laya-ui-v108 laya-ui-v117 laya-ui-v118">
   <div id="loginScreen" class="login-shell">
     <div class="login-card glass">
-      <img src="assets/logo.png?v=v117-mobile-checklist-layout" alt="Laya Resort Phuket" class="login-logo" />
+      <img src="assets/logo.png?v=v118-mobile-bottom-nav-fixed" alt="Laya Resort Phuket" class="login-logo" />
       <div class="brand-subtitle">MOD Checklist Report</div>
       <h1>Hotel Inspection & Issue Board</h1>
       <div id="authStatus" class="auth-status hidden"></div>
@@ -140,10 +140,10 @@
     </div>
   </div>
 
-  <div id="appShell" class="app-shell hidden" data-ui-version="v117-mobile-checklist-layout">
+  <div id="appShell" class="app-shell hidden" data-ui-version="v118-mobile-bottom-nav-fixed">
     <aside class="sidebar glass desktop-only">
       <div class="sidebar-brand">
-        <img src="assets/logo.png?v=v117-mobile-checklist-layout" alt="Laya Resort Phuket" class="sidebar-logo" />
+        <img src="assets/logo.png?v=v118-mobile-bottom-nav-fixed" alt="Laya Resort Phuket" class="sidebar-logo" />
       </div>
       <nav class="sidebar-nav">
         <button class="nav-link active" data-view="boardView">Board</button>
@@ -635,13 +635,13 @@
     <button id="fabNewIssue" class="fab mobile-only" title="New Issue">+</button>
 
     <nav class="bottom-nav glass mobile-only">
-      <button class="nav-link active" data-view="boardView">Board</button>
-      <button class="nav-link" data-view="newIssueView">New</button>
-      <button class="nav-link" data-view="checklistView">Check</button>
-      <button class="nav-link" data-view="logView">Log</button>
-      <button class="nav-link" data-view="closedView">Closed</button>
-      <button class="nav-link" data-view="closedSummaryView">Summary</button>
-      <button class="nav-link" data-view="settingsView">Setting</button>
+      <button class="nav-link active" data-view="boardView" title="Board">Board</button>
+      <button class="nav-link" data-view="newIssueView" title="New Issue">New</button>
+      <button class="nav-link" data-view="checklistView" title="Checklist">Check</button>
+      <button class="nav-link" data-view="logView" title="Log">Log</button>
+      <button class="nav-link" data-view="closedView" title="Closed Jobs">Closed</button>
+      <button class="nav-link" data-view="closedSummaryView" title="Closed Summary">Summary</button>
+      <button class="nav-link" data-view="settingsView" title="Settings">Settings</button>
     </nav>
   </div>
 
@@ -790,9 +790,9 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=v117-mobile-checklist-layout"></script>
-  <script type="module" src="js/firebase-init.js?v=v117-mobile-checklist-layout"></script>
-  <script src="js/app.js?v=v117-mobile-checklist-layout"></script>
+  <script src="js/firebase-config.js?v=v118-mobile-bottom-nav-fixed"></script>
+  <script type="module" src="js/firebase-init.js?v=v118-mobile-bottom-nav-fixed"></script>
+  <script src="js/app.js?v=v118-mobile-bottom-nav-fixed"></script>
 
   <div id="tempPasswordResultModal" class="modal hidden">
     <div class="modal-backdrop" data-close-temp-password-modal="true"></div>
