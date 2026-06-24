@@ -1,0 +1,22 @@
+PATCH v117 – Mobile Checklist Layout Safety Fix
+
+Changed files:
+- index.html
+- style.css
+- sw.js
+- app.js
+- js/app.js
+
+What changed:
+- Added body class laya-ui-v117 and bumped cache version to v117-mobile-checklist-layout.
+- Added mobile-only checklist layout CSS to keep buttons aligned and tappable.
+- Changed checklist submit area on mobile from sticky overlay to normal in-form dock so it does not cover checklist controls.
+- Checklist Pass / Fail / N/A buttons now stay as a clean 3-column row on mobile.
+- Media buttons, template actions, and submit buttons use responsive grid rules.
+
+No system logic changed:
+- No Firebase config changes.
+- No Firestore / Storage rules changes.
+- No permission changes.
+- No checklist submit logic changes.
+- No data structure changes.

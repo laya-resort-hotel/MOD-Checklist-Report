@@ -1,6 +1,6 @@
 (() => {
   const APP_KEY = 'laya_mod_checklist_v1';
-  const APP_VERSION = window.LAYA_APP_VERSION || 'v116-checklist-submit-dock-ui';
+  const APP_VERSION = window.LAYA_APP_VERSION || 'v117-mobile-checklist-layout';
   const APP_VERSION_KEY = 'laya_mod_active_version_v1';
   const PENDING_REG_KEY = 'laya_mod_pending_registration_v1';
 

@@ -4683,3 +4683,343 @@ body.laya-ui-v103 .issue-video {
     min-height: 44px;
   }
 }
+
+
+/* =====================================================================
+   PATCH v117 – Mobile Checklist Layout Safety Fix
+   Scope: visual/responsive CSS only. No Firebase / data / permission logic.
+   Goal: keep mobile buttons aligned, tappable, and never hidden by sticky bars.
+   ===================================================================== */
+body.laya-ui-v117 {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.laya-ui-v117 #checklistView,
+body.laya-ui-v117 #checklistView * {
+  max-width: 100%;
+}
+
+body.laya-ui-v117 #checklistView .panel-header-split {
+  gap: 14px;
+  align-items: flex-start;
+}
+
+body.laya-ui-v117 #checklistView .panel-header-split .btn,
+body.laya-ui-v117 #checklistView .template-actions .btn,
+body.laya-ui-v117 #checklistView .hidden-template-item .btn,
+body.laya-ui-v117 #checklistView .checklist-submit-actions .btn,
+body.laya-ui-v117 #checklistView .checklist-media-actions .btn,
+body.laya-ui-v117 #checklistView .photo-pick-label,
+body.laya-ui-v117 #checklistView .option-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.2;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body.laya-ui-v117 #checklistView .inline-options {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  width: 100%;
+}
+
+body.laya-ui-v117 #checklistView .option-btn {
+  width: 100%;
+  min-width: 0;
+  min-height: 54px;
+  padding: 10px 8px;
+  border-radius: 14px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  touch-action: manipulation;
+  position: relative;
+  z-index: 1;
+}
+
+body.laya-ui-v117 #checklistView .item-controls,
+body.laya-ui-v117 #checklistView .fail-extra,
+body.laya-ui-v117 #checklistView .checklist-media-actions,
+body.laya-ui-v117 #checklistView .checklist-submit-buttons,
+body.laya-ui-v117 #checklistView .template-actions {
+  min-width: 0;
+}
+
+body.laya-ui-v117 #checklistView textarea,
+body.laya-ui-v117 #checklistView input,
+body.laya-ui-v117 #checklistView select {
+  min-width: 0;
+}
+
+@media (max-width: 860px) {
+  body.laya-ui-v117 .main-shell {
+    padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
+  }
+
+  body.laya-ui-v117 #checklistView.view.active {
+    padding: 14px 12px calc(128px + env(safe-area-inset-bottom)) !important;
+    overflow: visible !important;
+  }
+
+  body.laya-ui-v117 #checklistView > .panel.glass,
+  body.laya-ui-v117 #checklistTemplateBuilder,
+  body.laya-ui-v117 #checklistRunPanel {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    border-radius: 18px !important;
+    padding: 14px !important;
+    overflow: visible !important;
+  }
+
+  body.laya-ui-v117 #checklistView .panel-header,
+  body.laya-ui-v117 #checklistView .panel-header-split {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    align-items: stretch !important;
+  }
+
+  body.laya-ui-v117 #checklistView .panel-header h3 {
+    font-size: 21px !important;
+    line-height: 1.25 !important;
+    margin-bottom: 4px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .panel-header p,
+  body.laya-ui-v117 #checklistView .muted {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  body.laya-ui-v117 #checklistView #addChecklistTemplateBtn,
+  body.laya-ui-v117 #checklistView .panel-header-split > .btn {
+    width: 100% !important;
+    min-height: 48px !important;
+    padding: 12px 14px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .template-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .template-card {
+    padding: 14px !important;
+    border-radius: 16px !important;
+    gap: 10px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .template-card h4 {
+    font-size: 18px !important;
+    line-height: 1.28 !important;
+  }
+
+  body.laya-ui-v117 #checklistView .template-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(92px, .42fr) !important;
+    gap: 8px !important;
+    width: 100%;
+  }
+
+  body.laya-ui-v117 #checklistView .template-actions .btn {
+    width: 100% !important;
+    min-height: 48px !important;
+    padding: 10px 10px !important;
+    font-size: 14px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .checklist-run-head {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    padding: 12px !important;
+    border-radius: 16px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .section-card {
+    border-radius: 16px !important;
+    margin-bottom: 12px !important;
+    overflow: hidden !important;
+  }
+
+  body.laya-ui-v117 #checklistView .section-head {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    gap: 8px !important;
+    align-items: start !important;
+    padding: 13px 14px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .section-head h4 {
+    font-size: 16px !important;
+    line-height: 1.35 !important;
+  }
+
+  body.laya-ui-v117 #checklistView .section-body {
+    padding: 0 12px 12px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .item-card {
+    padding: 14px 0 !important;
+    display: grid !important;
+    gap: 10px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .item-text {
+    margin: 0 !important;
+    font-size: 15.5px !important;
+    line-height: 1.42 !important;
+    word-break: break-word;
+  }
+
+  body.laya-ui-v117 #checklistView .item-controls {
+    display: grid !important;
+    gap: 10px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .inline-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .option-btn {
+    min-height: 52px !important;
+    padding: 9px 6px !important;
+    border-radius: 13px !important;
+    font-size: clamp(13px, 3.7vw, 15px) !important;
+    font-weight: 800 !important;
+  }
+
+  body.laya-ui-v117 #checklistView .fail-extra {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .fail-extra.hidden,
+  body.laya-ui-v117 #checklistView .check-row.hidden,
+  body.laya-ui-v117 #checklistView .checklist-fail-media.hidden {
+    display: none !important;
+  }
+
+  body.laya-ui-v117 #checklistView .check-row {
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+    border: 1px solid rgba(36,53,44,.10);
+    border-radius: 12px;
+    background: rgba(255,255,255,.58);
+  }
+
+  body.laya-ui-v117 #checklistView .check-row input {
+    margin-top: 2px;
+    width: 20px !important;
+    height: 20px !important;
+    flex: 0 0 20px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .checklist-fail-media {
+    padding: 12px !important;
+    border-radius: 14px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .checklist-media-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .checklist-media-actions .btn,
+  body.laya-ui-v117 #checklistView .checklist-media-actions .photo-pick-label {
+    width: 100% !important;
+    min-height: 48px !important;
+    padding: 10px 8px !important;
+    font-size: 13px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .photo-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  body.laya-ui-v117 #checklistView #checklistRunPanel:not(.hidden) {
+    padding-bottom: 14px !important;
+  }
+
+  body.laya-ui-v117 #checklistView #checklistRunPanel:not(.hidden) .checklist-submit-actions {
+    position: static !important;
+    bottom: auto !important;
+    z-index: 1 !important;
+    margin: 18px 0 0 !important;
+    padding: 12px !important;
+    border-radius: 18px !important;
+    box-shadow: 0 8px 20px rgba(35,30,18,.08) !important;
+  }
+
+  body.laya-ui-v117 #checklistView .checklist-submit-buttons {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(88px, .36fr) !important;
+    gap: 8px !important;
+  }
+
+  body.laya-ui-v117 #checklistView #submitChecklistBtn,
+  body.laya-ui-v117 #checklistView #hideChecklistBtn {
+    width: 100% !important;
+    min-height: 52px !important;
+    padding: 10px 8px !important;
+  }
+
+  body.laya-ui-v117 #checklistView #submitChecklistBtn {
+    font-size: 16px !important;
+  }
+
+  body.laya-ui-v117 .bottom-nav {
+    z-index: 80 !important;
+  }
+}
+
+@media (max-width: 430px) {
+  body.laya-ui-v117 #checklistView.view.active {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  body.laya-ui-v117 #checklistView > .panel.glass,
+  body.laya-ui-v117 #checklistTemplateBuilder,
+  body.laya-ui-v117 #checklistRunPanel {
+    padding: 12px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .template-actions,
+  body.laya-ui-v117 #checklistView .checklist-submit-buttons {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.laya-ui-v117 #checklistView .inline-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .option-btn {
+    min-height: 50px !important;
+    padding: 8px 4px !important;
+  }
+
+  body.laya-ui-v117 #checklistView .checklist-media-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 360px) {
+  body.laya-ui-v117 #checklistView .section-head {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.laya-ui-v117 #checklistView .option-btn {
+    font-size: 12.5px !important;
+    letter-spacing: -0.01em;
+  }
+}
